@@ -11,13 +11,7 @@ describe("portable bind values", () => {
     expect(assertBindValue(false)).toBe(false);
     const bytes = new Uint8Array([1, 2, 3]);
     expect(assertBindValue(bytes)).toBe(bytes);
-    expect(assertBindValues([null, "x", 1, false, bytes])).toEqual([
-      null,
-      "x",
-      1,
-      false,
-      bytes,
-    ]);
+    expect(assertBindValues([null, "x", 1, false, bytes])).toEqual([null, "x", 1, false, bytes]);
   });
 
   test("rejects undefined, objects, arrays, symbols, functions, bigint, and non-finite numbers", () => {

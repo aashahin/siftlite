@@ -69,7 +69,6 @@ describe("index definition", () => {
     });
     expect(index.synonyms).toEqual({ ايفون: ["ايفون برو"] });
     expect(Object.keys(index.synonyms)).toEqual(["ايفون"]);
-    expect(index.synonyms["ايفون"]).toEqual(["ايفون برو"]);
   });
 
   test("runtime-only synonym edits change the logical hash", () => {

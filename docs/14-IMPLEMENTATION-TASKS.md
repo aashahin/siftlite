@@ -17,21 +17,21 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 1 — Core contracts and budgets
 
-- [ ] **P1-01** Implement `SourceId` definition/validation and exact string-vs-number preservation.
-- [ ] **P1-02** Implement `SearchStorageKind` and canonical codecs for text/safe integer/finite real/boolean.
-- [ ] **P1-03** Add explicit integer timestamp codec/unit configuration.
-- [ ] **P1-04** Reject BigInt/NaN/Infinity/objects/unsupported values with typed errors.
-- [ ] **P1-05** Implement logical index definition schema and canonicalization/hash.
-- [ ] **P1-06** Implement safe filter AST/builders and NULL semantics types.
-- [ ] **P1-07** Implement backend-neutral text-query AST.
-- [ ] **P1-08** Implement portable plain-text parser (intent, not backend lexical emulation).
-- [ ] **P1-09** Implement immutable bound-scope representation outside user filter AST.
-- [ ] **P1-10** Implement application safety limits.
-- [ ] **P1-11** Implement `RuntimeSqlLimits` and unknown/unproven semantics.
-- [ ] **P1-12** Implement read-consistency capability model.
-- [ ] **P1-13** Implement effective capability intersection/resolution.
-- [ ] **P1-14** Implement statement budget calculator/reservation utilities.
-- [ ] **P1-15** Add fuzz/property tests for AST/query injection and scalar boundaries.
+- [x] **P1-01** Implement `SourceId` definition/validation and exact string-vs-number preservation.
+- [x] **P1-02** Implement `SearchStorageKind` and canonical codecs for text/safe integer/finite real/boolean.
+- [x] **P1-03** Add explicit integer timestamp codec/unit configuration.
+- [x] **P1-04** Reject BigInt/NaN/Infinity/objects/unsupported values with typed errors.
+- [x] **P1-05** Implement logical index definition schema and canonicalization/hash.
+- [x] **P1-06** Implement safe filter AST/builders and NULL semantics types.
+- [x] **P1-07** Implement backend-neutral text-query AST.
+- [x] **P1-08** Implement portable plain-text parser (intent, not backend lexical emulation).
+- [x] **P1-09** Implement immutable bound-scope representation outside user filter AST.
+- [x] **P1-10** Implement application safety limits.
+- [x] **P1-11** Implement `RuntimeSqlLimits` and unknown/unproven semantics.
+- [x] **P1-12** Implement read-consistency capability model.
+- [x] **P1-13** Implement effective capability intersection/resolution.
+- [x] **P1-14** Implement statement budget calculator/reservation utilities.
+- [x] **P1-15** Add fuzz/property tests for AST/query injection and scalar boundaries.
 
 **Gate:** illegal scalars and over-budget plans fail before runtime SQL; scope cannot be user-negated.
 

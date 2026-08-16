@@ -1,0 +1,22 @@
+/**
+ * Typed SiftLite error codes. Callers must branch on `code`, not message text.
+ */
+export const SEARCH_ERROR_CODES = [
+  "SEARCH_CONFIG_INVALID",
+  "SEARCH_CAPABILITY_UNSUPPORTED",
+  "SEARCH_QUERY_INVALID",
+  "SEARCH_QUERY_LIMIT_EXCEEDED",
+  "SEARCH_FILTER_INVALID",
+  "SEARCH_VALUE_INVALID",
+  "SEARCH_RUNTIME_LIMIT_EXCEEDED",
+  "SEARCH_SCOPE_INVALID",
+  "SEARCH_INDEX_NOT_FOUND",
+  "SEARCH_INDEX_DRIFT",
+  "SEARCH_MIGRATION_REQUIRED",
+  "SEARCH_BACKEND_ERROR",
+  "SEARCH_ADAPTER_ERROR",
+  "SEARCH_MAINTENANCE_FAILED",
+] as const;
+
+/** Discriminated public error code. */
+export type SearchErrorCode = (typeof SEARCH_ERROR_CODES)[number];

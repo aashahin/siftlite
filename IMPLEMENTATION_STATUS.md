@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 0 — Repository foundation
+Phase 1 — Core contracts and budgets
 
 ## Status
 
@@ -13,19 +13,31 @@ PASS
 
 ## Completed tasks
 
-- P0-01 Create Bun workspace monorepo and root scripts
-- P0-02 Add strict shared TypeScript configs for edge-safe core and package builds
-- P0-03 Add `bun:test`, lint, format, typecheck, build, and `bun run verify`
-- P0-04 Add CI that runs from a clean install and caches safely
-- P0-05 Create only `@siftlite/core`, `@siftlite/fts5`, `@siftlite/bun`, `@siftlite/testing` skeletons
-- P0-06 Configure package exports/types/source maps and release workflow
-- P0-07 Add README, contributing, security policy, license, and minimal example
-- P0-08 Add dependency-boundary test preventing runtime/ORM imports in core
+### Phase 0
+
+- P0-01 through P0-08
+
+### Phase 1
+
+- P1-01 SourceId validation and string-vs-number preservation
+- P1-02 SearchStorageKind and canonical codecs
+- P1-03 Explicit integer timestamp codec/unit
+- P1-04 Reject BigInt/NaN/Infinity/objects
+- P1-05 Logical index definition, canonicalization, and hash
+- P1-06 Filter AST/builders and NULL semantics
+- P1-07 Backend-neutral text-query AST
+- P1-08 Portable plain-text parser
+- P1-09 Immutable bound-scope representation
+- P1-10 Application safety limits
+- P1-11 RuntimeSqlLimits with unproven semantics
+- P1-12 Read-consistency capability model
+- P1-13 Effective capability resolution
+- P1-14 Statement budget calculator
+- P1-15 Fuzz/property tests for AST/query injection and scalars
 
 ## Tests executed
 
 ```bash
-bun install
 bun run verify
 ```
 
@@ -34,23 +46,21 @@ Results:
 - format/check: pass
 - lint: pass
 - typecheck: pass
-- unit: 9 passed / 0 failed
+- unit: 45 passed / 0 failed
 - build: pass
 - export checks: pass
 
 ## Significant implementation decisions
 
-- Repository toolchain is Bun workspaces + `bun:test` + Biome + TypeScript project references.
-- Published packages emit ESM, declaration files, source maps, and declaration maps.
-- `@siftlite/core` uses an edge-safe TypeScript config with an empty `types` array.
-- Workspace `exports` include a `bun` condition pointing at TypeScript source for tests.
-- Changesets version packages; npm publish is owner-gated.
-- Phase 0 creates only `@siftlite/core`, `@siftlite/fts5`, `@siftlite/bun`, and `@siftlite/testing`.
+- Portable SHA-256 in core is a drift identifier, not a security primitive.
+- Searchable field order is preserved in the logical hash; synonym maps are sorted.
+- Bound scopes use `kind: "bound-scope"` and cannot appear in the user filter AST.
+- `undefined` runtime SQL limits are represented as `"unproven"` and never treated as unlimited.
+- The portable parser treats FTS/Tantivy operator lookalikes as ordinary text.
 
 ## Known upstream limitations
 
-- The original `bun.lock` used an unrecognized lockfile version; Bun 1.3.14 regenerated it.
-- TypeScript 7 is available from npm, but Phase 0 pins TypeScript 5.9.3 for a stable library baseline.
+- TypeScript 7 is available from npm, but the repo pins TypeScript 5.9.3.
 
 ## Blockers
 
@@ -58,4 +68,4 @@ None.
 
 ## Latest verification result
 
-`bun run verify` passed on 2026-08-16.
+`bun run verify` passed on 2026-08-16 after Phase 1.

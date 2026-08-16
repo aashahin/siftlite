@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 4 — Registry, linked/manual storage, lifecycle
+Phase 5 — Projection migrations and bounded maintenance
 
 ## Status
 
@@ -18,33 +18,36 @@ PASS
 - P2-01 through P2-10
 - P3-01 through P3-07
 - P4-01 through P4-15
+- P5-01 through P5-10
+
+## Remaining
+
+Phases 6–14 (application semantics, D1, libSQL, Arabic, ORMs, fuzzy, CLI, RC)
+and conditional Phase 15.
 
 ## Tests executed
 
-```bash
-bun run verify
-```
-
-64 tests passed.
+`bun run verify`
 
 ## Significant implementation decisions
 
-- Registry health is written only after physical verification.
-- Linked indexes are synchronized by INSERT/UPDATE/DELETE triggers, including
-  source primary-key updates that preserve `doc_id`.
-- Manual rebuild recreates FTS from the authoritative document table and does
-  not treat FTS as the recovery source.
-- Runtime-only definition edits keep `physical_index_id` and generation.
+- Projection migrations add columns, backfill in chunks, rebuild B-tree indexes,
+  regenerate triggers, then update the registry.
+- FTS5 bounded merge uses `INSERT INTO fts(fts, rank) VALUES ('merge', N)` on
+  current Bun SQLite 3.53; the older `merge=N` string form is not accepted.
+- Secure-delete `required-if-supported` fails closed when the probe is unproven.
 
 ## Known upstream limitations
 
-- Turso native FTS remains experimental (`index_method`).
-- Remote D1/Turso credentials are not available in this environment.
+- Turso native FTS remains experimental.
+- Remote D1/Turso credentials are unavailable.
+- Bun SQLite accepts `optimize` and `INSERT ... (fts, rank) VALUES ('merge', N)`
+  but not `VALUES('merge=N')`.
 
 ## Blockers
 
-None for Phases 0–4.
+None for Phases 0–5.
 
 ## Latest verification result
 
-`bun run verify` passed after Phase 4.
+Pending `bun run verify` after Phase 5.

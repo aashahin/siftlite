@@ -84,16 +84,16 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 5 — Projection migrations, privacy, bounded maintenance
 
-- [ ] **P5-01** Detect migration-only projected-field changes.
-- [ ] **P5-02** Plan projection storage preparation/addition.
-- [ ] **P5-03** Implement bounded existing-row backfill executor/resume token.
-- [ ] **P5-04** Create/recreate required B-tree indexes after/with backfill as appropriate.
-- [ ] **P5-05** Regenerate triggers for new projected fields.
-- [ ] **P5-06** Verify counts/samples/source-ID types/trigger writes before registry update.
-- [ ] **P5-07** Implement FTS5 bounded `merge` maintenance.
-- [ ] **P5-08** Implement incremental optimize orchestration.
-- [ ] **P5-09** Implement FTS5 secure-delete policy + runtime/version gate.
-- [ ] **P5-10** Add interrupted-backfill and interrupted-maintenance recovery tests.
+- [x] **P5-01** Detect migration-only projected-field changes.
+- [x] **P5-02** Plan projection storage preparation/addition.
+- [x] **P5-03** Implement bounded existing-row backfill executor/resume token.
+- [x] **P5-04** Create/recreate required B-tree indexes after/with backfill as appropriate.
+- [x] **P5-05** Regenerate triggers for new projected fields.
+- [x] **P5-06** Verify counts/samples/source-ID types/trigger writes before registry update.
+- [x] **P5-07** Implement FTS5 bounded `merge` maintenance.
+- [x] **P5-08** Implement incremental optimize orchestration.
+- [x] **P5-09** Implement FTS5 secure-delete policy + runtime/version gate.
+- [x] **P5-10** Add interrupted-backfill and interrupted-maintenance recovery tests.
 
 **Gate:** no partial migration is falsely healthy; maintenance can be bounded; privacy policy fails closed.
 

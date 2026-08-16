@@ -21,6 +21,7 @@ const FORBIDDEN_SPECIFIERS = [
   /^drizzle-orm$/,
   /^drizzle-kit$/,
   /^@prisma\/client$/,
+  /^@siftlite\/prisma$/,
   /^@prisma\/adapter-/,
   /^prisma$/,
   /^@libsql\/client$/,

@@ -123,6 +123,23 @@
         "@libsql/client",
       ],
     },
+    "packages/prisma": {
+      "name": "@siftlite/prisma",
+      "version": "0.0.0",
+      "dependencies": {
+        "@siftlite/core": "workspace:*",
+        "@siftlite/fts5": "workspace:*",
+      },
+      "devDependencies": {
+        "@siftlite/bun": "workspace:*",
+      },
+      "peerDependencies": {
+        "@prisma/client": "^6.0.0",
+      },
+      "optionalPeers": [
+        "@prisma/client",
+      ],
+    },
     "packages/testing": {
       "name": "@siftlite/testing",
       "version": "0.0.0",
@@ -419,6 +436,8 @@
     "@siftlite/fts5": ["@siftlite/fts5@workspace:packages/fts5"],
 
     "@siftlite/libsql": ["@siftlite/libsql@workspace:packages/libsql"],
+
+    "@siftlite/prisma": ["@siftlite/prisma@workspace:packages/prisma"],
 
     "@siftlite/testing": ["@siftlite/testing@workspace:packages/testing"],
 

@@ -7,6 +7,7 @@
     { "path": "./packages/d1" },
     { "path": "./packages/libsql" },
     { "path": "./packages/testing" },
-    { "path": "./packages/drizzle" }
+    { "path": "./packages/drizzle" },
+    { "path": "./packages/prisma" }
   ]
 }

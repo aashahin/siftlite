@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 10 — Drizzle integration
+Phase 11 — Prisma integration
 
 ## Status
 
@@ -24,10 +24,11 @@ PASS
 - P8-01 through P8-06
 - P9-01 through P9-08
 - P10-01 through P10-07
+- P11-01 through P11-06
 
 ## Remaining
 
-Phases 11–14 (Prisma, fuzzy, CLI, RC) and conditional Phase 15.
+Phases 12–14 (fuzzy, CLI, RC) and conditional Phase 15.
 
 ## Tests executed
 
@@ -35,28 +36,24 @@ Phases 11–14 (Prisma, fuzzy, CLI, RC) and conditional Phase 15.
 
 ## Significant implementation decisions
 
-- `@siftlite/drizzle` is a companion. It maps public Drizzle 0.45 metadata
-  (`getTableName`, `getTableColumns`, column `name`/`dataType`/`columnType`/
-  timestamp `mode`) into canonical SiftLite codecs.
-- Blob, bigint, and JSON columns fail at definition time. Timestamp units come
-  from Drizzle's explicit `timestamp` / `timestamp_ms` modes only.
-- Linked-mode field names are SQL column names so triggers bind `NEW."col"`.
-- Synchronization remains trigger-owned; ORM and raw SQL writes are both tested
-  on Bun and local libSQL.
+- `@siftlite/prisma` accepts a minimal `PrismaClientLike` (`findMany` with
+  `{ id: { in } }`). `@prisma/client` is an optional peer and never enters core.
+- Client Extensions are ergonomic wrappers around `createPrismaSearch`. They
+  are not write hooks and are not required for correctness.
+- Companion SQL is a deterministic subsequent migration fragment. Previously
+  applied Prisma migrations are never rewritten.
+- Supported client family is Prisma 6. No FTS model is required.
 
 ## Known upstream limitations
 
 - Turso native FTS remains experimental.
 - Remote D1/libSQL credentials are unavailable in this environment.
 - D1 export does not support databases containing FTS5 virtual tables.
-- Drizzle 0.45 stores bigint as `blob({ mode: "bigint" })`, not integer mode.
-- A Drizzle client was not bundled into the D1 Workers test pool; D1 still runs
-  shared FTS5/Arabic conformance, and trigger ownership is proven on Bun/libSQL.
 
 ## Blockers
 
-None for Phases 0–10.
+None for Phases 0–11.
 
 ## Latest verification result
 
-`bun run verify` passed after Phase 10 (format, lint, typecheck, build, 127 bun tests, 5 D1 Workers tests, export check).
+Pending `bun run verify` after Phase 11.

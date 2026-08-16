@@ -169,12 +169,12 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 11 — Prisma
 
-- [ ] **P11-01** Define supported Prisma versions.
-- [ ] **P11-02** Implement canonical Prisma search service wrapper.
-- [ ] **P11-03** Implement companion SQL migration workflow.
-- [ ] **P11-04** Add optional Client Extension model method.
-- [ ] **P11-05** Add batched hydrated model return path.
-- [ ] **P11-06** Add type/version/CRUD/raw-SQL fixtures.
+- [x] **P11-01** Define supported Prisma versions.
+- [x] **P11-02** Implement canonical Prisma search service wrapper.
+- [x] **P11-03** Implement companion SQL migration workflow.
+- [x] **P11-04** Add optional Client Extension model method.
+- [x] **P11-05** Add batched hydrated model return path.
+- [x] **P11-06** Add type/version/CRUD/raw-SQL fixtures.
 
 **Gate:** no FTS model/hooks are required and integration stays optional.
 

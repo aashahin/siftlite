@@ -16,7 +16,7 @@ import {
   SearchError,
 } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
-import { createManualFts5Proof, searchFts5Index } from "../src/index.ts";
+import { createManualFts5Proof, searchFts5Index, searchFts5IndexRaw, unsafeFts5Query } from "../src/index.ts";
 
 function catalogDefinition() {
   return defineIndex({
@@ -260,5 +260,28 @@ describe("Phase 6 application search semantics", () => {
         { filter: inList("status", values) },
       ),
     ).rejects.toThrow(SearchError);
+  });
+
+  test("searchRaw binds unsafe FTS5 grammar while ordinary text stays escaped", async () => {
+    const ctx = await seed();
+    const raw = await searchFts5IndexRaw(ctx, unsafeFts5Query('title:"sqlite"'));
+    expect(raw.hits.map((hit) => hit.id)).toEqual(["a"]);
+
+    const ordinary = await searchFts5Index(ctx, 'title:"sqlite"');
+    expect(ordinary.hits.map((hit) => hit.id)).toEqual([]);
+  });
+
+  test("aborted AbortSignal fails before SQL execution", async () => {
+    const ctx = await seed();
+    let queries = 0;
+    const original = ctx.adapter.query.bind(ctx.adapter);
+    ctx.adapter.query = async (statement) => {
+      queries += 1;
+      return original(statement);
+    };
+    await expect(
+      searchFts5Index(ctx, "sqlite", { signal: AbortSignal.abort() }),
+    ).rejects.toThrow(SearchError);
+    expect(queries).toBe(0);
   });
 });

@@ -1,4 +1,5 @@
 import { describe, expect, test } from "bun:test";
+import { SearchError } from "@siftlite/core";
 import { emitFts5Match, escapeFts5Literal } from "../src/index.ts";
 
 describe("FTS5 emitter", () => {
@@ -17,5 +18,30 @@ describe("FTS5 emitter", () => {
         ],
       }),
     ).toBe('("sqlite" AND "AND")');
+  });
+
+  test("emits FTS5 column filters from AST field selectors", () => {
+    expect(emitFts5Match({ kind: "term", value: "sqlite", field: "title" })).toBe('title:"sqlite"');
+    expect(emitFts5Match({ kind: "term", value: "sqlite", field: "title", prefix: true })).toBe(
+      'title:"sqlite"*',
+    );
+    expect(emitFts5Match({ kind: "phrase", terms: ["iphone", "pro"], field: "title" })).toBe(
+      'title:"iphone pro"',
+    );
+  });
+
+  test("rejects field selectors that are not FTS5 identifiers", () => {
+    expect(() => emitFts5Match({ kind: "term", value: "sqlite", field: "title;drop" })).toThrow(
+      SearchError,
+    );
+    expect(() => emitFts5Match({ kind: "term", value: "sqlite", field: "foo-bar" })).toThrow(
+      SearchError,
+    );
+    expect(() => emitFts5Match({ kind: "term", value: "sqlite", field: 'title"' })).toThrow(
+      SearchError,
+    );
+    expect(() => emitFts5Match({ kind: "phrase", terms: ["sqlite"], field: "1title" })).toThrow(
+      SearchError,
+    );
   });
 });

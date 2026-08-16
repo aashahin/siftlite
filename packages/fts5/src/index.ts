@@ -59,3 +59,8 @@ export {
   mergeFtsIndex,
 } from "./lifecycle/maintenance.js";
 export type { MergeResult, SecureDeletePolicy } from "./lifecycle/maintenance.js";
+export { createFts5Engine } from "./engine.js";
+export type { Fts5Engine, Fts5EngineOptions, Fts5IndexHandle } from "./engine.js";
+export { searchFts5IndexRaw } from "./search/execute.js";
+export { isUnsafeFts5Query, unsafeFts5Query } from "./raw.js";
+export type { RawSearchBackend, UnsafeBackendQuery } from "./raw.js";

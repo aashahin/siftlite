@@ -1,3 +1,10 @@
+/**
+ * Highlight/snippet formatting.
+ *
+ * Formatted and snippet strings are not HTML-safe. Callers must not assign
+ * them to `innerHTML` (or equivalent) without sanitizing. Default markers
+ * are markdown `**`.
+ */
 import {
   SearchError,
   type CompiledHighlightColumn,
@@ -43,6 +50,12 @@ export function resolveHighlightColumns(
   });
 }
 
+/**
+ * Validates caller-selected highlight markers.
+ *
+ * The resulting formatted/snippet strings are not HTML-safe. Do not assign
+ * them to `innerHTML` without sanitizing. Default markers are markdown `**`.
+ */
 export function assertHighlightMarkers(markers: HighlightMarkers): HighlightMarkers {
   return {
     start: assertMarker("start", markers.start),

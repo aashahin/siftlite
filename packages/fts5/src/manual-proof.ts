@@ -17,6 +17,7 @@ import {
   type SearchSort,
   type SourceId,
   type SqlAdapter,
+  type SqlStatement,
 } from "@siftlite/core";
 import { sqliteFts5 } from "./backend.js";
 import { compileFts5PhysicalManifest } from "./manifest.js";
@@ -83,6 +84,10 @@ export async function createManualFts5Proof(args: {
     physicalIndexId,
     generation,
     async upsert(documents) {
+      if (typeof args.adapter.batch === "function") {
+        await upsertDocumentsBatched(args.adapter, definition, names, documents);
+        return;
+      }
       for (const document of documents) {
         await upsertDocument(args.adapter, definition, names, document);
       }
@@ -262,6 +267,178 @@ async function upsertDocument(
       `UPDATE ${quoteIdent(names.fts)} SET ${ftsAssignments.join(", ")} WHERE ${quoteIdent("rowid")} = ?`,
       [...normalizedSearchable, docId],
     ),
+  );
+}
+
+async function upsertDocumentsBatched(
+  adapter: SqlAdapter & { batch: NonNullable<SqlAdapter["batch"]> },
+  definition: IndexDefinition,
+  names: ReturnType<typeof physicalNames>,
+  documents: readonly ManualProofDocument[],
+): Promise<void> {
+  if (documents.length === 0) {
+    return;
+  }
+  const prepared = documents.map((document) => prepareManualDocument(definition, document));
+  const existing = await loadExistingDocIds(
+    adapter,
+    definition,
+    names,
+    prepared.map((item) => item.sourceId),
+  );
+  let nextDocId = await nextAvailableDocId(adapter, names);
+  const statements: SqlStatement[] = [];
+  for (const item of prepared) {
+    const existingId = existing.get(item.sourceId);
+    if (existingId === undefined) {
+      const docId = nextDocId;
+      nextDocId += 1;
+      statements.push(insertDocsStatement(definition, names, item, docId));
+      statements.push(insertFtsStatement(definition, names, item, docId));
+    } else {
+      statements.push(updateDocsStatement(definition, names, item, existingId));
+      statements.push(updateFtsStatement(definition, names, item, existingId));
+    }
+  }
+  if (statements.length === 0) {
+    return;
+  }
+  await adapter.batch(statements);
+}
+
+interface PreparedManualDocument {
+  readonly sourceId: SourceId;
+  readonly searchableValues: readonly string[];
+  readonly normalizedSearchable: readonly string[];
+  readonly projectedValues: readonly (PortableScalar | null)[];
+}
+
+function prepareManualDocument(
+  definition: IndexDefinition,
+  document: ManualProofDocument,
+): PreparedManualDocument {
+  const sourceId = assertSourceId(document.id);
+  if (
+    definition.source?.primaryKey.type === "safe-integer" &&
+    sourceIdKind(sourceId) !== "safe-integer"
+  ) {
+    throw new SearchError({
+      code: "SEARCH_VALUE_INVALID",
+      message: "numeric index requires a safe-integer source ID",
+      details: { reason: "source-id-kind" },
+    });
+  }
+  if (definition.source?.primaryKey.type === "string" && sourceIdKind(sourceId) !== "string") {
+    throw new SearchError({
+      code: "SEARCH_VALUE_INVALID",
+      message: "string index requires a string source ID",
+      details: { reason: "source-id-kind" },
+    });
+  }
+  const projectedFields = unique([...definition.filterableOrder, ...definition.sortableOrder]);
+  const searchableValues = definition.searchableOrder.map((field) => document.searchable[field] ?? "");
+  return {
+    sourceId,
+    searchableValues,
+    normalizedSearchable: searchableValues.map((value) =>
+      normalizeIndexText(value, definition.normalization),
+    ),
+    projectedValues: projectedFields.map((field) => document.filterable?.[field] ?? null),
+  };
+}
+
+async function loadExistingDocIds(
+  adapter: SqlAdapter,
+  definition: IndexDefinition,
+  names: ReturnType<typeof physicalNames>,
+  ids: readonly SourceId[],
+): Promise<Map<SourceId, number>> {
+  const found = new Map<SourceId, number>();
+  if (ids.length === 0) {
+    return found;
+  }
+  const placeholders = ids.map(() => "?").join(", ");
+  const rows = await adapter.query<{ source_id: unknown; doc_id: number }>(
+    sql(
+      `SELECT ${quoteIdent("source_id")} AS source_id, ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("source_id")} IN (${placeholders})`,
+      [...ids],
+    ),
+  );
+  for (const row of rows) {
+    found.set(restoreSourceId(definition, row.source_id), row.doc_id);
+  }
+  return found;
+}
+
+async function nextAvailableDocId(
+  adapter: SqlAdapter,
+  names: ReturnType<typeof physicalNames>,
+): Promise<number> {
+  const rows = await adapter.query<{ max_id: number | null }>(
+    sql(`SELECT MAX(${quoteIdent("doc_id")}) AS max_id FROM ${quoteIdent(names.docs)}`),
+  );
+  return Number(rows[0]?.max_id ?? 0) + 1;
+}
+
+function insertDocsStatement(
+  definition: IndexDefinition,
+  names: ReturnType<typeof physicalNames>,
+  document: PreparedManualDocument,
+  docId: number,
+): SqlStatement {
+  const projectedFields = unique([...definition.filterableOrder, ...definition.sortableOrder]);
+  const columns = [
+    quoteIdent("doc_id"),
+    quoteIdent("source_id"),
+    ...definition.searchableOrder.map((field) => quoteIdent(`${field}_source`)),
+    ...projectedFields.map((field) => quoteIdent(field)),
+  ];
+  const placeholders = columns.map(() => "?").join(", ");
+  return sql(
+    `INSERT INTO ${quoteIdent(names.docs)} (${columns.join(", ")}) VALUES (${placeholders})`,
+    [docId, document.sourceId, ...document.searchableValues, ...document.projectedValues],
+  );
+}
+
+function insertFtsStatement(
+  definition: IndexDefinition,
+  names: ReturnType<typeof physicalNames>,
+  document: PreparedManualDocument,
+  docId: number,
+): SqlStatement {
+  return sql(
+    `INSERT INTO ${quoteIdent(names.fts)} (${quoteIdent("rowid")}, ${definition.searchableOrder.map((field) => quoteIdent(field)).join(", ")}) VALUES (${["?", ...document.normalizedSearchable.map(() => "?")].join(", ")})`,
+    [docId, ...document.normalizedSearchable],
+  );
+}
+
+function updateDocsStatement(
+  definition: IndexDefinition,
+  names: ReturnType<typeof physicalNames>,
+  document: PreparedManualDocument,
+  docId: number,
+): SqlStatement {
+  const projectedFields = unique([...definition.filterableOrder, ...definition.sortableOrder]);
+  const assignments = [
+    ...definition.searchableOrder.map((field) => `${quoteIdent(`${field}_source`)} = ?`),
+    ...projectedFields.map((field) => `${quoteIdent(field)} = ?`),
+  ];
+  return sql(
+    `UPDATE ${quoteIdent(names.docs)} SET ${assignments.join(", ")} WHERE ${quoteIdent("doc_id")} = ?`,
+    [...document.searchableValues, ...document.projectedValues, docId],
+  );
+}
+
+function updateFtsStatement(
+  definition: IndexDefinition,
+  names: ReturnType<typeof physicalNames>,
+  document: PreparedManualDocument,
+  docId: number,
+): SqlStatement {
+  const ftsAssignments = definition.searchableOrder.map((field) => `${quoteIdent(field)} = ?`);
+  return sql(
+    `UPDATE ${quoteIdent(names.fts)} SET ${ftsAssignments.join(", ")} WHERE ${quoteIdent("rowid")} = ?`,
+    [...document.normalizedSearchable, docId],
   );
 }
 

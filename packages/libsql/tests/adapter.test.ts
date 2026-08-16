@@ -23,20 +23,20 @@ describe("@siftlite/libsql", () => {
       execute: async () => ({ rows: [], rowsAffected: 0 }),
       batch: async () => [{ rows: [], rowsAffected: 3 }],
     };
-    const { batch } = libsqlAdapter(wrapLibsqlClient(official));
-    expect(batch).toBeTypeOf("function");
-    const results = await batch?.([sql("SELECT 1")]);
+    const adapter = libsqlAdapter(wrapLibsqlClient(official));
+    expect(adapter.batch).toBeTypeOf("function");
+    const results = await adapter.batch?.([sql("SELECT 1")]);
     expect(results).toEqual([{ rowsAffected: 3 }]);
   });
 
   test("adapter.batch fails closed when the client has no batch()", async () => {
-    const { batch } = libsqlAdapter(
+    const adapter = libsqlAdapter(
       wrapLibsqlClient({
         execute: async () => ({ rows: [], rowsAffected: 0 }),
       }),
     );
-    expect(batch).toBeTypeOf("function");
-    await expect(batch?.([sql("SELECT 1")])).rejects.toBeInstanceOf(SearchError);
+    expect(adapter.batch).toBeTypeOf("function");
+    await expect(adapter.batch?.([sql("SELECT 1")])).rejects.toBeInstanceOf(SearchError);
   });
 
   test("runs shared adapter and FTS5 conformance on local libSQL", async () => {

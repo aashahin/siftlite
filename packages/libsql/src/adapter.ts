@@ -119,15 +119,14 @@ export function wrapLibsqlClient(client: object): LibsqlClientLike {
       details: { reason: "libsql-execute" },
     });
   }
-  const execute = official.execute;
-  const batch = official.batch;
-  const transaction = official.transaction;
+  const execute = official.execute.bind(official);
+  const batch = typeof official.batch === "function" ? official.batch.bind(official) : undefined;
+  const transaction =
+    typeof official.transaction === "function" ? official.transaction.bind(official) : undefined;
   return {
     execute: (statement) => execute(statement),
-    ...(typeof batch === "function"
-      ? { batch: (statements, mode) => batch(statements, mode) }
-      : {}),
-    ...(typeof transaction === "function"
+    ...(batch ? { batch: (statements, mode) => batch(statements, mode) } : {}),
+    ...(transaction
       ? { transaction: (mode) => transaction(mode) as Promise<LibsqlTransactionLike> }
       : {}),
   };

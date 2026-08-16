@@ -79,6 +79,45 @@ describe("lifecycle", () => {
     expect(check.ok).toBe(true);
   });
 
+  test("linked backfill includes numeric source id 0", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO items (id, name, status) VALUES (?, ?, ?), (?, ?, ?)", [
+        0,
+        "zero",
+        "active",
+        1,
+        "one",
+        "active",
+      ]),
+    );
+    const definition = defineIndex({
+      name: "items",
+      mode: "linked",
+      source: { table: "items", primaryKey: { field: "id", type: "safe-integer" } },
+      searchable: { name: { weight: 1 } },
+      filterable: { status: "text" },
+    });
+    await createIndex({ adapter, definition });
+    const index = await createManualFts5Proof({
+      adapter,
+      definition: defineIndex({
+        name: "items",
+        mode: "manual",
+        source: { table: "items", primaryKey: { field: "id", type: "safe-integer" } },
+        searchable: { name: { weight: 1 } },
+        filterable: { status: "text" },
+      }),
+      physicalIndexId: physicalIndexIdFor("items"),
+      existingSchema: true,
+    });
+    expect((await index.search("zero")).map((hit) => hit.id)).toEqual([0]);
+    expect((await index.search("one")).map((hit) => hit.id)).toEqual([1]);
+  });
+
   test("manual FTS rebuilds from authoritative document rows", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     const definition = defineIndex({

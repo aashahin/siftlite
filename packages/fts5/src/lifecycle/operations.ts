@@ -47,6 +47,9 @@ export async function createIndex(ctx: LifecycleContext): Promise<void> {
   const physicalIndexId = existing?.physicalIndexId ?? physicalIndexIdFor(ctx.definition.name);
   const generation = existing?.activeGeneration ?? 1;
   const secureDelete = await resolveSecureDelete(ctx);
+  if (existing?.health === "pending") {
+    await dropPhysical(ctx.adapter, ctx.definition, physicalIndexId, generation);
+  }
   await markPending(ctx, physicalIndexId, generation);
   await materialize(ctx, physicalIndexId, generation, secureDelete);
   await verifyOrThrow(ctx, physicalIndexId, generation);
@@ -95,6 +98,7 @@ export async function rebuildIndex(ctx: LifecycleContext): Promise<void> {
     return;
   }
   const nextGeneration = generation + (row ? 1 : 0);
+  await dropPhysical(ctx.adapter, ctx.definition, physicalIndexId, nextGeneration);
   await materialize(ctx, physicalIndexId, nextGeneration, secureDelete);
   await verifyOrThrow(ctx, physicalIndexId, nextGeneration);
   await writeHealthyRegistry(ctx, physicalIndexId, nextGeneration);
@@ -164,23 +168,33 @@ async function backfillLinked(
     ),
   ];
 
-  let sourceCursor: string | number = definition.source.primaryKey.type === "safe-integer" ? 0 : "";
+  let sourceCursor: string | number | null = null;
   for (;;) {
-    const page = await ctx.adapter.query<{ pk: string | number }>(
-      sql(`SELECT ${pk} AS pk FROM ${source} WHERE ${pk} > ? ORDER BY ${pk} LIMIT ?`, [
-        sourceCursor,
-        BACKFILL_PAGE,
-      ]),
-    );
+    const page =
+      sourceCursor === null
+        ? await ctx.adapter.query<{ pk: string | number }>(
+            sql(`SELECT ${pk} AS pk FROM ${source} ORDER BY ${pk} LIMIT ?`, [BACKFILL_PAGE]),
+          )
+        : await ctx.adapter.query<{ pk: string | number }>(
+            sql(`SELECT ${pk} AS pk FROM ${source} WHERE ${pk} > ? ORDER BY ${pk} LIMIT ?`, [
+              sourceCursor,
+              BACKFILL_PAGE,
+            ]),
+          );
     const last = page[page.length - 1];
     if (!last) {
       break;
     }
     await ctx.adapter.execute(
-      sql(
-        `INSERT INTO ${docs} (${docCols.join(", ")}) SELECT ${docSelect.join(", ")} FROM ${source} WHERE ${pk} > ? AND ${pk} <= ?`,
-        [sourceCursor, last.pk],
-      ),
+      sourceCursor === null
+        ? sql(
+            `INSERT INTO ${docs} (${docCols.join(", ")}) SELECT ${docSelect.join(", ")} FROM ${source} WHERE ${pk} <= ?`,
+            [last.pk],
+          )
+        : sql(
+            `INSERT INTO ${docs} (${docCols.join(", ")}) SELECT ${docSelect.join(", ")} FROM ${source} WHERE ${pk} > ? AND ${pk} <= ?`,
+            [sourceCursor, last.pk],
+          ),
     );
     sourceCursor = last.pk;
   }

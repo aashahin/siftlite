@@ -14,7 +14,7 @@ import {
   type UnsafeBackendQuery,
 } from "@siftlite/core";
 import { checkIndex, doctorIndex } from "./lifecycle/doctor.js";
-import { assertSecureDeletePolicy, type SecureDeletePolicy } from "./lifecycle/maintenance.js";
+import type { SecureDeletePolicy } from "./lifecycle/maintenance.js";
 import { createIndex, dropIndex, rebuildIndex } from "./lifecycle/operations.js";
 import { ensureRegistry, readRegistry } from "./lifecycle/registry-sql.js";
 import { searchFts5Index, searchFts5IndexRaw } from "./search/execute.js";
@@ -73,7 +73,11 @@ function createHandle(args: {
   readonly secureDelete: SecureDeletePolicy;
   readonly scope?: BoundScope;
 }): Fts5IndexHandle {
-  const lifecycle = { adapter: args.adapter, definition: args.definition };
+  const lifecycle = {
+    adapter: args.adapter,
+    definition: args.definition,
+    secureDelete: args.secureDelete,
+  };
 
   return {
     definition: args.definition,
@@ -123,18 +127,12 @@ function createHandle(args: {
       return result;
     },
     async create() {
-      if (args.secureDelete !== "off") {
-        await assertSecureDeletePolicy(args.adapter, args.secureDelete);
-      }
       await createIndex(lifecycle);
     },
     async drop() {
       await dropIndex(lifecycle);
     },
     async rebuild() {
-      if (args.secureDelete !== "off") {
-        await assertSecureDeletePolicy(args.adapter, args.secureDelete);
-      }
       await rebuildIndex(lifecycle);
     },
     async check() {
@@ -163,12 +161,18 @@ function emitSearchHook(
   });
 }
 
-function withHandleScope(request: SearchRequest, handleScope: BoundScope | undefined): SearchRequest {
+function withHandleScope(
+  request: SearchRequest,
+  handleScope: BoundScope | undefined,
+): SearchRequest {
   const scope = mergeScopes(handleScope, request.scope);
   return scope ? { ...request, scope } : request;
 }
 
-function mergeScopes(handle: BoundScope | undefined, request: BoundScope | undefined): BoundScope | undefined {
+function mergeScopes(
+  handle: BoundScope | undefined,
+  request: BoundScope | undefined,
+): BoundScope | undefined {
   if (handle && request) {
     return {
       kind: "bound-scope",

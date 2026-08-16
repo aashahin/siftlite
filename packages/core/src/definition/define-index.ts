@@ -143,7 +143,7 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
     });
   }
 
-  const synonyms: Record<string, readonly string[]> = {};
+  const built: Record<string, readonly string[]> = {};
   for (const [key, values] of Object.entries(input.synonyms ?? {})) {
     if (key.length === 0 || values.some((value) => value.length === 0)) {
       throw new SearchError({
@@ -152,9 +152,9 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
         details: { reason: "invalid-synonym" },
       });
     }
-    synonyms[key] = [...values];
+    built[key] = [...values];
   }
-  normalizeSynonymCatalog(synonyms, normalization);
+  const synonyms = normalizeSynonymCatalog(built, normalization);
 
   return {
     logicalFormatVersion: LOGICAL_FORMAT_VERSION,

@@ -28,6 +28,7 @@ export interface SearchRequest {
   readonly diagnostics?: boolean;
   readonly matchingStrategy?: MatchingStrategy;
   readonly scope?: BoundScope;
+  readonly signal?: AbortSignal;
 }
 
 /** Caller-selected snippet markers. Formatted text is not trusted HTML. */
@@ -78,6 +79,7 @@ export interface SearchResponse<TDocument = unknown> {
   readonly hits: readonly SearchHit<TDocument>[];
   readonly page: SearchPage;
   readonly totalHits?: number;
+  readonly estimatedTotalHits?: number;
   readonly facets?: Readonly<Record<string, FacetDistribution>>;
   readonly facetStats?: Readonly<Record<string, FacetStats>>;
   readonly query: string;
@@ -93,4 +95,15 @@ export interface SearchResponse<TDocument = unknown> {
  */
 export interface DocumentHydrator<TDocument = unknown> {
   hydrate(ids: readonly SourceId[]): Promise<ReadonlyMap<SourceId, TDocument>>;
+}
+
+/**
+ * Web AbortSignal. Declared here so portable core can name the cancellation
+ * API without compiling against the DOM lib.
+ */
+declare global {
+  interface AbortSignal {
+    readonly aborted: boolean;
+    readonly reason: unknown;
+  }
 }

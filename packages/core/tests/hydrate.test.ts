@@ -4,6 +4,8 @@ import {
   chunkIdsForHydration,
   createStatementBudget,
   DEFAULT_APPLICATION_LIMITS,
+  reserveBinds,
+  SearchError,
 } from "../src/index.ts";
 
 describe("hydration chunking", () => {
@@ -24,6 +26,22 @@ describe("hydration chunking", () => {
       { ...DEFAULT_APPLICATION_LIMITS, maxInValues: 2 },
     );
     expect(chunkIdsForHydration([1, 2, 3], budget)).toEqual([[1, 2], [3]]);
+  });
+
+  test("throws when the remaining IN-list budget is zero", () => {
+    const exhausted = createStatementBudget(
+      { maxBindParameters: 2 },
+      { ...DEFAULT_APPLICATION_LIMITS, maxInValues: 100 },
+    );
+    reserveBinds(exhausted, 2, "search");
+    expect(() => chunkIdsForHydration(["a"], exhausted)).toThrow(SearchError);
+
+    const zeroCeiling = createStatementBudget(
+      { maxBindParameters: 10 },
+      { ...DEFAULT_APPLICATION_LIMITS, maxInValues: 0 },
+    );
+    expect(() => chunkIdsForHydration(["a", "b"], zeroCeiling)).toThrow(SearchError);
+    expect(chunkIdsForHydration([], zeroCeiling)).toEqual([]);
   });
 
   test("unproven runtime limits fall back to the application ceiling", () => {

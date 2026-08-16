@@ -1,3 +1,4 @@
+import { SearchError } from "../errors/search-error.js";
 import type { SourceId } from "../ids/source-id.js";
 import { sourceIdsEqual } from "../ids/source-id.js";
 import type { StatementBudget } from "../limits/budget.js";
@@ -15,7 +16,17 @@ export function chunkIdsForHydration<T>(
   if (ids.length === 0) {
     return [];
   }
-  const size = Math.max(1, effectiveMaxInValues(budget));
+  const size = effectiveMaxInValues(budget);
+  if (size === 0) {
+    throw new SearchError({
+      code: "SEARCH_RUNTIME_LIMIT_EXCEEDED",
+      message: "hydration cannot proceed with a zero IN-list budget",
+      details: {
+        reason: "hydration-budget",
+        allowed: 0,
+      },
+    });
+  }
   const chunks: T[][] = [];
   for (let index = 0; index < ids.length; index += size) {
     chunks.push(ids.slice(index, index + size));

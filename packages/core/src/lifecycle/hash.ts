@@ -6,6 +6,7 @@ export function hashPhysicalManifest(manifest: PhysicalSchemaManifest): string {
   return sha256Hex(canonicalizeJson(manifest));
 }
 
-export function physicalIndexIdFor(name: string): string {
-  return sha256Hex(name).slice(0, 8);
+export function physicalIndexIdFor(name: string, namespace?: string): string {
+  const material = namespace && namespace.length > 0 ? `${namespace}\0${name}` : name;
+  return sha256Hex(material).slice(0, 8);
 }

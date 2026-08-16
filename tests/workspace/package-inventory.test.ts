@@ -8,11 +8,12 @@ const ALLOWED_PUBLISHED_PACKAGES = [
   "@siftlite/core",
   "@siftlite/fts5",
   "@siftlite/bun",
+  "@siftlite/d1",
   "@siftlite/testing",
 ] as const;
 
 describe("workspace package inventory", () => {
-  test("Phase 0 publishes only the four approved packages", () => {
+  test("published workspace packages match the implemented set", () => {
     const names = readdirSync(PACKAGES_ROOT)
       .filter((entry) => statSync(join(PACKAGES_ROOT, entry)).isDirectory())
       .map((entry) => {

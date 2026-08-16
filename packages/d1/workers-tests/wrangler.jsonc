@@ -1,0 +1,13 @@
+{
+  "name": "siftlite-d1-conformance",
+  "main": "./worker.ts",
+  "compatibility_date": "2026-08-16",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "siftlite-d1-conformance",
+      "database_id": "local-siftlite-d1-conformance"
+    }
+  ]
+}

@@ -12,6 +12,7 @@ const PUBLISHED_PACKAGES = [
   "packages/core",
   "packages/fts5",
   "packages/bun",
+  "packages/d1",
   "packages/testing",
 ] as const;
 

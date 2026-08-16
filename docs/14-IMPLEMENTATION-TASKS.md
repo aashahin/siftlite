@@ -116,18 +116,18 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 7 — Cloudflare D1
 
-- [ ] **P7-01** Implement D1 prepared-query/execute adapter.
-- [ ] **P7-02** Encode current D1 documented limit profile behind adapter data/probes.
-- [ ] **P7-03** Support database/session-like execution target abstraction.
-- [ ] **P7-04** Implement consistency metadata and bookmark/session integration surface.
-- [ ] **P7-05** Add Workers Vitest integration test harness with D1 binding.
-- [ ] **P7-06** Run shared adapter/backend conformance in Workers runtime.
-- [ ] **P7-07** Test parameter/function/statement limits near boundaries.
-- [ ] **P7-08** Test source-ID binding boundaries and reject BigInt/unsafe integers.
-- [ ] **P7-09** Add session/sequential-consistency test scenario.
-- [ ] **P7-10** Add D1 migration/example app.
-- [ ] **P7-11** Add optional remote smoke/cost/rows-read test job.
-- [ ] **P7-12** Document FTS virtual-table export/rebuild workflow after rechecking Cloudflare docs.
+- [x] **P7-01** Implement D1 prepared-query/execute adapter.
+- [x] **P7-02** Encode current D1 documented limit profile behind adapter data/probes.
+- [x] **P7-03** Support database/session-like execution target abstraction.
+- [x] **P7-04** Implement consistency metadata and bookmark/session integration surface.
+- [x] **P7-05** Add Workers Vitest integration test harness with D1 binding.
+- [x] **P7-06** Run shared adapter/backend conformance in Workers runtime.
+- [x] **P7-07** Test parameter/function/statement limits near boundaries.
+- [x] **P7-08** Test source-ID binding boundaries and reject BigInt/unsafe integers.
+- [x] **P7-09** Add session/sequential-consistency test scenario.
+- [x] **P7-10** Add D1 migration/example app.
+- [x] **P7-11** Add optional remote smoke/cost/rows-read test job.
+- [x] **P7-12** Document FTS virtual-table export/rebuild workflow after rechecking Cloudflare docs.
 
 **Gate:** D1 claims are backed by Workers-runtime evidence; fuzzy remains policy-off by default.
 

@@ -4,6 +4,7 @@
     { "path": "./packages/core" },
     { "path": "./packages/fts5" },
     { "path": "./packages/bun" },
+    { "path": "./packages/d1" },
     { "path": "./packages/testing" }
   ]
 }

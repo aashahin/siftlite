@@ -1,8 +1,5 @@
 /**
  * `@siftlite/testing` hosts shared conformance utilities.
- *
- * Phase 0 exports package identity only. Adapter/backend factories land in
- * later phases.
  */
 import { SIFTLITE_CORE_PACKAGE } from "@siftlite/core";
 
@@ -15,3 +12,6 @@ export const SIFTLITE_TESTING_PACKAGE = {
 
 /** Published package identity type. */
 export type SiftLiteTestingPackage = typeof SIFTLITE_TESTING_PACKAGE;
+
+export { runSqlAdapterConformance } from "./adapter-conformance.js";
+export { runFts5SearchConformance } from "./fts5-conformance.js";

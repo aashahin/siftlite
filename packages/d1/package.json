@@ -1,7 +1,7 @@
 {
-  "name": "@siftlite/testing",
+  "name": "@siftlite/d1",
   "version": "0.0.0",
-  "description": "SiftLite conformance and testkit utilities.",
+  "description": "SiftLite Cloudflare D1 runtime adapter.",
   "type": "module",
   "license": "MIT",
   "sideEffects": false,
@@ -23,19 +23,25 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "typecheck": "tsc -p tsconfig.json --pretty false"
+    "typecheck": "tsc -p tsconfig.json --pretty false",
+    "test:workers": "vitest run --config workers-tests/vitest.config.ts"
   },
   "dependencies": {
-    "@siftlite/core": "workspace:*",
-    "@siftlite/fts5": "workspace:*"
+    "@siftlite/core": "workspace:*"
   },
   "devDependencies": {
-    "@siftlite/bun": "workspace:*"
+    "@cloudflare/vitest-pool-workers": "0.21.3",
+    "@siftlite/fts5": "workspace:*",
+    "@siftlite/testing": "workspace:*",
+    "@vitest/runner": "4.1.10",
+    "@vitest/snapshot": "4.1.10",
+    "vitest": "4.1.10",
+    "wrangler": "4.123.0"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aashahin/siftlite.git",
-    "directory": "packages/testing"
+    "directory": "packages/d1"
   },
   "bugs": {
     "url": "https://github.com/aashahin/siftlite/issues"
@@ -49,7 +55,9 @@
   },
   "keywords": [
     "siftlite",
-    "testing",
-    "conformance"
+    "d1",
+    "cloudflare",
+    "sqlite",
+    "adapter"
   ]
 }

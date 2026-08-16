@@ -20,7 +20,7 @@ export function compileDocsDdl(
     ...definition.searchableOrder.map((field) => `${quoteIdent(`${field}_source`)} TEXT`),
     ...projected.map((field) => {
       const spec = definition.filterable[field] ?? definition.sortable[field];
-      return `${quoteIdent(field)} ${storageSql(spec?.storageKind ?? "text")}`;
+      return `${quoteIdent(field)} ${sqlTypeForStorageKind(spec?.storageKind ?? "text")}`;
     }),
   ];
   return `CREATE TABLE ${quoteIdent(names.docs)} (${columns.join(", ")})`;
@@ -100,7 +100,7 @@ export function compileBackfillSql(
   ];
 }
 
-function storageSql(kind: string): string {
+export function sqlTypeForStorageKind(kind: string): string {
   switch (kind) {
     case "safe-integer":
     case "boolean-integer":

@@ -1,6 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { defineIndex, hashLogicalDefinition, physicalIndexIdFor, sql } from "@siftlite/core";
+import {
+  defineIndex,
+  hashLogicalDefinition,
+  physicalIndexIdFor,
+  quoteIdent,
+  SearchError,
+  sql,
+} from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import {
   checkIndex,
@@ -8,9 +15,11 @@ import {
   createManualFts5Proof,
   doctorIndex,
   dropIndex,
+  physicalNames,
   readRegistry,
   rebuildIndex,
   syncRuntimeDefinition,
+  writePendingRegistry,
 } from "../src/index.ts";
 
 function linkedDefinition() {
@@ -136,11 +145,7 @@ describe("lifecycle", () => {
     await index.upsert([{ id: "n1", searchable: { title: "portable search" } }]);
     expect((await index.search("portable")).map((hit) => hit.id)).toEqual(["n1"]);
 
-    const names = (await import("../src/names.ts")).physicalNames(
-      definition,
-      physicalIndexIdFor("notes"),
-      1,
-    );
+    const names = physicalNames(definition, physicalIndexIdFor("notes"), 1);
     await adapter.execute(sql(`DROP TABLE "${names.fts}"`));
     const before = await doctorIndex(adapter, definition);
     expect(before.healthy).toBe(false);
@@ -193,7 +198,7 @@ describe("lifecycle", () => {
     await createIndex({ adapter, definition });
     const before = await readRegistry(adapter, "products");
     expect(before?.health).toBe("healthy");
-    const beforeNames = (await import("../src/names.ts")).physicalNames(
+    const beforeNames = physicalNames(
       definition,
       before?.physicalIndexId ?? physicalIndexIdFor("products"),
       before?.activeGeneration ?? 1,
@@ -247,21 +252,13 @@ describe("lifecycle", () => {
     const definition = linkedDefinition();
     await createIndex({ adapter, definition });
     const before = await readRegistry(adapter, "products");
-    const names = (await import("../src/names.ts")).physicalNames(
+    const names = physicalNames(
       definition,
       before?.physicalIndexId ?? physicalIndexIdFor("products"),
       before?.activeGeneration ?? 1,
     );
     await adapter.execute(sql("DROP TABLE products"));
-    try {
-      await rebuildIndex({ adapter, definition });
-      throw new Error("expected rebuild to fail after source drop");
-    } catch (error) {
-      expect(error).toBeInstanceOf(Error);
-      expect((error as { message?: string }).message).not.toBe(
-        "expected rebuild to fail after source drop",
-      );
-    }
+    await expect(rebuildIndex({ adapter, definition })).rejects.toThrow(SearchError);
     const after = await readRegistry(adapter, "products");
     expect(after?.health).toBe("pending");
     expect(after?.activeGeneration).toBe(before?.activeGeneration);
@@ -286,15 +283,73 @@ describe("lifecycle", () => {
       searchable: { title: { weight: 1 } },
     });
     await createIndex({ adapter, definition });
-    const names = (await import("../src/names.ts")).physicalNames(
-      definition,
-      physicalIndexIdFor("notes"),
-      1,
-    );
+    const names = physicalNames(definition, physicalIndexIdFor("notes"), 1);
     await adapter.execute(sql(`DROP TABLE "${names.fts}"`));
     const report = await doctorIndex(adapter, definition);
     expect(report.healthy).toBe(false);
     expect(report.findings.some((finding) => finding.code === "missing-physical")).toBe(true);
     await dropIndex({ adapter, definition });
+  });
+
+  test("createIndex heals a pending registry without dropping an intact generation", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+        "p1",
+        "sqlite",
+        "database",
+        "active",
+      ]),
+    );
+    const definition = linkedDefinition();
+    await createIndex({ adapter, definition });
+    const before = await readRegistry(adapter, "products");
+    expect(before).not.toBeNull();
+    if (!before) {
+      throw new Error("expected registry row");
+    }
+    const names = physicalNames(definition, before.physicalIndexId, before.activeGeneration);
+    await adapter.execute(
+      sql(
+        `INSERT INTO ${quoteIdent(names.docs)} (${quoteIdent("source_id")}, ${quoteIdent("name_source")}, ${quoteIdent("description_source")}, ${quoteIdent("status")}) VALUES (?, ?, ?, ?)`,
+        ["canary", "canaryterm", "kept", "active"],
+      ),
+    );
+    const inserted = await adapter.query<{ doc_id: number }>(
+      sql(
+        `SELECT ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("source_id")} = ?`,
+        ["canary"],
+      ),
+    );
+    await adapter.execute(
+      sql(
+        `INSERT INTO ${quoteIdent(names.fts)} (${quoteIdent("rowid")}, ${quoteIdent("name")}, ${quoteIdent("description")}) VALUES (?, ?, ?)`,
+        [inserted[0]?.doc_id, "canaryterm", "kept"],
+      ),
+    );
+    await writePendingRegistry(adapter, { ...before, updatedAt: Date.now() });
+
+    await createIndex({ adapter, definition });
+    const after = await readRegistry(adapter, "products");
+    expect(after?.health).toBe("healthy");
+    expect(after?.activeGeneration).toBe(before.activeGeneration);
+
+    const index = await createManualFts5Proof({
+      adapter,
+      definition: defineIndex({
+        name: "products",
+        mode: "manual",
+        source: { table: "products", primaryKey: { field: "id", type: "string" } },
+        searchable: { name: { weight: 5 }, description: { weight: 1 } },
+        filterable: { status: "text" },
+      }),
+      physicalIndexId: before.physicalIndexId,
+      generation: before.activeGeneration,
+      existingSchema: true,
+    });
+    expect((await index.search("canaryterm")).map((hit) => hit.id)).toEqual(["canary"]);
   });
 });

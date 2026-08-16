@@ -5,6 +5,7 @@ import {
   type BoundScope,
   type CheckReport,
   type DoctorReport,
+  type FilterNode,
   type IndexDefinition,
   type SearchHooks,
   type SearchPolicy,
@@ -43,28 +44,7 @@ export interface Fts5Engine {
   index(definition: IndexDefinition): Fts5IndexHandle;
 }
 
-export function createFts5Engine(options: Fts5EngineOptions): Fts5Engine {
-  const adapter = options.adapter;
-  const policy = options.policy;
-  const limits = options.limits;
-  const hooks = options.hooks;
-  const secureDelete = options.secureDelete ?? "off";
-
-  return {
-    index(definition) {
-      return createHandle({
-        adapter,
-        definition,
-        secureDelete,
-        ...(policy ? { policy } : {}),
-        ...(limits ? { limits } : {}),
-        ...(hooks ? { hooks } : {}),
-      });
-    },
-  };
-}
-
-function createHandle(args: {
+interface IndexHandleState {
   readonly adapter: SqlAdapter;
   readonly definition: IndexDefinition;
   readonly policy?: SearchPolicy;
@@ -72,120 +52,164 @@ function createHandle(args: {
   readonly hooks?: SearchHooks;
   readonly secureDelete: SecureDeletePolicy;
   readonly scope?: BoundScope;
-}): Fts5IndexHandle {
-  const lifecycle = {
-    adapter: args.adapter,
-    definition: args.definition,
-    secureDelete: args.secureDelete,
-  };
+}
 
+export function createFts5Engine(options: Fts5EngineOptions): Fts5Engine {
+  const adapter = options.adapter;
+  const secureDelete = options.secureDelete ?? "off";
   return {
-    definition: args.definition,
-    scope(values) {
-      const next = bindScope(values);
-      const scope = mergeScopes(args.scope, next);
-      return createHandle({
-        adapter: args.adapter,
-        definition: args.definition,
-        secureDelete: args.secureDelete,
-        ...(args.policy ? { policy: args.policy } : {}),
-        ...(args.limits ? { limits: args.limits } : {}),
-        ...(args.hooks ? { hooks: args.hooks } : {}),
-        ...(scope ? { scope } : {}),
+    index(definition) {
+      return createIndexHandle({
+        adapter,
+        definition,
+        secureDelete,
+        ...optionalEngineFields(options),
       });
-    },
-    async search(query, request = {}) {
-      const started = Date.now();
-      const physical = await resolvePhysical(args.adapter, args.definition);
-      const resolved = withHandleScope(request, args.scope);
-      const result = await searchFts5Index(
-        {
-          adapter: args.adapter,
-          definition: args.definition,
-          physicalIndexId: physical.physicalIndexId,
-          generation: physical.generation,
-          ...(args.limits ? { limits: args.limits } : {}),
-          ...(args.policy ? { policy: args.policy } : {}),
-        },
-        query,
-        resolved,
-      );
-      emitSearchHook(args, resolved, result, started);
-      return result;
-    },
-    async searchRaw(raw, request = {}) {
-      const started = Date.now();
-      const physical = await resolvePhysical(args.adapter, args.definition);
-      const resolved = withHandleScope(request, args.scope);
-      const result = await searchFts5IndexRaw(
-        {
-          adapter: args.adapter,
-          definition: args.definition,
-          physicalIndexId: physical.physicalIndexId,
-          generation: physical.generation,
-          ...(args.limits ? { limits: args.limits } : {}),
-          ...(args.policy ? { policy: args.policy } : {}),
-        },
-        raw,
-        resolved,
-      );
-      emitSearchHook(args, resolved, result, started);
-      return result;
-    },
-    async create() {
-      await createIndex(lifecycle);
-    },
-    async drop() {
-      await dropIndex(lifecycle);
-    },
-    async rebuild() {
-      await rebuildIndex(lifecycle);
-    },
-    async check() {
-      return checkIndex(args.adapter, args.definition);
-    },
-    async doctor(options) {
-      return doctorIndex(args.adapter, args.definition, options);
     },
   };
 }
 
-function emitSearchHook(
-  args: { readonly definition: IndexDefinition; readonly hooks?: SearchHooks },
+function createIndexHandle(state: IndexHandleState): Fts5IndexHandle {
+  const lifecycle = {
+    adapter: state.adapter,
+    definition: state.definition,
+    secureDelete: state.secureDelete,
+  };
+
+  return {
+    definition: state.definition,
+    scope(values) {
+      return createIndexHandle({
+        ...state,
+        scope: appendHandleScope(state.scope, values),
+      });
+    },
+    search(query, request = {}) {
+      return runIndexSearch(state, request, (physical, resolved) =>
+        searchFts5Index(searchContext(state, physical), query, resolved),
+      );
+    },
+    searchRaw(raw, request = {}) {
+      return runIndexSearch(state, request, (physical, resolved) =>
+        searchFts5IndexRaw(searchContext(state, physical), raw, resolved),
+      );
+    },
+    create() {
+      return createIndex(lifecycle);
+    },
+    drop() {
+      return dropIndex(lifecycle);
+    },
+    rebuild() {
+      return rebuildIndex(lifecycle);
+    },
+    check() {
+      return checkIndex(state.adapter, state.definition);
+    },
+    doctor(options) {
+      return doctorIndex(state.adapter, state.definition, options);
+    },
+  };
+}
+
+async function runIndexSearch(
+  state: IndexHandleState,
   request: SearchRequest,
-  result: SearchResponse,
-  started: number,
-): void {
-  args.hooks?.onSearch?.({
-    indexName: args.definition.name,
+  execute: (
+    physical: { physicalIndexId: string; generation: number },
+    resolved: SearchRequest,
+  ) => Promise<SearchResponse>,
+): Promise<SearchResponse> {
+  const started = Date.now();
+  const physical = await resolvePhysical(state.adapter, state.definition);
+  const resolved = withHandleScope(request, state.scope);
+  const response = await execute(physical, resolved);
+  state.hooks?.onSearch?.({
+    indexName: state.definition.name,
     backend: "fts5",
     durationMs: Date.now() - started,
-    resultCount: result.hits.length,
-    filterCount: request.filter ? 1 : 0,
-    facetCount: request.facets?.length ?? 0,
+    resultCount: response.hits.length,
+    filterCount: countFilterNodes(resolved.filter),
+    facetCount: resolved.facets?.length ?? 0,
     fuzzyUsed: false,
   });
+  return response;
+}
+
+function searchContext(
+  state: IndexHandleState,
+  physical: { physicalIndexId: string; generation: number },
+) {
+  return {
+    adapter: state.adapter,
+    definition: state.definition,
+    physicalIndexId: physical.physicalIndexId,
+    generation: physical.generation,
+    ...(state.limits ? { limits: state.limits } : {}),
+    ...(state.policy ? { policy: state.policy } : {}),
+  };
+}
+
+function optionalEngineFields(fields: {
+  readonly policy?: SearchPolicy;
+  readonly limits?: ApplicationLimits;
+  readonly hooks?: SearchHooks;
+  readonly scope?: BoundScope;
+}): Pick<IndexHandleState, "policy" | "limits" | "hooks" | "scope"> {
+  return {
+    ...(fields.policy ? { policy: fields.policy } : {}),
+    ...(fields.limits ? { limits: fields.limits } : {}),
+    ...(fields.hooks ? { hooks: fields.hooks } : {}),
+    ...(fields.scope ? { scope: fields.scope } : {}),
+  };
+}
+
+function countFilterNodes(node: FilterNode | undefined): number {
+  if (!node) {
+    return 0;
+  }
+  switch (node.op) {
+    case "and":
+    case "or":
+      return 1 + node.children.reduce((total, child) => total + countFilterNodes(child), 0);
+    case "not":
+      return 1 + countFilterNodes(node.child);
+    default:
+      return 1;
+  }
+}
+
+function appendHandleScope(
+  existing: BoundScope | undefined,
+  values: Record<string, unknown>,
+): BoundScope {
+  const next = bindScope(values);
+  if (!existing) {
+    return next;
+  }
+  return {
+    kind: "bound-scope",
+    predicates: [...existing.predicates, ...next.predicates],
+  };
 }
 
 function withHandleScope(
   request: SearchRequest,
   handleScope: BoundScope | undefined,
 ): SearchRequest {
-  const scope = mergeScopes(handleScope, request.scope);
-  return scope ? { ...request, scope } : request;
-}
-
-function mergeScopes(
-  handle: BoundScope | undefined,
-  request: BoundScope | undefined,
-): BoundScope | undefined {
-  if (handle && request) {
-    return {
-      kind: "bound-scope",
-      predicates: [...handle.predicates, ...request.predicates],
-    };
+  if (!handleScope) {
+    return request;
   }
-  return handle ?? request;
+  if (!request.scope) {
+    return { ...request, scope: handleScope };
+  }
+  return {
+    ...request,
+    scope: {
+      kind: "bound-scope",
+      predicates: [...handleScope.predicates, ...request.scope.predicates],
+    },
+  };
 }
 
 async function resolvePhysical(

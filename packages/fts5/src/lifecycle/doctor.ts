@@ -2,7 +2,6 @@ import {
   hashLogicalDefinition,
   hashPhysicalManifest,
   physicalIndexIdFor,
-  quoteIdent,
   sql,
   type CheckReport,
   type DoctorFinding,
@@ -14,7 +13,7 @@ import { compileFts5PhysicalManifest } from "../manifest.js";
 import { physicalNames } from "../names.js";
 import { ensureRegistry, readRegistry } from "./registry-sql.js";
 import { triggerNames } from "./triggers.js";
-import { collectIntegrityFindings } from "./verify.js";
+import { collectIntegrityFindings, triggerExists } from "./verify.js";
 
 export interface DoctorOptions {
   readonly level?: "fast" | "deep";
@@ -139,15 +138,4 @@ async function tableExists(adapter: SqlAdapter, name: string): Promise<boolean> 
     sql(`SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?`, [name]),
   );
   return rows.length > 0;
-}
-
-async function triggerExists(adapter: SqlAdapter, name: string): Promise<boolean> {
-  const rows = await adapter.query<{ name: string }>(
-    sql(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?`, [name]),
-  );
-  return rows.length > 0;
-}
-
-export function quoteRegistryIdent(name: string): string {
-  return quoteIdent(name);
 }

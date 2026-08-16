@@ -147,7 +147,7 @@ async function countRows(adapter: SqlAdapter, table: string, column: string): Pr
   return rows[0]?.n ?? 0;
 }
 
-async function triggerExists(adapter: SqlAdapter, name: string): Promise<boolean> {
+export async function triggerExists(adapter: SqlAdapter, name: string): Promise<boolean> {
   const rows = await adapter.query<{ name: string }>(
     sql(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?`, [name]),
   );

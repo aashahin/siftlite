@@ -21,9 +21,9 @@ describe("bun sqlite adapter", () => {
     const db = new Database(":memory:");
     const adapter = bunSqliteAdapter(db);
     await adapter.execute(sql("CREATE TABLE items (id INTEGER)"));
-    expect(adapter.execute(sql("INSERT INTO items (id) VALUES (?)", [1n]))).rejects.toBeInstanceOf(
-      SearchError,
-    );
+    await expect(
+      adapter.execute(sql("INSERT INTO items (id) VALUES (?)", [1n])),
+    ).rejects.toBeInstanceOf(SearchError);
   });
 
   test("batch commits on success and rolls back a mid-batch failure", async () => {

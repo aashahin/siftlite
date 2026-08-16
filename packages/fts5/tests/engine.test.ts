@@ -1,6 +1,14 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { bindScope, defineIndex, eq, SearchError, sql } from "@siftlite/core";
+import {
+  and,
+  bindScope,
+  defineIndex,
+  eq,
+  SearchError,
+  sql,
+  type SearchHooks,
+} from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import { createFts5Engine, unsafeFts5Query } from "../src/index.ts";
 
@@ -73,7 +81,37 @@ describe("createFts5Engine", () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     const engine = createFts5Engine({ adapter });
     const handle = engine.index(catalogDefinition());
-    await expect(handle.search("sqlite")).rejects.toThrow(SearchError);
+    await expect(handle.search("sqlite")).rejects.toBeInstanceOf(SearchError);
     await expect(handle.search("sqlite")).rejects.toMatchObject({ code: "SEARCH_INDEX_NOT_FOUND" });
+  });
+
+  test("search hook counts filter AST nodes and omits query text", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO products (id, name, status) VALUES (?, ?, ?)", ["p1", "sqlite", "active"]),
+    );
+    const events: Parameters<NonNullable<SearchHooks["onSearch"]>>[0][] = [];
+    const engine = createFts5Engine({
+      adapter,
+      hooks: {
+        onSearch(event) {
+          events.push(event);
+        },
+      },
+    });
+    const handle = engine.index(catalogDefinition());
+    await handle.create();
+    await handle.search("sqlite", {
+      filter: and(eq("status", "active"), eq("status", "active")),
+    });
+    expect(events).toHaveLength(1);
+    expect(events[0]?.filterCount).toBe(3);
+    expect(events[0]?.facetCount).toBe(0);
+    expect(events[0]?.resultCount).toBe(1);
+    expect(events[0]).not.toHaveProperty("query");
+    expect(JSON.stringify(events[0])).not.toContain("sqlite");
   });
 });

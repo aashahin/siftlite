@@ -13,7 +13,7 @@ import { compileFts5PhysicalManifest } from "../manifest.js";
 import { physicalNames } from "../names.js";
 import { compileLinkedTriggers, triggerNames } from "./triggers.js";
 import { readRegistry, writePendingRegistry, writeRegistry } from "./registry-sql.js";
-import { compileProjectionIndexes, projectionIndexName } from "./schema.js";
+import { projectionIndexName, sqlTypeForStorageKind } from "./schema.js";
 import { verifyOrThrow } from "./verify.js";
 
 export interface ProjectionMigrationPlan {
@@ -41,7 +41,7 @@ export function planProjectionMigration(
     change,
     addColumns: added.map((field) => ({
       field,
-      sqlType: storageSql(
+      sqlType: sqlTypeForStorageKind(
         next.filterable[field]?.storageKind ?? next.sortable[field]?.storageKind ?? "text",
       ),
     })),
@@ -205,9 +205,8 @@ async function createMissingProjectionIndexes(
   generation: number,
 ): Promise<void> {
   const names = physicalNames(definition, physicalIndexId, generation);
-  const statements = compileProjectionIndexes(definition, physicalIndexId, generation);
   const fields = unique([...definition.filterableOrder, ...definition.sortableOrder]);
-  for (const [index, field] of fields.entries()) {
+  for (const field of fields) {
     const indexName = projectionIndexName(names.docs, field);
     const existing = await adapter.query<{ name: string }>(
       sql(`SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?`, [indexName]),
@@ -215,23 +214,11 @@ async function createMissingProjectionIndexes(
     if (existing.length > 0) {
       continue;
     }
-    const statement = statements[index];
-    if (statement) {
-      await adapter.execute(sql(statement));
-    }
-  }
-}
-
-function storageSql(kind: string): string {
-  switch (kind) {
-    case "safe-integer":
-    case "boolean-integer":
-    case "timestamp-integer":
-      return "INTEGER";
-    case "finite-real":
-      return "REAL";
-    default:
-      return "TEXT";
+    await adapter.execute(
+      sql(
+        `CREATE INDEX ${quoteIdent(indexName)} ON ${quoteIdent(names.docs)} (${quoteIdent(field)})`,
+      ),
+    );
   }
 }
 

@@ -21,7 +21,7 @@ import {
 } from "./registry-sql.js";
 import { compileLinkedTriggers, triggerNames } from "./triggers.js";
 import { assertSecureDeletePolicy, type SecureDeletePolicy } from "./maintenance.js";
-import { verifyOrThrow } from "./verify.js";
+import { collectIntegrityFindings, verifyOrThrow } from "./verify.js";
 
 const BACKFILL_PAGE = 500;
 
@@ -48,6 +48,13 @@ export async function createIndex(ctx: LifecycleContext): Promise<void> {
   const generation = existing?.activeGeneration ?? 1;
   const secureDelete = await resolveSecureDelete(ctx);
   if (existing?.health === "pending") {
+    // A failed rebuild leaves gen N pending and may have leftover N+1 objects.
+    // Dropping N here would destroy the last searchable generation.
+    await dropPhysical(ctx.adapter, ctx.definition, physicalIndexId, generation + 1);
+    if (await generationIsIntact(ctx, physicalIndexId, generation)) {
+      await writeHealthyRegistry(ctx, physicalIndexId, generation);
+      return;
+    }
     await dropPhysical(ctx.adapter, ctx.definition, physicalIndexId, generation);
   }
   await markPending(ctx, physicalIndexId, generation);
@@ -320,6 +327,20 @@ export async function syncRuntimeDefinition(
   }
   await writeHealthyRegistry(ctx, row.physicalIndexId, row.activeGeneration);
   return "runtime-only";
+}
+
+async function generationIsIntact(
+  ctx: LifecycleContext,
+  physicalIndexId: string,
+  generation: number,
+): Promise<boolean> {
+  const findings = await collectIntegrityFindings(
+    ctx.adapter,
+    ctx.definition,
+    physicalIndexId,
+    generation,
+  );
+  return findings.every((finding) => finding.severity !== "error");
 }
 
 async function resolveSecureDelete(ctx: LifecycleContext): Promise<boolean> {

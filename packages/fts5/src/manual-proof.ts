@@ -21,6 +21,7 @@ import {
 } from "@siftlite/core";
 import { sqliteFts5 } from "./backend.js";
 import { compileFts5PhysicalManifest } from "./manifest.js";
+import { sqlTypeForStorageKind } from "./lifecycle/schema.js";
 import { physicalNames, sourceIdColumnType } from "./names.js";
 import { publicScoreFromFts5Bm25 } from "./score.js";
 import { restoreSourceId } from "./search/hydrate.js";
@@ -153,7 +154,7 @@ async function createSchema(
   const projected = unique([...definition.filterableOrder, ...definition.sortableOrder]).map(
     (field) => {
       const spec = definition.filterable[field] ?? definition.sortable[field];
-      return `${quoteIdent(field)} ${sqlType(spec?.storageKind ?? "text")}`;
+      return `${quoteIdent(field)} ${sqlTypeForStorageKind(spec?.storageKind ?? "text")}`;
     },
   );
   const docsColumns = [
@@ -450,19 +451,6 @@ function updateFtsStatement(
     `UPDATE ${quoteIdent(names.fts)} SET ${ftsAssignments.join(", ")} WHERE ${quoteIdent("rowid")} = ?`,
     [...document.normalizedSearchable, docId],
   );
-}
-
-function sqlType(kind: string): string {
-  switch (kind) {
-    case "safe-integer":
-    case "boolean-integer":
-    case "timestamp-integer":
-      return "INTEGER";
-    case "finite-real":
-      return "REAL";
-    default:
-      return "TEXT";
-  }
 }
 
 function unique(values: readonly string[]): string[] {

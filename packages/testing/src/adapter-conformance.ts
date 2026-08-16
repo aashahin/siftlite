@@ -262,7 +262,7 @@ async function expectRejects(run: () => Promise<unknown>, reason: string): Promi
   try {
     await run();
   } catch (error) {
-    if (error instanceof SearchError) {
+    if (error instanceof SearchError && error.details?.["reason"] === reason) {
       return;
     }
     throw error;

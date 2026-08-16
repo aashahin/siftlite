@@ -115,4 +115,8 @@ describe("@siftlite/drizzle trigger ownership", () => {
     );
     expect(raw.hits.map((hit) => hit.id)).toEqual(["l2"]);
   });
+
+  // D1 + Drizzle trigger ownership is impractical in this bun:test file
+  // (Drizzle cannot run inside workerd here). D1 evidence for P10-07 lives in
+  // packages/d1/workers-tests/conformance.workers.ts (`d1_orm_products`).
 });

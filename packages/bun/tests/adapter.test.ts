@@ -25,4 +25,32 @@ describe("bun sqlite adapter", () => {
       SearchError,
     );
   });
+
+  test("batch commits on success and rolls back a mid-batch failure", async () => {
+    const db = new Database(":memory:");
+    const adapter = bunSqliteAdapter(db);
+    await adapter.execute(sql("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)"));
+
+    const committed = await adapter.batch?.([
+      sql("INSERT INTO items (id, name) VALUES (?, ?)", [1, "one"]),
+      sql("INSERT INTO items (id, name) VALUES (?, ?)", [2, "two"]),
+    ]);
+    expect(committed).toHaveLength(2);
+    const afterCommit = await adapter.query<{ id: number }>(
+      sql("SELECT id FROM items ORDER BY id"),
+    );
+    expect(afterCommit.map((row) => row.id)).toEqual([1, 2]);
+
+    await expect(
+      adapter.batch?.([
+        sql("INSERT INTO items (id, name) VALUES (?, ?)", [3, "three"]),
+        sql("INSERT INTO items (id, name) VALUES (?, ?)", [1, "duplicate"]),
+      ]),
+    ).rejects.toBeInstanceOf(SearchError);
+
+    const afterFailure = await adapter.query<{ id: number }>(
+      sql("SELECT id FROM items ORDER BY id"),
+    );
+    expect(afterFailure.map((row) => row.id)).toEqual([1, 2]);
+  });
 });

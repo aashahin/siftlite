@@ -20,12 +20,17 @@ export const LIBSQL_LOCAL_CONSISTENCY: ReadConsistencyCapabilities = {
   readReplicaEligible: false,
 };
 
+/**
+ * Remote libSQL/Turso consistency is unproven until a remote probe records
+ * evidence. Replica/session/RYW claims stay false so compilers cannot treat
+ * remote as locally consistent.
+ */
 export const LIBSQL_REMOTE_CONSISTENCY: ReadConsistencyCapabilities = {
-  transactionReadYourWrites: true,
-  postCommitReadYourWrites: true,
+  transactionReadYourWrites: false,
+  postCommitReadYourWrites: false,
   sessionAware: false,
   sequentialSessionConsistency: false,
-  readReplicaEligible: true,
+  readReplicaEligible: false,
 };
 
 export function libsqlRuntimeCapabilities(kind: "local" | "remote" = "local"): RuntimeCapabilities {

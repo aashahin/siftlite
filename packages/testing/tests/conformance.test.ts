@@ -15,4 +15,11 @@ describe("shared conformance", () => {
     await runArabicNormalizationCorpus(adapter);
     expect(adapter.id).toBe("bun-sqlite");
   });
+
+  test("SQL adapter suite can run twice on the same database", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await runSqlAdapterConformance(adapter);
+    await runSqlAdapterConformance(adapter);
+    expect(adapter.id).toBe("bun-sqlite");
+  });
 });

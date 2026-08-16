@@ -19,6 +19,10 @@ const result = await products.search("ايفون برو", {
 Consumers should not write FTS5 `MATCH`, Turso `fts_match`, unsafe SQL
 fragments, or ORM synchronization hooks.
 
+Highlighted and formatted strings are not HTML-safe; do not assign them to
+`innerHTML` without sanitizing. Highlighting is off by default and uses
+markdown `**` markers.
+
 ## Status
 
 Pre-v1 implementation from the [v1.2 implementation pack](docs/README.md).

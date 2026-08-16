@@ -42,3 +42,5 @@ tmp
 .turbo
 .wrangler
 .mf
+*.db
+*.db-journal

@@ -133,12 +133,12 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 8 — libSQL
 
-- [ ] **P8-01** Define minimal libSQL-like client interface used by adapter.
-- [ ] **P8-02** Implement `@siftlite/libsql` without concrete client leakage into core.
-- [ ] **P8-03** Map batch/transaction/runtime capabilities.
-- [ ] **P8-04** Run shared FTS5 conformance locally.
-- [ ] **P8-05** Add optional remote smoke fixtures.
-- [ ] **P8-06** Add migration/example app.
+- [x] **P8-01** Define minimal libSQL-like client interface used by adapter.
+- [x] **P8-02** Implement `@siftlite/libsql` without concrete client leakage into core.
+- [x] **P8-03** Map batch/transaction/runtime capabilities.
+- [x] **P8-04** Run shared FTS5 conformance locally.
+- [x] **P8-05** Add optional remote smoke fixtures.
+- [x] **P8-06** Add migration/example app.
 
 **Gate:** claimed semantics pass and adapter boundary remains client-compatible, not class-coupled.
 

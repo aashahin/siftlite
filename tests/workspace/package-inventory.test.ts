@@ -9,6 +9,7 @@ const ALLOWED_PUBLISHED_PACKAGES = [
   "@siftlite/fts5",
   "@siftlite/bun",
   "@siftlite/d1",
+  "@siftlite/libsql",
   "@siftlite/testing",
 ] as const;
 

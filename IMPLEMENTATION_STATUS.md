@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 7 — Cloudflare D1 adapter and Workers-runtime conformance
+Phase 8 — libSQL adapter
 
 ## Status
 
@@ -21,43 +21,34 @@ PASS
 - P5-01 through P5-10
 - P6-01 through P6-12
 - P7-01 through P7-12
+- P8-01 through P8-06
 
 ## Remaining
 
-Phases 8–14 (libSQL, Arabic, ORMs, fuzzy, CLI, RC)
-and conditional Phase 15.
+Phases 9–14 (Arabic, ORMs, fuzzy, CLI, RC) and conditional Phase 15.
 
 ## Tests executed
 
-`bun run verify` including `bun run test:d1` (Workers Vitest / workerd)
+`bun run verify`
 
 ## Significant implementation decisions
 
-- `@siftlite/d1` wraps a minimal `D1Database`/`D1DatabaseSession` interface.
-  Core does not import Cloudflare types.
-- Documented D1 limits (2026-08-16): 100 binds, 32 function args, 100 KB
-  statements, 50-byte LIKE patterns, 30s query duration.
-- Plain D1 bindings are replica-eligible and not session-aware.
-  `d1SessionAdapter` exposes `withSession` bookmarks and sequential consistency.
-- Interactive transactions are unsupported (`batch` is the atomic unit).
-- Typo fallback stays off via `D1_DEFAULT_SEARCH_POLICY` on this cost-sensitive
-  runtime.
-- D1 export still cannot dump virtual tables; drop FTS, export authoritative
-  tables, then rebuild.
-- Optional remote smoke (`bun run test:d1:smoke`) skips without credentials and
-  checks the official D1 API when they are present.
+- `@siftlite/libsql` accepts `LibsqlClientLike`. `@libsql/client` is an optional
+  peer and is never imported by `@siftlite/core`.
+- Local libSQL uses proven SQLite-like bind/function limits. Remote limits stay
+  unproven and `costSensitive` until probed.
+- This adapter is the FTS5 path. It is not Turso-native Tantivy FTS.
 
 ## Known upstream limitations
 
 - Turso native FTS remains experimental.
-- Remote D1/Turso credentials are unavailable in this environment.
+- Remote D1/libSQL credentials are unavailable in this environment.
 - D1 export does not support databases containing FTS5 virtual tables.
-- D1 Worker JS API does not support `BigInt` binds.
 
 ## Blockers
 
-None for Phases 0–7.
+None for Phases 0–8.
 
 ## Latest verification result
 
-`bun run verify` passed on 2026-08-16 after Phase 7 (97 bun tests + 4 Workers Vitest tests).
+`bun run verify` passed after Phase 8 (format, lint, typecheck, build, 99 bun tests, 4 D1 Workers tests, export check).

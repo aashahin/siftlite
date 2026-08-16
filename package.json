@@ -14,9 +14,10 @@
     "lint": "biome lint .",
     "check": "biome check .",
     "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --noEmit --pretty false",
-    "test": "bun test packages/core packages/fts5 packages/bun packages/d1/tests packages/testing examples ./tests experimental",
+    "test": "bun test packages/core packages/fts5 packages/bun packages/d1/tests packages/libsql packages/testing examples ./tests experimental",
     "test:d1": "bun run --cwd packages/d1 test:workers",
     "test:d1:smoke": "bun run scripts/d1-remote-smoke.ts",
+    "test:libsql:smoke": "bun run scripts/libsql-remote-smoke.ts",
     "build": "tsc -b --pretty false",
     "clean": "rm -rf packages/*/dist packages/*/*.tsbuildinfo",
     "check-exports": "bun run scripts/check-exports.ts",
@@ -27,6 +28,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.8",
     "@changesets/cli": "2.31.1",
+    "@libsql/client": "0.17.4",
     "@types/bun": "1.3.14",
     "typescript": "5.9.3"
   },

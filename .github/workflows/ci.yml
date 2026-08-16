@@ -43,3 +43,9 @@ jobs:
           SIFTLITE_D1_DATABASE_ID: ${{ secrets.SIFTLITE_D1_DATABASE_ID }}
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
         run: bun run test:d1:smoke
+
+      - name: Optional remote libSQL smoke
+        env:
+          SIFTLITE_LIBSQL_URL: ${{ secrets.SIFTLITE_LIBSQL_URL }}
+          SIFTLITE_LIBSQL_TOKEN: ${{ secrets.SIFTLITE_LIBSQL_TOKEN }}
+        run: bun run test:libsql:smoke

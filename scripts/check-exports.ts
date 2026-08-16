@@ -13,6 +13,7 @@ const PUBLISHED_PACKAGES = [
   "packages/fts5",
   "packages/bun",
   "packages/d1",
+  "packages/libsql",
   "packages/testing",
 ] as const;
 

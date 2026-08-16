@@ -46,7 +46,7 @@ describe("restoreSourceId", () => {
     });
     expect(restoreSourceId(numeric, 0)).toBe(0);
     expect(() => restoreSourceId(numeric, 1n)).toThrow(SearchError);
-    expect(() => restoreSourceId(numeric, 9007199254740993)).toThrow(SearchError);
+    expect(() => restoreSourceId(numeric, Number.MAX_SAFE_INTEGER + 1)).toThrow(SearchError);
     expect(() => restoreSourceId(numeric, "9007199254740993")).toThrow(SearchError);
   });
 });

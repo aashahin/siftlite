@@ -170,7 +170,7 @@ async function backfillLinked(
 
   let sourceCursor: string | number | null = null;
   for (;;) {
-    const page =
+    const page: readonly { pk: string | number }[] =
       sourceCursor === null
         ? await ctx.adapter.query<{ pk: string | number }>(
             sql(`SELECT ${pk} AS pk FROM ${source} ORDER BY ${pk} LIMIT ?`, [BACKFILL_PAGE]),
@@ -181,7 +181,7 @@ async function backfillLinked(
               BACKFILL_PAGE,
             ]),
           );
-    const last = page[page.length - 1];
+    const last: { pk: string | number } | undefined = page[page.length - 1];
     if (!last) {
       break;
     }

@@ -73,22 +73,20 @@ describe("D1 Workers-runtime conformance", () => {
   it("accepts documented bind-parameter limit and fails closed over budget", async () => {
     const adapter = d1Adapter(testEnv.DB);
     const max = D1_SQL_LIMITS.maxBindParameters ?? 100;
-    const atLimitSql = Array.from({ length: max }, () => "SELECT ?").join(" UNION ALL ");
-    const atLimit = await adapter.query({
-      sql: atLimitSql,
-      params: Array.from({ length: max }, (_, index) => index),
+    await adapter.execute({ sql: "DROP TABLE IF EXISTS d1_bind_probe", params: [] });
+    await adapter.execute({
+      sql: "CREATE TABLE d1_bind_probe (id INTEGER PRIMARY KEY)",
+      params: [],
     });
-    expect(atLimit).toHaveLength(max);
+    await adapter.execute({ sql: "INSERT INTO d1_bind_probe (id) VALUES (?)", params: [1] });
+    const placeholders = Array.from({ length: max }, () => "?").join(", ");
+    const atLimit = await adapter.query<{ id: number }>({
+      sql: `SELECT id FROM d1_bind_probe WHERE id IN (${placeholders})`,
+      params: Array.from({ length: max }, (_, index) => (index === 0 ? 1 : index + 2)),
+    });
+    expect(atLimit[0]?.id).toBe(1);
 
     const over = max + 1;
-    try {
-      await adapter.query({
-        sql: Array.from({ length: over }, () => "SELECT ?").join(" UNION ALL "),
-        params: Array.from({ length: over }, (_, index) => index),
-      });
-    } catch {
-      // D1 or the adapter may reject max+1 binds; budget still fails closed.
-    }
     const budget = createStatementBudget(D1_SQL_LIMITS, DEFAULT_APPLICATION_LIMITS);
     expect(() => assertInListFits(budget, over)).toThrow();
   });

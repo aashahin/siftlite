@@ -55,10 +55,10 @@ export function createFts5Engine(options: Fts5EngineOptions): Fts5Engine {
       return createHandle({
         adapter,
         definition,
-        policy,
-        limits,
-        hooks,
         secureDelete,
+        ...(policy ? { policy } : {}),
+        ...(limits ? { limits } : {}),
+        ...(hooks ? { hooks } : {}),
       });
     },
   };
@@ -83,9 +83,15 @@ function createHandle(args: {
     definition: args.definition,
     scope(values) {
       const next = bindScope(values);
+      const scope = mergeScopes(args.scope, next);
       return createHandle({
-        ...args,
-        scope: mergeScopes(args.scope, next),
+        adapter: args.adapter,
+        definition: args.definition,
+        secureDelete: args.secureDelete,
+        ...(args.policy ? { policy: args.policy } : {}),
+        ...(args.limits ? { limits: args.limits } : {}),
+        ...(args.hooks ? { hooks: args.hooks } : {}),
+        ...(scope ? { scope } : {}),
       });
     },
     async search(query, request = {}) {

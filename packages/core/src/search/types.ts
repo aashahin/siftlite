@@ -104,6 +104,5 @@ export interface DocumentHydrator<TDocument = unknown> {
 declare global {
   interface AbortSignal {
     readonly aborted: boolean;
-    readonly reason: unknown;
   }
 }

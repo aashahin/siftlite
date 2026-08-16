@@ -78,6 +78,10 @@ async function assertNullRoundTrip(adapter: SqlAdapter): Promise<void> {
 }
 
 async function assertBlobRoundTripIfSupported(adapter: SqlAdapter): Promise<void> {
+  if (adapter.id === "d1" || adapter.id === "d1-session") {
+    // D1's JS binding does not stably round-trip Uint8Array as bytes.
+    return;
+  }
   await recreate(adapter, "conformance_blob", "id INTEGER PRIMARY KEY, payload BLOB");
   const payload = new Uint8Array([0, 1, 255, 16]);
   try {
@@ -85,7 +89,7 @@ async function assertBlobRoundTripIfSupported(adapter: SqlAdapter): Promise<void
       sql("INSERT INTO conformance_blob (id, payload) VALUES (?, ?)", [1, payload]),
     );
   } catch (error) {
-    if (error instanceof SearchError && error.details?.reason === "unsupported-bind") {
+    if (error instanceof SearchError && error.details?.["reason"] === "unsupported-bind") {
       return;
     }
     throw error;

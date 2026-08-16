@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { createClient } from "../../libsql/node_modules/@libsql/client";
+import { createClient } from "@libsql/client";
 import { defineIndex, SearchError, sql } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
-import { libsqlAdapter, wrapLibsqlClient } from "../../libsql/src/index.ts";
+import { libsqlAdapter, wrapLibsqlClient } from "@siftlite/libsql";
 import { createIndex } from "@siftlite/fts5";
 import {
   createPrismaHydrator,
@@ -61,14 +61,14 @@ function createPrismaLikeLibsql(client: ReturnType<typeof createClient>): Prisma
   return {
     product: {
       async findMany(args: { where: Record<string, { in: readonly string[] }> }) {
-        const ids = args.where.id?.in ?? [];
+        const ids = args.where["id"]?.in ?? [];
         if (ids.length === 0) {
           return [];
         }
         const placeholders = ids.map(() => "?").join(", ");
         const result = await client.execute({
           sql: `SELECT id, name, description, status FROM products WHERE id IN (${placeholders})`,
-          args: ids,
+          args: [...ids],
         });
         return result.rows as unknown as ProductRow[];
       },
@@ -146,7 +146,7 @@ describe("@siftlite/prisma", () => {
     const index = productsIndex();
     await createIndex({ adapter, definition: index });
     const prisma = createPrismaLikeLibsql(client);
-    const product = prisma.product as {
+    const product = prisma["product"] as {
       create(data: ProductRow): Promise<ProductRow>;
     };
     await product.create({

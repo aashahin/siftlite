@@ -84,7 +84,7 @@ export async function createManualFts5Proof(args: {
     physicalIndexId,
     generation,
     async upsert(documents) {
-      if (typeof args.adapter.batch === "function") {
+      if (args.adapter.batch) {
         await upsertDocumentsBatched(args.adapter, definition, names, documents);
         return;
       }
@@ -271,7 +271,7 @@ async function upsertDocument(
 }
 
 async function upsertDocumentsBatched(
-  adapter: SqlAdapter & { batch: NonNullable<SqlAdapter["batch"]> },
+  adapter: SqlAdapter,
   definition: IndexDefinition,
   names: ReturnType<typeof physicalNames>,
   documents: readonly ManualProofDocument[],
@@ -303,7 +303,15 @@ async function upsertDocumentsBatched(
   if (statements.length === 0) {
     return;
   }
-  await adapter.batch(statements);
+  const batch = adapter.batch;
+  if (!batch) {
+    throw new SearchError({
+      code: "SEARCH_CAPABILITY_UNSUPPORTED",
+      message: "adapter.batch is required for batched manual upsert",
+      details: { reason: "batch" },
+    });
+  }
+  await batch.call(adapter, statements);
 }
 
 interface PreparedManualDocument {

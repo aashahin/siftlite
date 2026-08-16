@@ -4,14 +4,14 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 0 — Repository foundation
 
-- [ ] **P0-01** Create Bun workspace monorepo and root scripts.
-- [ ] **P0-02** Add strict shared TypeScript configs for edge-safe core and package builds.
-- [ ] **P0-03** Add `bun:test`, lint, format, typecheck, build, and `bun run verify`.
-- [ ] **P0-04** Add CI that runs from a clean install and caches safely.
-- [ ] **P0-05** Create only `@siftlite/core`, `@siftlite/fts5`, `@siftlite/bun`, `@siftlite/testing` skeletons.
-- [ ] **P0-06** Configure package exports/types/source maps and release workflow.
-- [ ] **P0-07** Add README, contributing, security policy, license, and minimal example.
-- [ ] **P0-08** Add dependency-boundary test preventing runtime/ORM imports in core.
+- [x] **P0-01** Create Bun workspace monorepo and root scripts.
+- [x] **P0-02** Add strict shared TypeScript configs for edge-safe core and package builds.
+- [x] **P0-03** Add `bun:test`, lint, format, typecheck, build, and `bun run verify`.
+- [x] **P0-04** Add CI that runs from a clean install and caches safely.
+- [x] **P0-05** Create only `@siftlite/core`, `@siftlite/fts5`, `@siftlite/bun`, `@siftlite/testing` skeletons.
+- [x] **P0-06** Configure package exports/types/source maps and release workflow.
+- [x] **P0-07** Add README, contributing, security policy, license, and minimal example.
+- [x] **P0-08** Add dependency-boundary test preventing runtime/ORM imports in core.
 
 **Gate:** clean `bun install && bun run verify`; no package sprawl; core is runtime-agnostic.
 

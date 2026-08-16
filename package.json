@@ -1,11 +1,34 @@
 {
-  "name": "siftlite",
-  "type": "module",
+  "name": "@siftlite/monorepo",
   "private": true,
-  "devDependencies": {
-    "@types/bun": "latest"
+  "type": "module",
+  "packageManager": "bun@1.3.14",
+  "workspaces": [
+    "packages/*",
+    "examples/*"
+  ],
+  "scripts": {
+    "format": "biome format --write .",
+    "format:check": "biome format .",
+    "lint": "biome lint .",
+    "check": "biome check .",
+    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.tests.json --noEmit --pretty false",
+    "test": "bun test",
+    "build": "tsc -b --pretty false",
+    "clean": "rm -rf packages/*/dist packages/*/*.tsbuildinfo",
+    "check-exports": "bun run scripts/check-exports.ts",
+    "verify": "bun run format:check && bun run lint && bun run typecheck && bun run build && bun run test && bun run check-exports",
+    "changeset": "changeset",
+    "version-packages": "changeset version"
   },
-  "peerDependencies": {
-    "typescript": "^7"
+  "devDependencies": {
+    "@biomejs/biome": "2.5.8",
+    "@changesets/cli": "2.31.1",
+    "@types/bun": "1.3.14",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "bun": ">=1.2.0",
+    "node": ">=20"
   }
 }

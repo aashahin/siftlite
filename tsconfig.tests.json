@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "types": ["bun"],
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
+    "declaration": false,
+    "declarationMap": false,
+    "sourceMap": false,
+    "composite": false,
+    "noEmitOnError": true
+  },
+  "include": ["packages/*/tests/**/*.ts", "tests/**/*.ts", "scripts/**/*.ts"]
+}

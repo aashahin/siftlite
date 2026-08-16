@@ -72,12 +72,15 @@ export function composeScopedFilter(scope: BoundScope, userFilter?: FilterNode):
       details: { reason: "missing-scope" },
     });
   }
-  if (userFilter !== undefined && !isFilterNode(userFilter)) {
-    throw new SearchError({
-      code: "SEARCH_FILTER_INVALID",
-      message: "user filter must be a filter AST node",
-      details: { reason: "invalid-user-filter" },
-    });
+  if (userFilter !== undefined) {
+    if (!isFilterNode(userFilter)) {
+      throw new SearchError({
+        code: "SEARCH_FILTER_INVALID",
+        message: "user filter must be a filter AST node",
+        details: { reason: "invalid-user-filter" },
+      });
+    }
+    assertFilterCannotCarryScope(userFilter);
   }
   return {
     kind: "scoped-filter",

@@ -2,7 +2,6 @@ import {
   hashLogicalDefinition,
   hashPhysicalManifest,
   physicalIndexIdFor,
-  quoteIdent,
   sql,
   type CheckReport,
   type DoctorFinding,
@@ -14,6 +13,11 @@ import { compileFts5PhysicalManifest } from "../manifest.js";
 import { physicalNames } from "../names.js";
 import { ensureRegistry, readRegistry } from "./registry-sql.js";
 import { triggerNames } from "./triggers.js";
+import { collectIntegrityFindings, triggerExists } from "./verify.js";
+
+export interface DoctorOptions {
+  readonly level?: "fast" | "deep";
+}
 
 export async function checkIndex(
   adapter: SqlAdapter,
@@ -26,6 +30,7 @@ export async function checkIndex(
 export async function doctorIndex(
   adapter: SqlAdapter,
   definition: IndexDefinition,
+  options?: DoctorOptions,
 ): Promise<DoctorReport> {
   await ensureRegistry(adapter);
   const findings: DoctorFinding[] = [];
@@ -53,7 +58,13 @@ export async function doctorIndex(
     return { healthy: false, findings, registry: null };
   }
 
-  if (registry.health !== "healthy") {
+  if (registry.health === "pending") {
+    findings.push({
+      severity: "error",
+      code: "registry-pending",
+      message: "registry health is pending",
+    });
+  } else if (registry.health !== "healthy") {
     findings.push({
       severity: "error",
       code: "registry-unhealthy",
@@ -104,24 +115,27 @@ export async function doctorIndex(
     }
   }
 
+  if ((options?.level ?? "fast") === "deep") {
+    const integrity = await collectIntegrityFindings(
+      adapter,
+      definition,
+      physicalIndexId,
+      generation,
+    );
+    for (const finding of integrity) {
+      if (!findings.some((existing) => existing.code === finding.code)) {
+        findings.push(finding);
+      }
+    }
+  }
+
   const healthy = findings.every((finding) => finding.severity !== "error");
   return { healthy, findings, registry };
 }
 
 async function tableExists(adapter: SqlAdapter, name: string): Promise<boolean> {
   const rows = await adapter.query<{ name: string }>(
-    sql(`SELECT name FROM sqlite_master WHERE name = ?`, [name]),
+    sql(`SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?`, [name]),
   );
   return rows.length > 0;
-}
-
-async function triggerExists(adapter: SqlAdapter, name: string): Promise<boolean> {
-  const rows = await adapter.query<{ name: string }>(
-    sql(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?`, [name]),
-  );
-  return rows.length > 0;
-}
-
-export function quoteRegistryIdent(name: string): string {
-  return quoteIdent(name);
 }

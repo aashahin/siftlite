@@ -15,3 +15,7 @@ Public surface includes:
 - immutable bound scopes
 - application limits, runtime SQL limits, and statement budgets
 - effective capability resolution
+
+Highlighted and formatted strings are not HTML-safe; do not assign them to
+`innerHTML` without sanitizing. Highlighting is off by default; default markers
+are markdown `**`.

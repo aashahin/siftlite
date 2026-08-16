@@ -61,6 +61,16 @@ describe("index definition", () => {
     expect(hashLogicalDefinition(left)).not.toBe(hashLogicalDefinition(right));
   });
 
+  test("stores arabic-basic normalized synonym keys and values", () => {
+    const index = defineIndex({
+      ...productsInput(),
+      normalization: ["arabic-basic"],
+      synonyms: { آيفون: ["آيفون برو"] },
+    });
+    expect(index.synonyms).toEqual({ ايفون: ["ايفون برو"] });
+    expect(Object.keys(index.synonyms)).toEqual(["ايفون"]);
+  });
+
   test("runtime-only synonym edits change the logical hash", () => {
     const base = defineIndex(productsInput());
     const edited = defineIndex({

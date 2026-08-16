@@ -14,6 +14,16 @@ describe("@siftlite/libsql", () => {
     expect(libsqlRuntimeCapabilities("remote").limits.maxBindParameters).toBeUndefined();
   });
 
+  test("remote consistency stays unproven until probed", () => {
+    const remote = libsqlRuntimeCapabilities("remote");
+    expect(remote.limits).toEqual({});
+    expect(remote.consistency.transactionReadYourWrites).toBe(false);
+    expect(remote.consistency.postCommitReadYourWrites).toBe(false);
+    expect(remote.consistency.sessionAware).toBe(false);
+    expect(remote.consistency.sequentialSessionConsistency).toBe(false);
+    expect(remote.consistency.readReplicaEligible).toBe(false);
+  });
+
   test("wrapLibsqlClient rejects clients without execute()", () => {
     expect(() => wrapLibsqlClient({})).toThrow(SearchError);
   });

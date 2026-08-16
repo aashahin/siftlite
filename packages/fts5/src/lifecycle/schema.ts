@@ -1,4 +1,9 @@
-import { quoteIdent, type IndexDefinition } from "@siftlite/core";
+import {
+  assertSqlIdentifier,
+  physicalIndexIdFor,
+  quoteIdent,
+  type IndexDefinition,
+} from "@siftlite/core";
 import { physicalNames, sourceIdColumnType } from "../names.js";
 import { compileSearchableExpression } from "../normalize-sql.js";
 
@@ -15,7 +20,7 @@ export function compileDocsDdl(
     ...definition.searchableOrder.map((field) => `${quoteIdent(`${field}_source`)} TEXT`),
     ...projected.map((field) => {
       const spec = definition.filterable[field] ?? definition.sortable[field];
-      return `${quoteIdent(field)} ${storageSql(spec?.storageKind ?? "text")}`;
+      return `${quoteIdent(field)} ${sqlTypeForStorageKind(spec?.storageKind ?? "text")}`;
     }),
   ];
   return `CREATE TABLE ${quoteIdent(names.docs)} (${columns.join(", ")})`;
@@ -25,11 +30,34 @@ export function compileFtsDdl(
   definition: IndexDefinition,
   physicalIndexId: string,
   generation: number,
+  options?: { readonly secureDelete?: boolean },
 ): string {
   const names = physicalNames(definition, physicalIndexId, generation);
   const columns = definition.searchableOrder.map((field) => quoteIdent(field)).join(", ");
   const prefix = definition.prefix.length > 0 ? `, prefix='${definition.prefix.join(" ")}'` : "";
-  return `CREATE VIRTUAL TABLE ${quoteIdent(names.fts)} USING fts5(${columns}${prefix}, tokenize='unicode61')`;
+  const secureDelete = options?.secureDelete === true ? ", secure-delete=1" : "";
+  return `CREATE VIRTUAL TABLE ${quoteIdent(names.fts)} USING fts5(${columns}${prefix}, tokenize='unicode61'${secureDelete})`;
+}
+
+export function projectionIndexName(docsTable: string, field: string): string {
+  const candidate = `${docsTable}_${field}`;
+  if (candidate.length <= 96) {
+    return assertSqlIdentifier(candidate);
+  }
+  return assertSqlIdentifier(`__sift_px_${physicalIndexIdFor(candidate)}`);
+}
+
+export function compileProjectionIndexes(
+  definition: IndexDefinition,
+  physicalIndexId: string,
+  generation: number,
+): string[] {
+  const names = physicalNames(definition, physicalIndexId, generation);
+  const fields = unique([...definition.filterableOrder, ...definition.sortableOrder]);
+  return fields.map((field) => {
+    const indexName = projectionIndexName(names.docs, field);
+    return `CREATE INDEX ${quoteIdent(indexName)} ON ${quoteIdent(names.docs)} (${quoteIdent(field)})`;
+  });
 }
 
 export function compileBackfillSql(
@@ -72,7 +100,7 @@ export function compileBackfillSql(
   ];
 }
 
-function storageSql(kind: string): string {
+export function sqlTypeForStorageKind(kind: string): string {
   switch (kind) {
     case "safe-integer":
     case "boolean-integer":

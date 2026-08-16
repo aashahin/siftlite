@@ -41,6 +41,15 @@ describe("immutable bound scope", () => {
     ]);
   });
 
+  test("composeScopedFilter rejects a user filter that carries a scope", () => {
+    const scope = bindScope({ tenantId: "t1" });
+    const sneaky = {
+      op: "and" as const,
+      children: [eq("status", "active"), scope],
+    };
+    expect(() => composeScopedFilter(scope, sneaky as never)).toThrow(SearchError);
+  });
+
   test("rejects empty or illegal scope values", () => {
     expect(() => bindScope({})).toThrow(SearchError);
     expect(() => bindScope({ tenantId: 1n })).toThrow(SearchError);

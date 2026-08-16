@@ -131,7 +131,9 @@
         "@siftlite/fts5": "workspace:*",
       },
       "devDependencies": {
+        "@libsql/client": "0.17.4",
         "@siftlite/bun": "workspace:*",
+        "@siftlite/libsql": "workspace:*",
       },
       "peerDependencies": {
         "@prisma/client": "^6.0.0",

@@ -1,5 +1,6 @@
 import {
   classifyPhysicalChange,
+  hashLogicalDefinition,
   hashPhysicalManifest,
   quoteIdent,
   SearchError,
@@ -11,8 +12,9 @@ import {
 import { compileFts5PhysicalManifest } from "../manifest.js";
 import { physicalNames } from "../names.js";
 import { compileLinkedTriggers, triggerNames } from "./triggers.js";
-import { readRegistry, writeRegistry } from "./registry-sql.js";
-import { hashLogicalDefinition } from "@siftlite/core";
+import { readRegistry, writePendingRegistry, writeRegistry } from "./registry-sql.js";
+import { projectionIndexName, sqlTypeForStorageKind } from "./schema.js";
+import { verifyOrThrow } from "./verify.js";
 
 export interface ProjectionMigrationPlan {
   readonly change: PhysicalChange;
@@ -39,7 +41,7 @@ export function planProjectionMigration(
     change,
     addColumns: added.map((field) => ({
       field,
-      sqlType: storageSql(
+      sqlType: sqlTypeForStorageKind(
         next.filterable[field]?.storageKind ?? next.sortable[field]?.storageKind ?? "text",
       ),
     })),
@@ -75,45 +77,43 @@ export async function applyProjectionMigration(args: {
       details: { reason: plan.change.kind },
     });
   }
+  await writePendingRegistry(args.adapter, { ...row, updatedAt: Date.now() });
   const names = physicalNames(args.next, row.physicalIndexId, row.activeGeneration);
+  const existingColumns = await args.adapter.query<{ name: string }>(
+    sql(`PRAGMA table_info(${quoteIdent(names.docs)})`),
+  );
+  const present = new Set(existingColumns.map((column) => column.name));
   for (const column of plan.addColumns) {
+    if (present.has(column.field)) {
+      continue;
+    }
     await args.adapter.execute(
       sql(
         `ALTER TABLE ${quoteIdent(names.docs)} ADD COLUMN ${quoteIdent(column.field)} ${column.sqlType}`,
       ),
     );
   }
-  let resumeToken = plan.resumeToken;
+
+  let resumeToken: string | null = null;
   if (args.next.mode === "linked" && args.next.source && plan.addColumns.length > 0) {
     const chunk = args.chunk ?? { afterDocId: 0, limit: 500 };
-    const assignments = plan.addColumns
-      .map(
-        (column) =>
-          `${quoteIdent(column.field)} = (SELECT ${quoteIdent(column.field)} FROM ${quoteIdent(args.next.source?.table ?? "")} s WHERE s.${quoteIdent(args.next.source?.primaryKey.field ?? "id")} = d.${quoteIdent("source_id")})`,
-      )
-      .join(", ");
-    await args.adapter.execute(
-      sql(
-        `UPDATE ${quoteIdent(names.docs)} AS d SET ${assignments} WHERE d.${quoteIdent("doc_id")} > ? AND d.${quoteIdent("doc_id")} <= ?`,
-        [chunk.afterDocId, chunk.afterDocId + chunk.limit],
-      ),
-    );
-    const max = await args.adapter.query<{ max_id: number | null }>(
-      sql(`SELECT MAX(${quoteIdent("doc_id")}) AS max_id FROM ${quoteIdent(names.docs)}`),
-    );
-    const maxId = max[0]?.max_id ?? 0;
-    resumeToken =
-      chunk.afterDocId + chunk.limit >= maxId ? null : `doc_id:${chunk.afterDocId + chunk.limit}`;
-    for (const column of plan.addColumns) {
-      await args.adapter.execute(
-        sql(
-          `CREATE INDEX ${quoteIdent(`${names.docs}_${column.field}`)} ON ${quoteIdent(names.docs)} (${quoteIdent(column.field)})`,
-        ),
-      );
-    }
+    resumeToken = await backfillProjectionChunk(args, names.docs, plan.addColumns, chunk);
+  }
+
+  if (resumeToken !== null) {
+    return { resumeToken };
+  }
+
+  await createMissingProjectionIndexes(
+    args.adapter,
+    args.next,
+    row.physicalIndexId,
+    row.activeGeneration,
+  );
+  if (args.next.mode === "linked" && args.next.source) {
     const triggers = triggerNames(names.docs);
     for (const name of [triggers.insert, triggers.update, triggers.delete]) {
-      await args.adapter.execute(sql(`DROP TRIGGER ${quoteIdent(name)}`));
+      await args.adapter.execute(sql(`DROP TRIGGER IF EXISTS ${quoteIdent(name)}`));
     }
     for (const statement of compileLinkedTriggers(
       args.next,
@@ -123,9 +123,11 @@ export async function applyProjectionMigration(args: {
       await args.adapter.execute(sql(statement));
     }
   }
-  if (resumeToken !== null) {
-    return { resumeToken };
-  }
+  await verifyOrThrow(
+    { adapter: args.adapter, definition: args.next },
+    row.physicalIndexId,
+    row.activeGeneration,
+  );
   const manifest = compileFts5PhysicalManifest({
     definition: args.next,
     physicalIndexId: row.physicalIndexId,
@@ -141,15 +143,85 @@ export async function applyProjectionMigration(args: {
   return { resumeToken: null };
 }
 
-function storageSql(kind: string): string {
-  switch (kind) {
-    case "safe-integer":
-    case "boolean-integer":
-    case "timestamp-integer":
-      return "INTEGER";
-    case "finite-real":
-      return "REAL";
-    default:
-      return "TEXT";
+async function backfillProjectionChunk(
+  args: {
+    readonly adapter: SqlAdapter;
+    readonly next: IndexDefinition;
+  },
+  docsTable: string,
+  addColumns: readonly { readonly field: string }[],
+  chunk: BackfillChunk,
+): Promise<string | null> {
+  const source = args.next.source;
+  if (!source) {
+    return null;
   }
+  const assignments = addColumns
+    .map(
+      (column) =>
+        `${quoteIdent(column.field)} = (SELECT ${quoteIdent(column.field)} FROM ${quoteIdent(source.table)} s WHERE s.${quoteIdent(source.primaryKey.field)} = d.${quoteIdent("source_id")})`,
+    )
+    .join(", ");
+
+  if (chunk.limit <= 0) {
+    const remaining = await args.adapter.query<{ doc_id: number }>(
+      sql(
+        `SELECT ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(docsTable)} WHERE ${quoteIdent("doc_id")} > ? LIMIT 1`,
+        [chunk.afterDocId],
+      ),
+    );
+    return remaining.length > 0 ? `doc_id:${chunk.afterDocId}` : null;
+  }
+
+  const page = await args.adapter.query<{ doc_id: number }>(
+    sql(
+      `SELECT ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(docsTable)} WHERE ${quoteIdent("doc_id")} > ? ORDER BY ${quoteIdent("doc_id")} LIMIT ?`,
+      [chunk.afterDocId, chunk.limit],
+    ),
+  );
+  const last = page[page.length - 1];
+  if (!last) {
+    return null;
+  }
+  await args.adapter.execute(
+    sql(
+      `UPDATE ${quoteIdent(docsTable)} AS d SET ${assignments} WHERE d.${quoteIdent("doc_id")} > ? AND d.${quoteIdent("doc_id")} <= ?`,
+      [chunk.afterDocId, last.doc_id],
+    ),
+  );
+  const more = await args.adapter.query<{ doc_id: number }>(
+    sql(
+      `SELECT ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(docsTable)} WHERE ${quoteIdent("doc_id")} > ? LIMIT 1`,
+      [last.doc_id],
+    ),
+  );
+  return more.length > 0 ? `doc_id:${last.doc_id}` : null;
+}
+
+async function createMissingProjectionIndexes(
+  adapter: SqlAdapter,
+  definition: IndexDefinition,
+  physicalIndexId: string,
+  generation: number,
+): Promise<void> {
+  const names = physicalNames(definition, physicalIndexId, generation);
+  const fields = unique([...definition.filterableOrder, ...definition.sortableOrder]);
+  for (const field of fields) {
+    const indexName = projectionIndexName(names.docs, field);
+    const existing = await adapter.query<{ name: string }>(
+      sql(`SELECT name FROM sqlite_master WHERE type = 'index' AND name = ?`, [indexName]),
+    );
+    if (existing.length > 0) {
+      continue;
+    }
+    await adapter.execute(
+      sql(
+        `CREATE INDEX ${quoteIdent(indexName)} ON ${quoteIdent(names.docs)} (${quoteIdent(field)})`,
+      ),
+    );
+  }
+}
+
+function unique(values: readonly string[]): string[] {
+  return [...new Set(values)];
 }

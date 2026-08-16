@@ -5,7 +5,6 @@ import {
   createStatementBudget,
   DEFAULT_APPLICATION_LIMITS,
   quoteIdent,
-  sourceIdKind,
   sql,
   type ApplicationLimits,
   type DocumentHydrator,
@@ -110,13 +109,40 @@ export function restoreSourceId(definition: IndexDefinition, value: unknown): So
       details: { reason: "missing-source-id" },
     });
   }
-  if (definition.source?.primaryKey.type === "safe-integer") {
-    return assertSourceId(typeof value === "number" ? value : Number(value));
+  if (typeof value === "bigint") {
+    throw new SearchError({
+      code: "SEARCH_VALUE_INVALID",
+      message: "source id rejects bigint; portable v1 source IDs are string or safe integer",
+      details: { reason: "bigint" },
+    });
   }
-  if (typeof value === "number" && sourceIdKind(value) === "safe-integer") {
-    return value;
+  if (definition.source?.primaryKey.type === "safe-integer") {
+    if (typeof value === "number") {
+      return assertSourceId(value);
+    }
+    if (typeof value === "string" && value.trim() !== "" && isExactSafeIntegerDecimal(value)) {
+      return assertSourceId(Number(value));
+    }
+    throw new SearchError({
+      code: "SEARCH_VALUE_INVALID",
+      message: "source id is not an exact safe-integer decimal",
+      details: { reason: "invalid-source-id" },
+    });
   }
   return assertSourceId(String(value));
+}
+
+const EXACT_SAFE_INTEGER_DECIMAL = /^-?(0|[1-9]\d*)$/;
+
+function isExactSafeIntegerDecimal(value: string): boolean {
+  if (!EXACT_SAFE_INTEGER_DECIMAL.test(value)) {
+    return false;
+  }
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed)) {
+    return false;
+  }
+  return String(parsed) === value;
 }
 
 interface ProjectionRow {

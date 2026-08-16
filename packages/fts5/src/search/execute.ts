@@ -10,6 +10,7 @@ import {
   sql,
   validateFilter,
   type ApplicationLimits,
+  type CompiledSearch,
   type DocumentHydrator,
   type EffectiveCapabilities,
   type IndexDefinition,
@@ -19,6 +20,9 @@ import {
   type SearchResponse,
   type SearchWarning,
   type SqlAdapter,
+  type TextQuery,
+  type UnsafeBackendQuery,
+  isUnsafeFts5Query,
 } from "@siftlite/core";
 import { FTS5_BASE_CAPABILITIES, sqliteFts5 } from "../backend.js";
 import { compileFts5PhysicalManifest } from "../manifest.js";
@@ -37,10 +41,60 @@ export interface Fts5SearchContext {
   readonly hydrator?: DocumentHydrator<Record<string, unknown>>;
 }
 
+export function throwIfAborted(signal?: AbortSignal): void {
+  if (signal?.aborted) {
+    throw new SearchError({
+      code: "SEARCH_QUERY_INVALID",
+      message: "search was aborted",
+      details: { reason: "aborted" },
+    });
+  }
+}
+
 export async function searchFts5Index(
   ctx: Fts5SearchContext,
   query: string,
   request: SearchRequest = {},
+): Promise<SearchResponse<Record<string, unknown>>> {
+  throwIfAborted(request.signal);
+  const limits = ctx.limits ?? DEFAULT_APPLICATION_LIMITS;
+  const parsed = parseIndexTextQuery(query, {
+    limits,
+    matchingStrategy: request.matchingStrategy ?? ctx.definition.matchingStrategy,
+    normalization: ctx.definition.normalization,
+  });
+  const textQuery = expandTextQueryWithSynonyms(
+    parsed,
+    normalizeSynonymCatalog(ctx.definition.synonyms, ctx.definition.normalization),
+    { limits },
+  );
+  return runFts5Search(ctx, request, { mode: "parsed", query, textQuery });
+}
+
+export async function searchFts5IndexRaw(
+  ctx: Fts5SearchContext,
+  raw: UnsafeBackendQuery,
+  request: SearchRequest = {},
+): Promise<SearchResponse<Record<string, unknown>>> {
+  throwIfAborted(request.signal);
+  if (!isUnsafeFts5Query(raw) || raw.kind !== "unsafe-backend-query" || raw.backend !== "fts5") {
+    throw new SearchError({
+      code: "SEARCH_QUERY_INVALID",
+      message: "searchRaw requires an unsafe FTS5 backend query",
+      details: { reason: "unsafe-query-required" },
+    });
+  }
+  return runFts5Search(ctx, request, { mode: "raw", query: raw.value, match: raw.value });
+}
+
+type PreparedSearch =
+  | { readonly mode: "parsed"; readonly query: string; readonly textQuery: TextQuery }
+  | { readonly mode: "raw"; readonly query: string; readonly match: string };
+
+async function runFts5Search(
+  ctx: Fts5SearchContext,
+  request: SearchRequest,
+  prepared: PreparedSearch,
 ): Promise<SearchResponse<Record<string, unknown>>> {
   const started = Date.now();
   const limits = ctx.limits ?? DEFAULT_APPLICATION_LIMITS;
@@ -53,17 +107,9 @@ export async function searchFts5Index(
     assertFilterCannotCarryScope(request.filter);
   }
 
-  const parsed = parseIndexTextQuery(query, {
-    limits,
-    matchingStrategy: request.matchingStrategy ?? ctx.definition.matchingStrategy,
-    normalization: ctx.definition.normalization,
-  });
-  const textQuery = expandTextQueryWithSynonyms(
-    parsed,
-    normalizeSynonymCatalog(ctx.definition.synonyms, ctx.definition.normalization),
-    { limits },
-  );
-  const emptyQuery = textQuery.kind === "empty";
+  const textQuery: TextQuery =
+    prepared.mode === "raw" ? { kind: "term", value: "raw" } : prepared.textQuery;
+  const emptyQuery = prepared.mode === "raw" ? false : textQuery.kind === "empty";
   const sort = emptyQuery ? (request.sort ?? []) : request.sort;
   const highlightRequested = (request.highlight?.length ?? 0) > 0;
 
@@ -92,7 +138,7 @@ export async function searchFts5Index(
     physicalIndexId: ctx.physicalIndexId,
     generation: ctx.generation,
   });
-  const compiled = backend.compileSearch({
+  let compiled = backend.compileSearch({
     definition: ctx.definition,
     physical,
     physicalIndexId: ctx.physicalIndexId,
@@ -107,7 +153,11 @@ export async function searchFts5Index(
     limits,
     runtimeLimits: ctx.adapter.runtimeCapabilities.limits,
   });
+  if (prepared.mode === "raw") {
+    compiled = bindRawMatch(compiled, prepared.match);
+  }
 
+  throwIfAborted(request.signal);
   const rows = await ctx.adapter.query<HitRow>(compiled.statement);
   const hasMore = rows.length > page.limit;
   const pageRows = hasMore ? rows.slice(0, page.limit) : rows;
@@ -115,6 +165,7 @@ export async function searchFts5Index(
 
   let documents: ReadonlyMap<(typeof ids)[number], Record<string, unknown>> | undefined;
   if (request.hydrate === true) {
+    throwIfAborted(request.signal);
     const hydrator =
       ctx.hydrator ??
       createProjectionHydrator({
@@ -143,6 +194,7 @@ export async function searchFts5Index(
 
   let totalHits: number | undefined;
   if (request.includeTotal === true) {
+    throwIfAborted(request.signal);
     const countRows = await ctx.adapter.query<{ total: number }>(
       sql(
         `SELECT COUNT(*) AS total ${compiled.fromSql} WHERE ${compiled.whereSql}`,
@@ -153,6 +205,9 @@ export async function searchFts5Index(
   }
 
   const facetFields = request.facets ?? [];
+  if (facetFields.length > 0) {
+    throwIfAborted(request.signal);
+  }
   const facetResult =
     facetFields.length > 0
       ? await executeFacets({
@@ -178,7 +233,7 @@ export async function searchFts5Index(
   return {
     hits,
     page: { limit: page.limit, offset: page.offset, hasMore },
-    query,
+    query: prepared.query,
     backend: backend.id,
     processingTimeMs,
     ...(totalHits !== undefined ? { totalHits } : {}),
@@ -190,6 +245,32 @@ export async function searchFts5Index(
       : {}),
     ...(warnings.length > 0 ? { warnings } : {}),
     ...(meta ? { meta } : {}),
+  };
+}
+
+function bindRawMatch(compiled: CompiledSearch, rawMatch: string): CompiledSearch {
+  if (compiled.emptyQuery || compiled.whereParams.length === 0) {
+    throw new SearchError({
+      code: "SEARCH_BACKEND_ERROR",
+      message: "raw MATCH bind is missing from the compiled search",
+      details: { reason: "missing-match-bind" },
+    });
+  }
+  const whereParams = [rawMatch, ...compiled.whereParams.slice(1)];
+  const matchIndex = compiled.statement.params.length - compiled.whereParams.length - 2;
+  if (matchIndex < 0 || matchIndex >= compiled.statement.params.length) {
+    throw new SearchError({
+      code: "SEARCH_BACKEND_ERROR",
+      message: "raw MATCH bind index is invalid",
+      details: { reason: "invalid-match-bind" },
+    });
+  }
+  const params = compiled.statement.params.slice();
+  params[matchIndex] = rawMatch;
+  return {
+    ...compiled,
+    whereParams,
+    statement: { sql: compiled.statement.sql, params },
   };
 }
 

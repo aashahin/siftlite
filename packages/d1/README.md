@@ -64,6 +64,12 @@ included in backups.
 Provider Time Travel, replicas, and backups are outside SiftLite's
 search-visibility deletion guarantee.
 
+## Highlight / XSS
+
+Highlighted and formatted strings are **not HTML-safe**. Do not assign them to
+`innerHTML` (or equivalent) without sanitizing. Highlighting is off by default;
+default markers are markdown `**`.
+
 ## Usage
 
 ```ts

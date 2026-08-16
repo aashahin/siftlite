@@ -40,11 +40,13 @@ class BunSqliteAdapter implements SqlAdapter {
   }
 
   async batch(statements: readonly SqlStatement[]): Promise<readonly ExecuteResult[]> {
-    const results: ExecuteResult[] = [];
-    for (const statement of statements) {
-      results.push(await this.execute(statement));
-    }
-    return results;
+    return this.transaction(async (tx) => {
+      const results: ExecuteResult[] = [];
+      for (const statement of statements) {
+        results.push(await tx.execute(statement));
+      }
+      return results;
+    });
   }
 
   async transaction<T>(fn: (tx: SqlAdapter) => Promise<T>): Promise<T> {

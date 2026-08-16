@@ -38,12 +38,12 @@ export async function mergeFtsIndex(args: {
   }
   const names = physicalNames(args.definition, row.physicalIndexId, row.activeGeneration);
   await args.adapter.execute(
-    sql(`INSERT INTO ${quoteIdent(names.fts)}(${names.fts}, rank) VALUES (?, ?)`, [
+    sql(`INSERT INTO ${quoteIdent(names.fts)}(${quoteIdent(names.fts)}, rank) VALUES (?, ?)`, [
       "merge",
       args.pageBudget,
     ]),
   );
-  return { workRemaining: true, pageBudget: args.pageBudget };
+  return { workRemaining: false, pageBudget: args.pageBudget };
 }
 
 export async function incrementalOptimize(args: {
@@ -51,18 +51,6 @@ export async function incrementalOptimize(args: {
   readonly definition: IndexDefinition;
   readonly pageBudget: number;
 }): Promise<MergeResult> {
-  const row = await readRegistry(args.adapter, args.definition.name);
-  if (!row) {
-    throw new SearchError({
-      code: "SEARCH_INDEX_NOT_FOUND",
-      message: "index is not registered",
-      details: { reason: "missing-registry" },
-    });
-  }
-  const names = physicalNames(args.definition, row.physicalIndexId, row.activeGeneration);
-  await args.adapter.execute(
-    sql(`INSERT INTO ${quoteIdent(names.fts)}(${names.fts}, rank) VALUES (?, ?)`, ["merge", -1]),
-  );
   return mergeFtsIndex(args);
 }
 

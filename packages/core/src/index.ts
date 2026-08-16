@@ -142,6 +142,7 @@ export type { ExecuteResult, SqlStatement } from "./sql/statement.js";
 export { sql } from "./sql/statement.js";
 export type { SqlAdapter } from "./sql/adapter.js";
 export { assertSqlIdentifier, quoteIdent } from "./sql/ident.js";
+export type { PortableBindValue } from "./sql/bind.js";
 export { assertBindValue, assertBindValues } from "./sql/bind.js";
 
 export type {
@@ -172,6 +173,9 @@ export type {
   SearchResponse,
   SearchWarning,
 } from "./search/types.js";
+export type { SearchHooks } from "./search/hooks.js";
+export type { RawSearchBackend, UnsafeBackendQuery } from "./search/raw.js";
+export { isUnsafeFts5Query, unsafeFts5Query } from "./search/raw.js";
 export { asc, desc, relevance } from "./search/sort.js";
 export { resolveSearchPage } from "./search/pagination.js";
 export type { ResolvedSearchPage } from "./search/pagination.js";

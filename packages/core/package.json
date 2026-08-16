@@ -1,0 +1,50 @@
+{
+  "name": "@siftlite/core",
+  "version": "0.0.0",
+  "description": "Portable SiftLite types, planner, ASTs, codecs, and scopes.",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --pretty false"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aashahin/siftlite.git",
+    "directory": "packages/core"
+  },
+  "bugs": {
+    "url": "https://github.com/aashahin/siftlite/issues"
+  },
+  "homepage": "https://github.com/aashahin/siftlite#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "siftlite",
+    "search",
+    "sqlite",
+    "fts5",
+    "typescript"
+  ]
+}

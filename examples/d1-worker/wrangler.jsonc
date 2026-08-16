@@ -1,0 +1,13 @@
+{
+  "name": "siftlite-example-d1",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-08-16",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "siftlite-example",
+      "database_id": "local-siftlite-example",
+      "migrations_dir": "migrations"
+    }
+  ]
+}

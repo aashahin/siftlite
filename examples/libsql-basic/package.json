@@ -1,0 +1,14 @@
+{
+  "name": "@siftlite/example-libsql-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/main.ts"
+  },
+  "dependencies": {
+    "@libsql/client": "0.17.4",
+    "@siftlite/core": "workspace:*",
+    "@siftlite/fts5": "workspace:*",
+    "@siftlite/libsql": "workspace:*"
+  }
+}

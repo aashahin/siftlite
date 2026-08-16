@@ -1,21 +1,22 @@
-# dependencies (bun install)
+# dependencies
 node_modules
 
-# output
+# build output
 out
 dist
 *.tgz
+*.tsbuildinfo
 
-# code coverage
+# coverage
 coverage
 *.lcov
 
 # logs
 logs
-_.log
-report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
+*.log
+report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 
-# dotenv environment variable files
+# environment
 .env
 .env.development.local
 .env.test.local
@@ -25,10 +26,21 @@ report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
 # caches
 .eslintcache
 .cache
-*.tsbuildinfo
+.biome
 
-# IntelliJ based IDEs
+# IDEs
 .idea
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
 
-# Finder (MacOS) folder config
+# OS
 .DS_Store
+
+# benchmarks / generated reports (keep committed reports under benchmarks/reports)
+tmp
+.turbo
+.wrangler
+.mf
+*.db
+*.db-journal

@@ -1,0 +1,55 @@
+{
+  "name": "@siftlite/testing",
+  "version": "0.0.0",
+  "description": "SiftLite conformance and testkit utilities.",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --pretty false"
+  },
+  "dependencies": {
+    "@siftlite/core": "workspace:*",
+    "@siftlite/fts5": "workspace:*"
+  },
+  "devDependencies": {
+    "@siftlite/bun": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aashahin/siftlite.git",
+    "directory": "packages/testing"
+  },
+  "bugs": {
+    "url": "https://github.com/aashahin/siftlite/issues"
+  },
+  "homepage": "https://github.com/aashahin/siftlite#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "siftlite",
+    "testing",
+    "conformance"
+  ]
+}

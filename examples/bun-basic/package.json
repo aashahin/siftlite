@@ -1,0 +1,11 @@
+{
+  "name": "@siftlite/example-bun-basic",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/main.ts"
+  },
+  "dependencies": {
+    "@siftlite/core": "workspace:*"
+  }
+}

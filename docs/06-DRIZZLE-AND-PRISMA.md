@@ -126,9 +126,11 @@ const result = await productSearch.search("iphone", {
 Prisma officially supports adding custom methods to models through Client Extensions. Provide a shareable extension after the service API is stable:
 
 ```ts
-const prisma = new PrismaClient().$extends(
+const base = new PrismaClient();
+const prisma = base.$extends(
   searchExtension({
-    engine,
+    prisma: base,
+    adapter,
     models: {
       product: productsIndex,
     },

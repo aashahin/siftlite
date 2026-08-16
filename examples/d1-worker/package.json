@@ -1,0 +1,14 @@
+{
+  "name": "@siftlite/example-d1-worker",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "migrate:local": "wrangler d1 migrations apply siftlite-example --local"
+  },
+  "dependencies": {
+    "@siftlite/core": "workspace:*",
+    "@siftlite/d1": "workspace:*",
+    "@siftlite/fts5": "workspace:*"
+  }
+}

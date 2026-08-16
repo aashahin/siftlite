@@ -1,0 +1,8 @@
+{
+  "name": "@siftlite/turso-native-experimental",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@siftlite/core": "workspace:*"
+  }
+}

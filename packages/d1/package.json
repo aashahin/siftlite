@@ -1,0 +1,63 @@
+{
+  "name": "@siftlite/d1",
+  "version": "0.0.0",
+  "description": "SiftLite Cloudflare D1 runtime adapter.",
+  "type": "module",
+  "license": "MIT",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --pretty false",
+    "test:workers": "vitest run --config workers-tests/vitest.config.ts"
+  },
+  "dependencies": {
+    "@siftlite/core": "workspace:*"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.21.3",
+    "@siftlite/fts5": "workspace:*",
+    "@siftlite/testing": "workspace:*",
+    "@vitest/runner": "4.1.10",
+    "@vitest/snapshot": "4.1.10",
+    "vitest": "4.1.10",
+    "wrangler": "4.123.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aashahin/siftlite.git",
+    "directory": "packages/d1"
+  },
+  "bugs": {
+    "url": "https://github.com/aashahin/siftlite/issues"
+  },
+  "homepage": "https://github.com/aashahin/siftlite#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "siftlite",
+    "d1",
+    "cloudflare",
+    "sqlite",
+    "adapter"
+  ]
+}

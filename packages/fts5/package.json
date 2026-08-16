@@ -28,6 +28,9 @@
   "dependencies": {
     "@siftlite/core": "workspace:*"
   },
+  "devDependencies": {
+    "@siftlite/bun": "workspace:*"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aashahin/siftlite.git",

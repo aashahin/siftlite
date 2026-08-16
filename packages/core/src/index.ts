@@ -137,3 +137,24 @@ export type {
 } from "./capabilities/types.js";
 export { DISABLED_SEARCH_CAPABILITIES } from "./capabilities/types.js";
 export { resolveEffectiveCapabilities } from "./capabilities/resolve.js";
+
+export type { ExecuteResult, SqlStatement } from "./sql/statement.js";
+export { sql } from "./sql/statement.js";
+export type { SqlAdapter } from "./sql/adapter.js";
+export { assertSqlIdentifier, quoteIdent } from "./sql/ident.js";
+export { assertBindValue, assertBindValues } from "./sql/bind.js";
+
+export type {
+  PhysicalChange,
+  PhysicalChangeKind,
+  PhysicalObject,
+  PhysicalSchemaManifest,
+} from "./backend/manifest.js";
+export { classifyPhysicalChange } from "./backend/manifest.js";
+export type {
+  CompiledSearch,
+  IndexCompileContext,
+  SearchBackend,
+  SearchCompileContext,
+  SearchSort,
+} from "./backend/search-backend.js";

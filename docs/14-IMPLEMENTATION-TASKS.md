@@ -37,16 +37,16 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 2 — FTS5 proof on Bun
 
-- [ ] **P2-01** Implement `@siftlite/bun` SQL adapter.
-- [ ] **P2-02** Implement FTS5 backend capability probes.
-- [ ] **P2-03** Implement contentful FTS5 physical manifest/compiler proof.
-- [ ] **P2-04** Implement safe FTS5 text-query emitter.
-- [ ] **P2-05** Implement exact/multi-term/phrase/prefix search.
-- [ ] **P2-06** Implement weighted BM25/rank ordering and opaque score mapping.
-- [ ] **P2-07** Implement basic structured filter/sort compilation with bind budgeting.
-- [ ] **P2-08** Implement manual proof index/upsert/delete.
-- [ ] **P2-09** Probe FTS5 trigram/secure-delete/vocabulary capabilities.
-- [ ] **P2-10** Add controlled relevance and malicious-query corpus.
+- [x] **P2-01** Implement `@siftlite/bun` SQL adapter.
+- [x] **P2-02** Implement FTS5 backend capability probes.
+- [x] **P2-03** Implement contentful FTS5 physical manifest/compiler proof.
+- [x] **P2-04** Implement safe FTS5 text-query emitter.
+- [x] **P2-05** Implement exact/multi-term/phrase/prefix search.
+- [x] **P2-06** Implement weighted BM25/rank ordering and opaque score mapping.
+- [x] **P2-07** Implement basic structured filter/sort compilation with bind budgeting.
+- [x] **P2-08** Implement manual proof index/upsert/delete.
+- [x] **P2-09** Probe FTS5 trigram/secure-delete/vocabulary capabilities.
+- [x] **P2-10** Add controlled relevance and malicious-query corpus.
 
 **Gate:** FTS5 proof semantics pass on Bun and no raw ordinary input reaches backend grammar.
 

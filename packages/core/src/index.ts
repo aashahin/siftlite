@@ -158,3 +158,5 @@ export type {
   SearchCompileContext,
   SearchSort,
 } from "./backend/search-backend.js";
+export type { BackendScoreSemantics, NativeScoreDirection } from "./backend/score-semantics.js";
+export type { MaintenanceStrategy, MaintenanceVisibility } from "./backend/maintenance.js";

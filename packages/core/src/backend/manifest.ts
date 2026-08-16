@@ -24,6 +24,7 @@ export interface PhysicalSchemaManifest {
   readonly searchable: readonly string[];
   readonly projected: readonly string[];
   readonly weightsQueryTime: boolean;
+  readonly physicalConfig?: Readonly<Record<string, string | number | boolean>>;
 }
 
 export function classifyPhysicalChange(
@@ -45,6 +46,9 @@ export function classifyPhysicalChange(
   }
   if (JSON.stringify(previous.prefix) !== JSON.stringify(next.prefix)) {
     reasons.push("prefix");
+  }
+  if (JSON.stringify(previous.physicalConfig ?? {}) !== JSON.stringify(next.physicalConfig ?? {})) {
+    reasons.push("physical-config");
   }
   if (reasons.length > 0) {
     return { kind: "rebuild-required", reasons };

@@ -52,13 +52,13 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 3 — Early Turso-native pressure test
 
-- [ ] **P3-01** Create internal experimental Turso-native backend skeleton.
-- [ ] **P3-02** Compile representative logical schema to native physical manifest fixture.
-- [ ] **P3-03** Compile portable term/phrase/prefix subset to native search syntax fixture.
-- [ ] **P3-04** Model native score direction/weights/highlight capabilities.
-- [ ] **P3-05** Model native maintenance and visibility differences.
-- [ ] **P3-06** Audit core/public types for FTS5-specific assumptions and fix them.
-- [ ] **P3-07** Record upstream experimental/stability status and remote-test availability.
+- [x] **P3-01** Create internal experimental Turso-native backend skeleton.
+- [x] **P3-02** Compile representative logical schema to native physical manifest fixture.
+- [x] **P3-03** Compile portable term/phrase/prefix subset to native search syntax fixture.
+- [x] **P3-04** Model native score direction/weights/highlight capabilities.
+- [x] **P3-05** Model native maintenance and visibility differences.
+- [x] **P3-06** Audit core/public types for FTS5-specific assumptions and fix them.
+- [x] **P3-07** Record upstream experimental/stability status and remote-test availability.
 
 **Gate:** second-backend compiler can use core contracts without FTS5 leakage.
 

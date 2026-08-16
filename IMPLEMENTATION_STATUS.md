@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 2 — FTS5 proof on Bun
+Phase 3 — Early Turso-native architecture pressure test
 
 ## Status
 
@@ -16,6 +16,7 @@ PASS
 - P0-01 through P0-08
 - P1-01 through P1-15
 - P2-01 through P2-10
+- P3-01 through P3-07
 
 ## Tests executed
 
@@ -23,26 +24,20 @@ PASS
 bun run verify
 ```
 
-Results:
-
-- format/check: pass
-- lint: pass
-- typecheck: pass
-- unit/conformance: 55 passed / 0 failed
-- build: pass
-- export checks: pass
-
 ## Significant implementation decisions
 
-- Bun adapter wraps sync `bun:sqlite` in the async `SqlAdapter` contract and rejects bigint binds.
-- FTS5 MATCH is a single bound parameter produced from the portable AST.
-- Public FTS5 scores are `-bm25` so higher is better; scores remain backend-local.
-- FTS5 physical manifests omit query-time weights, so weight-only edits classify as runtime-only.
-- Phase 2 proof uses a manual contentful index; linked triggers land in Phase 4.
+- Turso-native code lives in `experimental/turso-native` as a private workspace
+  package. It is not `@siftlite/turso` and is not labeled stable.
+- Native weights are physical configuration; FTS5 weights remain query-time.
+- Core manifests gained optional `physicalConfig` so backends can classify
+  physical-only settings without FTS5 special cases.
+- Remote Turso Database tests are unavailable; compiler/manifest fixtures are
+  the Phase 3 evidence.
 
 ## Known upstream limitations
 
-- FTS5 `secure-delete` availability is probed rather than assumed.
+- Turso native FTS still documented as requiring `experimental: ["index_method"]`.
+- No Turso Database credentials in this environment (`remoteTestsAvailable: false`).
 
 ## Blockers
 
@@ -50,4 +45,4 @@ None.
 
 ## Latest verification result
 
-`bun run verify` passed on 2026-08-16 after Phase 2.
+`bun run verify` passed on 2026-08-16 after Phase 3 (60 tests).

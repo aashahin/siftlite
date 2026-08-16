@@ -17,6 +17,12 @@
         "@siftlite/core": "workspace:*",
       },
     },
+    "experimental/turso-native": {
+      "name": "@siftlite/turso-native-experimental",
+      "dependencies": {
+        "@siftlite/core": "workspace:*",
+      },
+    },
     "packages/bun": {
       "name": "@siftlite/bun",
       "version": "0.0.0",
@@ -122,6 +128,8 @@
     "@siftlite/fts5": ["@siftlite/fts5@workspace:packages/fts5"],
 
     "@siftlite/testing": ["@siftlite/testing@workspace:packages/testing"],
+
+    "@siftlite/turso-native-experimental": ["@siftlite/turso-native-experimental@workspace:experimental/turso-native"],
 
     "@types/bun": ["@types/bun@1.3.14", "", { "dependencies": { "bun-types": "1.3.14" } }, "sha512-h1hFqFVcvAvD9j9K7ZW7vd82aSA+rTdznZa+5bwvCwqSB1jmmfLcbIWhOLx1/+boy/xmjgCs/OMUL8hRJSmnPw=="],
 

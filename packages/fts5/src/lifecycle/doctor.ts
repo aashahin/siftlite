@@ -136,10 +136,7 @@ export async function doctorIndex(
 
 async function tableExists(adapter: SqlAdapter, name: string): Promise<boolean> {
   const rows = await adapter.query<{ name: string }>(
-    sql(
-      `SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?`,
-      [name],
-    ),
+    sql(`SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?`, [name]),
   );
   return rows.length > 0;
 }

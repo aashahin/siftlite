@@ -125,9 +125,7 @@ async function readMaster(
   return rows[0] ?? null;
 }
 
-function isDocsTable(
-  row: { readonly type: string; readonly sql: string | null } | null,
-): boolean {
+function isDocsTable(row: { readonly type: string; readonly sql: string | null } | null): boolean {
   if (!row || (row.type !== "table" && row.type !== "virtual")) {
     return false;
   }

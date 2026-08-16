@@ -123,7 +123,9 @@ describe("projection migration and maintenance", () => {
       pending?.activeGeneration ?? 1,
     );
     const mid = await adapter.query<{ category: string | null }>(
-      sql(`SELECT ${quoteIdent("category")} FROM ${quoteIdent(names.docs)} ORDER BY ${quoteIdent("doc_id")}`),
+      sql(
+        `SELECT ${quoteIdent("category")} FROM ${quoteIdent(names.docs)} ORDER BY ${quoteIdent("doc_id")}`,
+      ),
     );
     expect(mid.filter((row) => row.category != null).length).toBe(1);
 

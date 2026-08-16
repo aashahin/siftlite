@@ -61,7 +61,9 @@ describe("doctor", () => {
       row?.physicalIndexId ?? physicalIndexIdFor("products"),
       row?.activeGeneration ?? 1,
     );
-    await adapter.execute(sql(`DELETE FROM ${quoteIdent(names.fts)} WHERE ${quoteIdent("rowid")} = 1`));
+    await adapter.execute(
+      sql(`DELETE FROM ${quoteIdent(names.fts)} WHERE ${quoteIdent("rowid")} = 1`),
+    );
     const fast = await doctorIndex(adapter, definition);
     expect(fast.healthy).toBe(true);
     const deep = await doctorIndex(adapter, definition, { level: "deep" });
@@ -71,7 +73,9 @@ describe("doctor", () => {
 
   test("ensureRegistry rejects drifted registry columns", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
-    await adapter.execute(sql(`CREATE TABLE ${quoteIdent("__sift_registry")} (index_name TEXT PRIMARY KEY)`));
+    await adapter.execute(
+      sql(`CREATE TABLE ${quoteIdent("__sift_registry")} (index_name TEXT PRIMARY KEY)`),
+    );
     const definition = defineIndex({
       name: "notes",
       mode: "manual",

@@ -164,8 +164,7 @@ async function backfillLinked(
     ),
   ];
 
-  let sourceCursor: string | number =
-    definition.source.primaryKey.type === "safe-integer" ? 0 : "";
+  let sourceCursor: string | number = definition.source.primaryKey.type === "safe-integer" ? 0 : "";
   for (;;) {
     const page = await ctx.adapter.query<{ pk: string | number }>(
       sql(`SELECT ${pk} AS pk FROM ${source} WHERE ${pk} > ? ORDER BY ${pk} LIMIT ?`, [

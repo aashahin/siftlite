@@ -104,7 +104,12 @@ export async function applyProjectionMigration(args: {
     return { resumeToken };
   }
 
-  await createMissingProjectionIndexes(args.adapter, args.next, row.physicalIndexId, row.activeGeneration);
+  await createMissingProjectionIndexes(
+    args.adapter,
+    args.next,
+    row.physicalIndexId,
+    row.activeGeneration,
+  );
   if (args.next.mode === "linked" && args.next.source) {
     const triggers = triggerNames(names.docs);
     for (const name of [triggers.insert, triggers.update, triggers.delete]) {

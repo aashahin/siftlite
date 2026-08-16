@@ -336,7 +336,9 @@ function prepareManualDocument(
     });
   }
   const projectedFields = unique([...definition.filterableOrder, ...definition.sortableOrder]);
-  const searchableValues = definition.searchableOrder.map((field) => document.searchable[field] ?? "");
+  const searchableValues = definition.searchableOrder.map(
+    (field) => document.searchable[field] ?? "",
+  );
   return {
     sourceId,
     searchableValues,

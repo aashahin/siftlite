@@ -16,9 +16,7 @@ function catalogDefinition() {
 
 async function seededHandle() {
   const adapter = bunSqliteAdapter(new Database(":memory:"));
-  await adapter.execute(
-    sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, status TEXT)"),
-  );
+  await adapter.execute(sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, status TEXT)"));
   await adapter.execute(
     sql("INSERT INTO products (id, name, status) VALUES (?, ?, ?), (?, ?, ?), (?, ?, ?)", [
       "p1",

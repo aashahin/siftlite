@@ -16,7 +16,12 @@ import {
   SearchError,
 } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
-import { createManualFts5Proof, searchFts5Index, searchFts5IndexRaw, unsafeFts5Query } from "../src/index.ts";
+import {
+  createManualFts5Proof,
+  searchFts5Index,
+  searchFts5IndexRaw,
+  unsafeFts5Query,
+} from "../src/index.ts";
 
 function catalogDefinition() {
   return defineIndex({
@@ -279,9 +284,9 @@ describe("Phase 6 application search semantics", () => {
       queries += 1;
       return original(statement);
     };
-    await expect(
-      searchFts5Index(ctx, "sqlite", { signal: AbortSignal.abort() }),
-    ).rejects.toThrow(SearchError);
+    await expect(searchFts5Index(ctx, "sqlite", { signal: AbortSignal.abort() })).rejects.toThrow(
+      SearchError,
+    );
     expect(queries).toBe(0);
   });
 });

@@ -152,12 +152,36 @@ export type {
 } from "./backend/manifest.js";
 export { classifyPhysicalChange } from "./backend/manifest.js";
 export type {
+  CompiledHighlightColumn,
   CompiledSearch,
   IndexCompileContext,
   SearchBackend,
   SearchCompileContext,
   SearchSort,
 } from "./backend/search-backend.js";
+export type {
+  DocumentHydrator,
+  FacetBucket,
+  FacetDistribution,
+  FacetStats,
+  HighlightMarkers,
+  SearchDiagnostics,
+  SearchHit,
+  SearchPage,
+  SearchRequest,
+  SearchResponse,
+  SearchWarning,
+} from "./search/types.js";
+export { asc, desc, relevance } from "./search/sort.js";
+export { resolveSearchPage } from "./search/pagination.js";
+export type { ResolvedSearchPage } from "./search/pagination.js";
+export {
+  buildSynonymMap,
+  expandTextQueryWithSynonyms,
+  normalizeSynonymKey,
+} from "./search/synonyms.js";
+export type { SynonymExpansionOptions } from "./search/synonyms.js";
+export { attachHydratedDocuments, chunkIdsForHydration } from "./search/hydrate.js";
 export type { BackendScoreSemantics, NativeScoreDirection } from "./backend/score-semantics.js";
 export type { MaintenanceStrategy, MaintenanceVisibility } from "./backend/maintenance.js";
 export type {

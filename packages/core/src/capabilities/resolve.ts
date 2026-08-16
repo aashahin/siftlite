@@ -28,7 +28,7 @@ export function resolveEffectiveCapabilities(
     cancellation: ctx.backend.cancellation && ctx.runtime.cancellation,
   };
 
-  if (ctx.backend.vocabulary && ctx.probes.fts5Vocab !== true) {
+  if (ctx.backend.vocabulary && ctx.probes.fts5Vocab === false) {
     warnings.push({
       code: "vocabulary-unproven",
       message: "vocabulary support is unproven by runtime probes",
@@ -51,14 +51,14 @@ function resolveTypoFallback(
   if (!ctx.backend.typoFallback) {
     return false;
   }
+  if (ctx.policy.typoFallback === "disabled") {
+    return false;
+  }
   if (ctx.probes.trigramTokenizer !== true) {
     warnings.push({
       code: "trigram-unproven",
       message: "typo fallback requires a proven trigram tokenizer probe",
     });
-    return false;
-  }
-  if (ctx.policy.typoFallback === "disabled") {
     return false;
   }
   if (ctx.policy.typoFallback === "disabled-on-cost-sensitive-runtimes" && costSensitive) {

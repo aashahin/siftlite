@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 5 — Projection migrations and bounded maintenance
+Phase 6 — Full application semantics
 
 ## Status
 
@@ -19,10 +19,11 @@ PASS
 - P3-01 through P3-07
 - P4-01 through P4-15
 - P5-01 through P5-10
+- P6-01 through P6-12
 
 ## Remaining
 
-Phases 6–14 (application semantics, D1, libSQL, Arabic, ORMs, fuzzy, CLI, RC)
+Phases 7–14 (D1, libSQL, Arabic, ORMs, fuzzy, CLI, RC)
 and conditional Phase 15.
 
 ## Tests executed
@@ -31,11 +32,19 @@ and conditional Phase 15.
 
 ## Significant implementation decisions
 
-- Projection migrations add columns, backfill in chunks, rebuild B-tree indexes,
-  regenerate triggers, then update the registry.
-- FTS5 bounded merge uses `INSERT INTO fts(fts, rank) VALUES ('merge', N)` on
-  current Bun SQLite 3.53; the older `merge=N` string form is not accepted.
-- Secure-delete `required-if-supported` fails closed when the probe is unproven.
+- Application search is `searchFts5Index` in `@siftlite/fts5`. Canonical hits
+  are ID-first; hydration is an optional batched step.
+- Filter compilation reserves search, pagination, and scope binds before
+  expanding `IN`/`notIn` against the remaining proven runtime budget.
+- Facets are conjunctive and exclude NULL buckets. Numeric `min`/`max` stats
+  use the same candidate predicate as hits.
+- Empty-query browsing omits MATCH, rejects relevance sort, and returns
+  `score: null`.
+- Synonym expansion is one-level and index-local. Bidirectional maps do not
+  recurse. Exact totals run only when `includeTotal: true`.
+- Highlight uses FTS5 `snippet()` with caller-selected markers and is not
+  advertised as trusted HTML.
+- Diagnostics omit SQL, bound values, and raw query text.
 
 ## Known upstream limitations
 
@@ -46,8 +55,8 @@ and conditional Phase 15.
 
 ## Blockers
 
-None for Phases 0–5.
+None for Phases 0–6.
 
 ## Latest verification result
 
-Pending `bun run verify` after Phase 5.
+`bun run verify` passed on 2026-08-16 after Phase 6 (93 tests).

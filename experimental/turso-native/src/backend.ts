@@ -34,7 +34,14 @@ export function tursoNativeBackend(): SearchBackend {
             sql: `SELECT source_id, NULL AS rank FROM ${table} LIMIT ? OFFSET ?`,
             params: [ctx.limit, ctx.offset],
           };
-      return { statement, emptyQuery: match === undefined };
+      return {
+        statement,
+        emptyQuery: match === undefined,
+        fromSql: `FROM ${table}`,
+        whereSql: match ? "fts_match(?)" : "1 = 1",
+        whereParams: match ? [match] : [],
+        bindParameterCount: statement.params.length,
+      };
     },
   };
 }

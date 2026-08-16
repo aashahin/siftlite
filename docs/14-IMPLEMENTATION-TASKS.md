@@ -99,18 +99,18 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 6 — Full application semantics
 
-- [ ] **P6-01** Complete nested filter compiler and documented NULL behavior.
-- [ ] **P6-02** Make `IN`/`notIn` compilation consume remaining runtime bind budget.
-- [ ] **P6-03** Add deterministic field/relevance sorting with final tie-breaker.
-- [ ] **P6-04** Add conjunctive facets and numeric facet stats.
-- [ ] **P6-05** Add empty-query browsing with `score: null`.
-- [ ] **P6-06** Add bounded query-time synonyms.
-- [ ] **P6-07** Add highlight/snippet capability handling.
-- [ ] **P6-08** Add canonical ID-first results and hydrator interface.
-- [ ] **P6-09** Add hydration chunking based on remaining runtime bind budget.
-- [ ] **P6-10** Add default `hasMore` pagination.
-- [ ] **P6-11** Add explicit `includeTotal` exact-total path.
-- [ ] **P6-12** Add opt-in diagnostics without bound values/sensitive content.
+- [x] **P6-01** Complete nested filter compiler and documented NULL behavior.
+- [x] **P6-02** Make `IN`/`notIn` compilation consume remaining runtime bind budget.
+- [x] **P6-03** Add deterministic field/relevance sorting with final tie-breaker.
+- [x] **P6-04** Add conjunctive facets and numeric facet stats.
+- [x] **P6-05** Add empty-query browsing with `score: null`.
+- [x] **P6-06** Add bounded query-time synonyms.
+- [x] **P6-07** Add highlight/snippet capability handling.
+- [x] **P6-08** Add canonical ID-first results and hydrator interface.
+- [x] **P6-09** Add hydration chunking based on remaining runtime bind budget.
+- [x] **P6-10** Add default `hasMore` pagination.
+- [x] **P6-11** Add explicit `includeTotal` exact-total path.
+- [x] **P6-12** Add opt-in diagnostics without bound values/sensitive content.
 
 **Gate:** Tier A application semantics pass on Bun with budget/NULL/facet/total tests.
 

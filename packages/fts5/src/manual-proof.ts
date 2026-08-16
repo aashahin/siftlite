@@ -124,6 +124,7 @@ export async function createManualFts5Proof(args: {
         limit: options.limit ?? limits.defaultLimit,
         offset: options.offset ?? 0,
         limits,
+        runtimeLimits: args.adapter.runtimeCapabilities.limits,
       });
       const rows = await args.adapter.query<{ source_id: SourceId; rank: number | null }>(
         compiled.statement,

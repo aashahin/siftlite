@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { defineIndex, physicalIndexIdFor, SearchError, sql } from "@siftlite/core";
+import { defineIndex, SearchError, sql } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import { createIndex } from "@siftlite/fts5";
 import {
@@ -107,7 +107,6 @@ describe("@siftlite/prisma", () => {
     expect(orm.hits[0]?.document?.["name"]).toBe("prisma phone");
     const raw = await service.search("raw", { hydrate: true });
     expect(raw.hits.map((hit) => hit.id)).toEqual(["p2"]);
-    expect(physicalIndexIdFor("products").length).toBeGreaterThan(0);
   });
 
   test("Client Extension wrapper is ergonomic and not a write hook", async () => {

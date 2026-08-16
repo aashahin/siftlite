@@ -56,4 +56,4 @@ None for Phases 0–11.
 
 ## Latest verification result
 
-`bun run verify` passed after Phase 11 (format, lint, typecheck, build, 131 bun tests, 5 D1 Workers tests, export check).
+`bun run verify` passed after the Phase 8–11 guard pass (format, lint, typecheck, build, 137 bun tests, 5 D1 Workers tests, export check).

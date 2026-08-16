@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 3 — Early Turso-native architecture pressure test
+Phase 4 — Registry, linked/manual storage, lifecycle
 
 ## Status
 
@@ -17,6 +17,7 @@ PASS
 - P1-01 through P1-15
 - P2-01 through P2-10
 - P3-01 through P3-07
+- P4-01 through P4-15
 
 ## Tests executed
 
@@ -24,25 +25,26 @@ PASS
 bun run verify
 ```
 
+64 tests passed.
+
 ## Significant implementation decisions
 
-- Turso-native code lives in `experimental/turso-native` as a private workspace
-  package. It is not `@siftlite/turso` and is not labeled stable.
-- Native weights are physical configuration; FTS5 weights remain query-time.
-- Core manifests gained optional `physicalConfig` so backends can classify
-  physical-only settings without FTS5 special cases.
-- Remote Turso Database tests are unavailable; compiler/manifest fixtures are
-  the Phase 3 evidence.
+- Registry health is written only after physical verification.
+- Linked indexes are synchronized by INSERT/UPDATE/DELETE triggers, including
+  source primary-key updates that preserve `doc_id`.
+- Manual rebuild recreates FTS from the authoritative document table and does
+  not treat FTS as the recovery source.
+- Runtime-only definition edits keep `physical_index_id` and generation.
 
 ## Known upstream limitations
 
-- Turso native FTS still documented as requiring `experimental: ["index_method"]`.
-- No Turso Database credentials in this environment (`remoteTestsAvailable: false`).
+- Turso native FTS remains experimental (`index_method`).
+- Remote D1/Turso credentials are not available in this environment.
 
 ## Blockers
 
-None.
+None for Phases 0–4.
 
 ## Latest verification result
 
-`bun run verify` passed on 2026-08-16 after Phase 3 (60 tests).
+`bun run verify` passed after Phase 4.

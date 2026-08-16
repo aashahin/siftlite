@@ -64,21 +64,21 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 4 — Registry, linked/manual storage, lifecycle
 
-- [ ] **P4-01** Implement registry schema with stable physical ID + active generation.
-- [ ] **P4-02** Implement deterministic internal identifier validation/quoting.
-- [ ] **P4-03** Implement physical manifest hash/version and change classifier.
-- [ ] **P4-04** Implement typed linked projection/document table compiler.
-- [ ] **P4-05** Implement linked contentful FTS table compiler.
-- [ ] **P4-06** Generate INSERT trigger.
-- [ ] **P4-07** Generate UPDATE trigger including searchable/projected fields.
-- [ ] **P4-08** Generate source-primary-key update behavior preserving internal doc identity where valid.
-- [ ] **P4-09** Generate DELETE trigger/order.
-- [ ] **P4-10** Implement initial backfill.
-- [ ] **P4-11** Implement authoritative manual document table and derived FTS rebuild.
-- [ ] **P4-12** Implement create/drop/rebuild plans.
-- [ ] **P4-13** Implement `check` and `doctor` library APIs.
-- [ ] **P4-14** Enforce registry-update-last operation ordering.
-- [ ] **P4-15** Add drift/partial-object/source-ID/raw-SQL CRUD conformance tests.
+- [x] **P4-01** Implement registry schema with stable physical ID + active generation.
+- [x] **P4-02** Implement deterministic internal identifier validation/quoting.
+- [x] **P4-03** Implement physical manifest hash/version and change classifier.
+- [x] **P4-04** Implement typed linked projection/document table compiler.
+- [x] **P4-05** Implement linked contentful FTS table compiler.
+- [x] **P4-06** Generate INSERT trigger.
+- [x] **P4-07** Generate UPDATE trigger including searchable/projected fields.
+- [x] **P4-08** Generate source-primary-key update behavior preserving internal doc identity where valid.
+- [x] **P4-09** Generate DELETE trigger/order.
+- [x] **P4-10** Implement initial backfill.
+- [x] **P4-11** Implement authoritative manual document table and derived FTS rebuild.
+- [x] **P4-12** Implement create/drop/rebuild plans.
+- [x] **P4-13** Implement `check` and `doctor` library APIs.
+- [x] **P4-14** Enforce registry-update-last operation ordering.
+- [x] **P4-15** Add drift/partial-object/source-ID/raw-SQL CRUD conformance tests.
 
 **Gate:** lifecycle invariants and both storage modes are recoverable and drift-detectable.
 

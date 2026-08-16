@@ -56,6 +56,7 @@ export async function createManualFts5Proof(args: {
   readonly physicalIndexId?: string;
   readonly generation?: number;
   readonly limits?: ApplicationLimits;
+  readonly existingSchema?: boolean;
 }): Promise<ManualFts5Proof> {
   if (args.definition.mode !== "manual") {
     throw new SearchError({
@@ -72,7 +73,9 @@ export async function createManualFts5Proof(args: {
   const backend = sqliteFts5();
   const physical = compileFts5PhysicalManifest({ definition, physicalIndexId, generation });
 
-  await createSchema(args.adapter, definition, names);
+  if (args.existingSchema !== true) {
+    await createSchema(args.adapter, definition, names);
+  }
 
   return {
     physicalIndexId,

@@ -160,3 +160,12 @@ export type {
 } from "./backend/search-backend.js";
 export type { BackendScoreSemantics, NativeScoreDirection } from "./backend/score-semantics.js";
 export type { MaintenanceStrategy, MaintenanceVisibility } from "./backend/maintenance.js";
+export type {
+  CheckReport,
+  DoctorFinding,
+  DoctorReport,
+  RegistryHealth,
+  RegistryRow,
+} from "./lifecycle/registry.js";
+export { REGISTRY_TABLE } from "./lifecycle/registry.js";
+export { hashPhysicalManifest, physicalIndexIdFor } from "./lifecycle/hash.js";

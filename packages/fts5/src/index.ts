@@ -26,3 +26,14 @@ export type {
   ProofSearchOptions,
 } from "./manual-proof.js";
 export { physicalNames } from "./names.js";
+export {
+  createIndex,
+  dropIndex,
+  rebuildIndex,
+  syncRuntimeDefinition,
+} from "./lifecycle/operations.js";
+export type { LifecycleContext } from "./lifecycle/operations.js";
+export { checkIndex, doctorIndex } from "./lifecycle/doctor.js";
+export { ensureRegistry, readRegistry } from "./lifecycle/registry-sql.js";
+export { compileLinkedTriggers } from "./lifecycle/triggers.js";
+export { compileDocsDdl, compileFtsDdl } from "./lifecycle/schema.js";

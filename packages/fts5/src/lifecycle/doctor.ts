@@ -1,0 +1,127 @@
+import {
+  hashLogicalDefinition,
+  hashPhysicalManifest,
+  physicalIndexIdFor,
+  quoteIdent,
+  sql,
+  type CheckReport,
+  type DoctorFinding,
+  type DoctorReport,
+  type IndexDefinition,
+  type SqlAdapter,
+} from "@siftlite/core";
+import { compileFts5PhysicalManifest } from "../manifest.js";
+import { physicalNames } from "../names.js";
+import { ensureRegistry, readRegistry } from "./registry-sql.js";
+import { triggerNames } from "./triggers.js";
+
+export async function checkIndex(
+  adapter: SqlAdapter,
+  definition: IndexDefinition,
+): Promise<CheckReport> {
+  const report = await doctorIndex(adapter, definition);
+  return { ok: report.healthy, findings: report.findings };
+}
+
+export async function doctorIndex(
+  adapter: SqlAdapter,
+  definition: IndexDefinition,
+): Promise<DoctorReport> {
+  await ensureRegistry(adapter);
+  const findings: DoctorFinding[] = [];
+  const registry = await readRegistry(adapter, definition.name);
+  const physicalIndexId = registry?.physicalIndexId ?? physicalIndexIdFor(definition.name);
+  const generation = registry?.activeGeneration ?? 1;
+  const names = physicalNames(definition, physicalIndexId, generation);
+  const docs = await tableExists(adapter, names.docs);
+  const fts = await tableExists(adapter, names.fts);
+
+  if (!registry) {
+    if (docs || fts) {
+      findings.push({
+        severity: "error",
+        code: "partial-physical",
+        message: "physical objects exist without a healthy registry row",
+      });
+    } else {
+      findings.push({
+        severity: "error",
+        code: "index-missing",
+        message: "index is not registered",
+      });
+    }
+    return { healthy: false, findings, registry: null };
+  }
+
+  if (registry.health !== "healthy") {
+    findings.push({
+      severity: "error",
+      code: "registry-unhealthy",
+      message: "registry health is not healthy",
+    });
+  }
+
+  if (!docs || !fts) {
+    findings.push({
+      severity: "error",
+      code: "missing-physical",
+      message: "required docs/fts objects are missing",
+    });
+  }
+
+  const expectedDefinition = hashLogicalDefinition(definition);
+  if (registry.definitionHash !== expectedDefinition) {
+    findings.push({
+      severity: "warn",
+      code: "definition-drift",
+      message: "logical definition hash differs from registry",
+    });
+  }
+
+  const manifest = compileFts5PhysicalManifest({
+    definition,
+    physicalIndexId,
+    generation,
+  });
+  if (registry.physicalSchemaHash !== hashPhysicalManifest(manifest)) {
+    findings.push({
+      severity: "error",
+      code: "physical-drift",
+      message: "physical schema hash differs from registry",
+    });
+  }
+
+  if (definition.mode === "linked" && definition.source) {
+    const triggers = triggerNames(names.docs);
+    for (const name of [triggers.insert, triggers.update, triggers.delete]) {
+      if (!(await triggerExists(adapter, name))) {
+        findings.push({
+          severity: "error",
+          code: "missing-trigger",
+          message: `trigger ${name} is missing`,
+        });
+      }
+    }
+  }
+
+  const healthy = findings.every((finding) => finding.severity !== "error");
+  return { healthy, findings, registry };
+}
+
+async function tableExists(adapter: SqlAdapter, name: string): Promise<boolean> {
+  const rows = await adapter.query<{ name: string }>(
+    sql(`SELECT name FROM sqlite_master WHERE name = ?`, [name]),
+  );
+  return rows.length > 0;
+}
+
+async function triggerExists(adapter: SqlAdapter, name: string): Promise<boolean> {
+  const rows = await adapter.query<{ name: string }>(
+    sql(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?`, [name]),
+  );
+  return rows.length > 0;
+}
+
+export function quoteRegistryIdent(name: string): string {
+  return quoteIdent(name);
+}

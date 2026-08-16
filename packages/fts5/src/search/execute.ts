@@ -3,7 +3,8 @@ import {
   attachHydratedDocuments,
   DEFAULT_APPLICATION_LIMITS,
   expandTextQueryWithSynonyms,
-  parsePlainTextQuery,
+  normalizeSynonymCatalog,
+  parseIndexTextQuery,
   resolveSearchPage,
   SearchError,
   sql,
@@ -52,11 +53,16 @@ export async function searchFts5Index(
     assertFilterCannotCarryScope(request.filter);
   }
 
-  const parsed = parsePlainTextQuery(query, {
+  const parsed = parseIndexTextQuery(query, {
     limits,
     matchingStrategy: request.matchingStrategy ?? ctx.definition.matchingStrategy,
+    normalization: ctx.definition.normalization,
   });
-  const textQuery = expandTextQueryWithSynonyms(parsed, ctx.definition.synonyms, { limits });
+  const textQuery = expandTextQueryWithSynonyms(
+    parsed,
+    normalizeSynonymCatalog(ctx.definition.synonyms, ctx.definition.normalization),
+    { limits },
+  );
   const emptyQuery = textQuery.kind === "empty";
   const sort = emptyQuery ? (request.sort ?? []) : request.sort;
   const highlightRequested = (request.highlight?.length ?? 0) > 0;

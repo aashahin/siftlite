@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 8 — libSQL adapter
+Phase 9 — Portable Arabic normalization
 
 ## Status
 
@@ -22,10 +22,11 @@ PASS
 - P6-01 through P6-12
 - P7-01 through P7-12
 - P8-01 through P8-06
+- P9-01 through P9-08
 
 ## Remaining
 
-Phases 9–14 (Arabic, ORMs, fuzzy, CLI, RC) and conditional Phase 15.
+Phases 10–14 (ORMs, fuzzy, CLI, RC) and conditional Phase 15.
 
 ## Tests executed
 
@@ -33,22 +34,27 @@ Phases 9–14 (Arabic, ORMs, fuzzy, CLI, RC) and conditional Phase 15.
 
 ## Significant implementation decisions
 
-- `@siftlite/libsql` accepts `LibsqlClientLike`. `@libsql/client` is an optional
-  peer and is never imported by `@siftlite/core`.
-- Local libSQL uses proven SQLite-like bind/function limits. Remote limits stay
-  unproven and `costSensitive` until probed.
-- This adapter is the FTS5 path. It is not Turso-native Tantivy FTS.
+- Linked-mode normalization is a finite replacement table with identical JS and
+  SQL `replace()` forms. No NFC/NFKC is applied on the portable path.
+- `arabic-basic` removes tatweel, U+064B–U+0652 harakat, and superscript alef,
+  and maps selected precomposed alef variants plus alef maqsura. `ة/ؤ/ئ`,
+  Arabic-Indic digits, presentation forms, and Quranic marks stay unchanged.
+- `numeric-arabic` is an optional second profile for U+0660–U+0669 only.
+- FTS stores normalized searchable text; `*_source` columns keep originals.
+- Application search normalizes raw query text once before the portable parser.
 
 ## Known upstream limitations
 
 - Turso native FTS remains experimental.
 - Remote D1/libSQL credentials are unavailable in this environment.
 - D1 export does not support databases containing FTS5 virtual tables.
+- FTS5 `unicode61` is not equivalent to the portable parser; combining Arabic
+  marks can split FTS tokens unless `arabic-basic` runs first.
 
 ## Blockers
 
-None for Phases 0–8.
+None for Phases 0–9.
 
 ## Latest verification result
 
-`bun run verify` passed after Phase 8 (format, lint, typecheck, build, 99 bun tests, 4 D1 Workers tests, export check).
+`bun run verify` passed after Phase 9 (format, lint, typecheck, build, 118 bun tests, 5 D1 Workers tests, export check).

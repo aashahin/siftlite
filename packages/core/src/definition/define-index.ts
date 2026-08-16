@@ -1,4 +1,6 @@
 import { SearchError } from "../errors/search-error.js";
+import { normalizeSynonymCatalog } from "../normalize/apply.js";
+import { validateNormalizationProfiles } from "../normalize/registry.js";
 import { assertFieldName, assertIndexName, assertTableName } from "./identifiers.js";
 import { resolveFieldType } from "./resolve-field-type.js";
 import {
@@ -117,16 +119,7 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
     }
   }
 
-  const normalization = [...(input.normalization ?? [])];
-  for (const profile of normalization) {
-    if (typeof profile !== "string" || profile.length === 0) {
-      throw new SearchError({
-        code: "SEARCH_CONFIG_INVALID",
-        message: "normalization profiles must be non-empty strings",
-        details: { reason: "invalid-normalization" },
-      });
-    }
-  }
+  const normalization = validateNormalizationProfiles(input.normalization ?? [], input.mode);
 
   const matchingStrategy = input.matchingStrategy ?? "all";
   if (
@@ -161,6 +154,7 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
     }
     synonyms[key] = [...values];
   }
+  normalizeSynonymCatalog(synonyms, normalization);
 
   return {
     logicalFormatVersion: LOGICAL_FORMAT_VERSION,

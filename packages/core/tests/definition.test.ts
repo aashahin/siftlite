@@ -82,6 +82,10 @@ describe("index definition", () => {
     expect(() => defineIndex({ ...productsInput(), facets: ["brand"] })).toThrow(SearchError);
   });
 
+  test("rejects unknown normalization profiles", () => {
+    expect(() => defineIndex({ ...productsInput(), normalization: ["nfkc"] })).toThrow(SearchError);
+  });
+
   test("timestamp fields require an explicit unit", () => {
     expect(() =>
       defineIndex({

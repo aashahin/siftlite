@@ -144,14 +144,14 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 9 — Arabic normalization
 
-- [ ] **P9-01** Implement normalizer interface and index-level profile validation.
-- [ ] **P9-02** Implement conservative JS `arabic-basic` replacements/removals.
-- [ ] **P9-03** Implement deterministic portable SQL expression compiler.
-- [ ] **P9-04** Build curated Arabic equivalence/non-equivalence corpus.
-- [ ] **P9-05** Run JS-vs-SQL corpus on Bun.
-- [ ] **P9-06** Run corpus in D1 Workers runtime.
-- [ ] **P9-07** Run corpus on libSQL.
-- [ ] **P9-08** Add punctuation/combining-mark/mixed Arabic-English parser/analyzer fixtures.
+- [x] **P9-01** Implement normalizer interface and index-level profile validation.
+- [x] **P9-02** Implement conservative JS `arabic-basic` replacements/removals.
+- [x] **P9-03** Implement deterministic portable SQL expression compiler.
+- [x] **P9-04** Build curated Arabic equivalence/non-equivalence corpus.
+- [x] **P9-05** Run JS-vs-SQL corpus on Bun.
+- [x] **P9-06** Run corpus in D1 Workers runtime.
+- [x] **P9-07** Run corpus on libSQL.
+- [x] **P9-08** Add punctuation/combining-mark/mixed Arabic-English parser/analyzer fixtures.
 
 **Gate:** accepted linked-mode transforms are identical across all stable v1 runtimes.
 

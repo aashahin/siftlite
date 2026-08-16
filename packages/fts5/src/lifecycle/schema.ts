@@ -1,5 +1,6 @@
 import { quoteIdent, type IndexDefinition } from "@siftlite/core";
 import { physicalNames, sourceIdColumnType } from "../names.js";
+import { compileSearchableExpression } from "../normalize-sql.js";
 
 export function compileDocsDdl(
   definition: IndexDefinition,
@@ -61,7 +62,9 @@ export function compileBackfillSql(
   ];
   const ftsSelect = [
     quoteIdent("doc_id"),
-    ...definition.searchableOrder.map((field) => quoteIdent(`${field}_source`)),
+    ...definition.searchableOrder.map((field) =>
+      compileSearchableExpression(definition, quoteIdent(`${field}_source`)),
+    ),
   ];
   return [
     `INSERT INTO ${docs} (${docCols.join(", ")}) SELECT ${docSelect.join(", ")} FROM ${source}`,

@@ -10,6 +10,7 @@ import {
 } from "@siftlite/core";
 import { compileFts5PhysicalManifest } from "../manifest.js";
 import { physicalNames } from "../names.js";
+import { compileSearchableExpression } from "../normalize-sql.js";
 import { compileBackfillSql, compileDocsDdl, compileFtsDdl } from "./schema.js";
 import { deleteRegistry, ensureRegistry, readRegistry, writeRegistry } from "./registry-sql.js";
 import { compileLinkedTriggers, triggerNames } from "./triggers.js";
@@ -63,7 +64,9 @@ export async function rebuildIndex(ctx: LifecycleContext): Promise<void> {
     ];
     const ftsSelect = [
       quoteIdent("doc_id"),
-      ...ctx.definition.searchableOrder.map((field) => quoteIdent(`${field}_source`)),
+      ...ctx.definition.searchableOrder.map((field) =>
+        compileSearchableExpression(ctx.definition, quoteIdent(`${field}_source`)),
+      ),
     ];
     await ctx.adapter.execute(
       sql(`INSERT INTO ${fts} (${ftsCols.join(", ")}) SELECT ${ftsSelect.join(", ")} FROM ${docs}`),

@@ -1,5 +1,6 @@
 import { quoteIdent, type IndexDefinition } from "@siftlite/core";
 import { physicalNames } from "../names.js";
+import { compileSearchableExpression } from "../normalize-sql.js";
 
 export function triggerNames(docs: string): { insert: string; update: string; delete: string } {
   return {
@@ -44,9 +45,14 @@ export function compileLinkedTriggers(
   const ftsInsertCols = [quoteIdent("rowid"), ...searchable.map((field) => quoteIdent(field))];
   const ftsInsertVals = [
     `(SELECT ${quoteIdent("doc_id")} FROM ${docs} WHERE ${quoteIdent("source_id")} = NEW.${pk})`,
-    ...searchable.map((field) => `NEW.${quoteIdent(field)}`),
+    ...searchable.map((field) =>
+      compileSearchableExpression(definition, `NEW.${quoteIdent(field)}`),
+    ),
   ];
-  const ftsUpdateSet = searchable.map((field) => `${quoteIdent(field)} = NEW.${quoteIdent(field)}`);
+  const ftsUpdateSet = searchable.map(
+    (field) =>
+      `${quoteIdent(field)} = ${compileSearchableExpression(definition, `NEW.${quoteIdent(field)}`)}`,
+  );
 
   return [
     `CREATE TRIGGER ${quoteIdent(triggers.insert)} AFTER INSERT ON ${source} BEGIN

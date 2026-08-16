@@ -1,7 +1,8 @@
 import {
   assertSourceId,
   DEFAULT_APPLICATION_LIMITS,
-  parsePlainTextQuery,
+  normalizeIndexText,
+  parseIndexTextQuery,
   quoteIdent,
   SearchError,
   sql,
@@ -108,9 +109,10 @@ export async function createManualFts5Proof(args: {
       if (options.filter) {
         validateFilter(options.filter, { limits, definition });
       }
-      const textQuery = parsePlainTextQuery(query, {
+      const textQuery = parseIndexTextQuery(query, {
         limits,
         matchingStrategy: options.matchingStrategy ?? definition.matchingStrategy,
+        normalization: definition.normalization,
       });
       const compiled = backend.compileSearch({
         definition,
@@ -201,6 +203,9 @@ async function upsertDocument(
   const searchableValues = definition.searchableOrder.map(
     (field) => document.searchable[field] ?? "",
   );
+  const normalizedSearchable = searchableValues.map((value) =>
+    normalizeIndexText(value, definition.normalization),
+  );
   const projectedValues = projectedFields.map((field) => document.filterable?.[field] ?? null);
 
   let docId = existing[0]?.doc_id;
@@ -234,7 +239,7 @@ async function upsertDocument(
     await adapter.execute(
       sql(
         `INSERT INTO ${quoteIdent(names.fts)} (${quoteIdent("rowid")}, ${definition.searchableOrder.map((field) => quoteIdent(field)).join(", ")}) VALUES (${["?", ...searchableValues.map(() => "?")].join(", ")})`,
-        [docId, ...searchableValues],
+        [docId, ...normalizedSearchable],
       ),
     );
     return;
@@ -254,7 +259,7 @@ async function upsertDocument(
   await adapter.execute(
     sql(
       `UPDATE ${quoteIdent(names.fts)} SET ${ftsAssignments.join(", ")} WHERE ${quoteIdent("rowid")} = ?`,
-      [...searchableValues, docId],
+      [...normalizedSearchable, docId],
     ),
   );
 }

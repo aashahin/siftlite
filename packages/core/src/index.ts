@@ -182,6 +182,36 @@ export {
 } from "./search/synonyms.js";
 export type { SynonymExpansionOptions } from "./search/synonyms.js";
 export { attachHydratedDocuments, chunkIdsForHydration } from "./search/hydrate.js";
+export type {
+  ArabicCorpusCase,
+  ArabicCorpusKind,
+} from "./normalize/corpus.js";
+export { ARABIC_NORMALIZATION_CORPUS } from "./normalize/corpus.js";
+export type {
+  LinkedNormalizerId,
+  PortableNormalizer,
+  PortableNormalizerId,
+  PortableNormalizerSpec,
+  SqlExpression,
+} from "./normalize/types.js";
+export { definePortableNormalizer } from "./normalize/define.js";
+export { arabicBasic, ARABIC_BASIC_REPLACEMENTS } from "./normalize/arabic-basic.js";
+export { numericArabic, NUMERIC_ARABIC_REPLACEMENTS } from "./normalize/numeric-arabic.js";
+export {
+  getPortableNormalizer,
+  isPortableNormalizerId,
+  LINKED_NORMALIZER_IDS,
+  validateNormalizationProfiles,
+} from "./normalize/registry.js";
+export {
+  compileIndexNormalizationSql,
+  normalizeIndexText,
+  normalizeSynonymCatalog,
+  normalizeTextQuery,
+} from "./normalize/apply.js";
+export type { ParseIndexQueryOptions } from "./normalize/query.js";
+export { parseIndexTextQuery } from "./normalize/query.js";
+export { sqlStringLiteral } from "./sql/literal.js";
 export type { BackendScoreSemantics, NativeScoreDirection } from "./backend/score-semantics.js";
 export type { MaintenanceStrategy, MaintenanceVisibility } from "./backend/maintenance.js";
 export type {

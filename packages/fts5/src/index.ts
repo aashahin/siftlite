@@ -41,6 +41,7 @@ export type { LifecycleContext } from "./lifecycle/operations.js";
 export { checkIndex, doctorIndex } from "./lifecycle/doctor.js";
 export { ensureRegistry, readRegistry } from "./lifecycle/registry-sql.js";
 export { compileLinkedTriggers } from "./lifecycle/triggers.js";
+export { compileSearchableExpression } from "./normalize-sql.js";
 export { compileDocsDdl, compileFtsDdl } from "./lifecycle/schema.js";
 export {
   applyProjectionMigration,

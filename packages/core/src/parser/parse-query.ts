@@ -17,6 +17,11 @@ export interface ParseQueryOptions {
 
 const FTS_OPERATOR_LOOKALIKES = new Set(["AND", "OR", "NOT", "NEAR", "NOTAND", "MATCH"]);
 
+/**
+ * Portable query parser. This is not an FTS5 `unicode61` or Tantivy clone.
+ * Combining marks stay attached; punctuation is a portable intent boundary.
+ * Index-level normalization runs before this function on the application path.
+ */
 export function parsePlainTextQuery(input: string, options: ParseQueryOptions): TextQuery {
   if (input.includes("\u0000")) {
     throw new SearchError({

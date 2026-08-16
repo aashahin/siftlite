@@ -67,6 +67,26 @@ describe("portable query parser", () => {
     expect(collectTextTerms(ast)).toEqual(["ايفون", "📱", "pro"]);
   });
 
+  test("splits Arabic punctuation and keeps tatweel attached before normalization", () => {
+    expect(collectTextTerms(parsePlainTextQuery("كتاب؟ pro", { limits }))).toEqual(["كتاب", "pro"]);
+    expect(collectTextTerms(parsePlainTextQuery("كتـــاب", { limits }))).toEqual(["كتـــاب"]);
+    expect(collectTextTerms(parsePlainTextQuery("SKU-آيفون-15", { limits }))).toEqual([
+      "SKU",
+      "آيفون",
+      "15",
+    ]);
+  });
+
+  test("does not treat FTS operators inside Arabic tokens as grammar", () => {
+    const ast = parsePlainTextQuery('NEAR "ايفون*" AND title:foo', { limits });
+    const terms = collectTextTerms(ast);
+    expect(terms).toContain("NEAR");
+    expect(terms).toContain("AND");
+    expect(terms).toContain("title");
+    expect(terms).toContain("foo");
+    expect(JSON.stringify(ast)).not.toContain("MATCH");
+  });
+
   test("rejects unclosed phrases, NUL, and over-limit queries", () => {
     expect(() => parsePlainTextQuery('"iphone', { limits })).toThrow(SearchError);
     expect(() => parsePlainTextQuery("iphone\u0000pro", { limits })).toThrow(SearchError);

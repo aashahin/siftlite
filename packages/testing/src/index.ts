@@ -15,3 +15,4 @@ export type SiftLiteTestingPackage = typeof SIFTLITE_TESTING_PACKAGE;
 
 export { runSqlAdapterConformance } from "./adapter-conformance.js";
 export { runFts5SearchConformance } from "./fts5-conformance.js";
+export { runArabicNormalizationCorpus } from "./arabic-conformance.js";

@@ -1,9 +1,9 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { createClient } from "@libsql/client";
+import { createClient } from "../../libsql/node_modules/@libsql/client";
 import { defineIndex, SearchError, sql } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
-import { libsqlAdapter, wrapLibsqlClient } from "@siftlite/libsql";
+import { libsqlAdapter, wrapLibsqlClient } from "../../libsql/src/index.ts";
 import { createIndex } from "@siftlite/fts5";
 import {
   createPrismaHydrator,
@@ -61,7 +61,7 @@ function createPrismaLikeLibsql(client: ReturnType<typeof createClient>): Prisma
   return {
     product: {
       async findMany(args: { where: Record<string, { in: readonly string[] }> }) {
-        const ids = args.where["id"]?.in ?? [];
+        const ids = args.where.id?.in ?? [];
         if (ids.length === 0) {
           return [];
         }
@@ -146,7 +146,7 @@ describe("@siftlite/prisma", () => {
     const index = productsIndex();
     await createIndex({ adapter, definition: index });
     const prisma = createPrismaLikeLibsql(client);
-    const product = prisma["product"] as {
+    const product = prisma.product as {
       create(data: ProductRow): Promise<ProductRow>;
     };
     await product.create({
@@ -172,7 +172,7 @@ describe("@siftlite/prisma", () => {
     });
     const orm = await service.search("prisma", { hydrate: true });
     expect(orm.hits.map((hit) => hit.id)).toEqual(["l1"]);
-    expect(orm.hits[0]?.document?.["name"]).toBe("prisma libsql phone");
+    expect(orm.hits[0]?.document?.name).toBe("prisma libsql phone");
     const raw = await service.search("raw", { hydrate: true });
     expect(raw.hits.map((hit) => hit.id)).toEqual(["l2"]);
   });

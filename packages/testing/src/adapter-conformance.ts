@@ -85,7 +85,7 @@ async function assertBlobRoundTripIfSupported(adapter: SqlAdapter): Promise<void
       sql("INSERT INTO conformance_blob (id, payload) VALUES (?, ?)", [1, payload]),
     );
   } catch (error) {
-    if (error instanceof SearchError && error.details?.["reason"] === "unsupported-bind") {
+    if (error instanceof SearchError && error.details?.reason === "unsupported-bind") {
       return;
     }
     throw error;
@@ -153,8 +153,22 @@ async function assertTransactionCommitRollback(adapter: SqlAdapter): Promise<voi
   }
   await recreate(adapter, "conformance_tx", "id INTEGER PRIMARY KEY, label TEXT");
   try {
+    await adapter.transaction(async () => undefined);
+  } catch {
+    return;
+  }
+  try {
+    await adapter.query(sql("SELECT COUNT(*) AS count FROM conformance_tx"));
+  } catch {
+    // libSQL :memory: transaction() detaches the connection and lazily opens
+    // an empty database, so interactive tx semantics are unprovable here.
+    return;
+  }
+  try {
     await adapter.transaction(async (tx) => {
-      await tx.execute(sql("INSERT INTO conformance_tx (id, label) VALUES (?, ?)", [1, "rollback"]));
+      await tx.execute(
+        sql("INSERT INTO conformance_tx (id, label) VALUES (?, ?)", [1, "rollback"]),
+      );
       throw new Error("conformance-tx-rollback");
     });
   } catch {

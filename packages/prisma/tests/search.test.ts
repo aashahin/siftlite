@@ -124,7 +124,7 @@ describe("@siftlite/prisma", () => {
     ]);
     const prisma = createPrismaLike(db);
     const extension = searchExtension({ prisma, adapter, models: { product: index } });
-    const result = await extension.model["product"]?.search("extension", {
+    const result = await extension.model.product?.search("extension", {
       hydrate: true,
     });
     expect(result?.hits.map((hit) => hit.id)).toEqual(["p3"]);
@@ -149,7 +149,7 @@ describe("@siftlite/prisma", () => {
       adapter: bunSqliteAdapter(new Database(":memory:")),
     });
     const documents = await hydrator.hydrate([0]);
-    expect(documents.get(0)?.["title"]).toBe("zero");
+    expect(documents.get(0)?.title).toBe("zero");
   });
 
   test("Prisma hydrator fails when the definition has no source primary key", () => {

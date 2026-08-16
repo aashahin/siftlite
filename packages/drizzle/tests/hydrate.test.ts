@@ -24,6 +24,6 @@ describe("@siftlite/drizzle hydration", () => {
       index,
       adapter: bunSqliteAdapter(sqlite),
     }).hydrate([0]);
-    expect(documents.get(0)?.["title"]).toBe("zero");
+    expect(documents.get(0)?.title).toBe("zero");
   });
 });

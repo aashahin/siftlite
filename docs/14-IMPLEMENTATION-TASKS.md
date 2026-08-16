@@ -157,13 +157,13 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 10 — Drizzle
 
-- [ ] **P10-01** Define supported Drizzle versions/metadata surface.
-- [ ] **P10-02** Map Drizzle schema metadata to canonical SiftLite schema/codecs.
-- [ ] **P10-03** Implement typed `defineDrizzleIndex`.
-- [ ] **P10-04** Integrate deterministic migration generation.
-- [ ] **P10-05** Implement batched rank-preserving hydration.
-- [ ] **P10-06** Add compile-time positive/negative fixtures.
-- [ ] **P10-07** Add Bun/D1/libSQL CRUD/raw-SQL trigger ownership fixtures as applicable.
+- [x] **P10-01** Define supported Drizzle versions/metadata surface.
+- [x] **P10-02** Map Drizzle schema metadata to canonical SiftLite schema/codecs.
+- [x] **P10-03** Implement typed `defineDrizzleIndex`.
+- [x] **P10-04** Integrate deterministic migration generation.
+- [x] **P10-05** Implement batched rank-preserving hydration.
+- [x] **P10-06** Add compile-time positive/negative fixtures.
+- [x] **P10-07** Add Bun/D1/libSQL CRUD/raw-SQL trigger ownership fixtures as applicable.
 
 **Gate:** ORM is ergonomic metadata only; it does not own synchronization or core types.
 

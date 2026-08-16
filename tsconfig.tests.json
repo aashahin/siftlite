@@ -12,6 +12,7 @@
   },
   "include": [
     "packages/*/tests/**/*.ts",
+    "packages/drizzle/type-fixtures/**/*.ts",
     "experimental/*/src/**/*.ts",
     "experimental/*/tests/**/*.ts",
     "tests/**/*.ts",

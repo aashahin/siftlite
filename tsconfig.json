@@ -6,6 +6,7 @@
     { "path": "./packages/bun" },
     { "path": "./packages/d1" },
     { "path": "./packages/libsql" },
-    { "path": "./packages/testing" }
+    { "path": "./packages/testing" },
+    { "path": "./packages/drizzle" }
   ]
 }

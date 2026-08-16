@@ -15,6 +15,7 @@ const PUBLISHED_PACKAGES = [
   "packages/d1",
   "packages/libsql",
   "packages/testing",
+  "packages/drizzle",
 ] as const;
 
 interface PackageExportMap {

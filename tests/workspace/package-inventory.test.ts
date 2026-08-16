@@ -11,6 +11,7 @@ const ALLOWED_PUBLISHED_PACKAGES = [
   "@siftlite/d1",
   "@siftlite/libsql",
   "@siftlite/testing",
+  "@siftlite/drizzle",
 ] as const;
 
 describe("workspace package inventory", () => {

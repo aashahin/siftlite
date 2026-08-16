@@ -1,0 +1,15 @@
+{
+  "name": "@siftlite/example-drizzle-bun",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "bun run src/main.ts"
+  },
+  "dependencies": {
+    "@siftlite/bun": "workspace:*",
+    "@siftlite/core": "workspace:*",
+    "@siftlite/drizzle": "workspace:*",
+    "@siftlite/fts5": "workspace:*",
+    "drizzle-orm": "0.45.2"
+  }
+}

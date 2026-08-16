@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 9 — Portable Arabic normalization
+Phase 10 — Drizzle integration
 
 ## Status
 
@@ -23,10 +23,11 @@ PASS
 - P7-01 through P7-12
 - P8-01 through P8-06
 - P9-01 through P9-08
+- P10-01 through P10-07
 
 ## Remaining
 
-Phases 10–14 (ORMs, fuzzy, CLI, RC) and conditional Phase 15.
+Phases 11–14 (Prisma, fuzzy, CLI, RC) and conditional Phase 15.
 
 ## Tests executed
 
@@ -34,27 +35,28 @@ Phases 10–14 (ORMs, fuzzy, CLI, RC) and conditional Phase 15.
 
 ## Significant implementation decisions
 
-- Linked-mode normalization is a finite replacement table with identical JS and
-  SQL `replace()` forms. No NFC/NFKC is applied on the portable path.
-- `arabic-basic` removes tatweel, U+064B–U+0652 harakat, and superscript alef,
-  and maps selected precomposed alef variants plus alef maqsura. `ة/ؤ/ئ`,
-  Arabic-Indic digits, presentation forms, and Quranic marks stay unchanged.
-- `numeric-arabic` is an optional second profile for U+0660–U+0669 only.
-- FTS stores normalized searchable text; `*_source` columns keep originals.
-- Application search normalizes raw query text once before the portable parser.
+- `@siftlite/drizzle` is a companion. It maps public Drizzle 0.45 metadata
+  (`getTableName`, `getTableColumns`, column `name`/`dataType`/`columnType`/
+  timestamp `mode`) into canonical SiftLite codecs.
+- Blob, bigint, and JSON columns fail at definition time. Timestamp units come
+  from Drizzle's explicit `timestamp` / `timestamp_ms` modes only.
+- Linked-mode field names are SQL column names so triggers bind `NEW."col"`.
+- Synchronization remains trigger-owned; ORM and raw SQL writes are both tested
+  on Bun and local libSQL.
 
 ## Known upstream limitations
 
 - Turso native FTS remains experimental.
 - Remote D1/libSQL credentials are unavailable in this environment.
 - D1 export does not support databases containing FTS5 virtual tables.
-- FTS5 `unicode61` is not equivalent to the portable parser; combining Arabic
-  marks can split FTS tokens unless `arabic-basic` runs first.
+- Drizzle 0.45 stores bigint as `blob({ mode: "bigint" })`, not integer mode.
+- A Drizzle client was not bundled into the D1 Workers test pool; D1 still runs
+  shared FTS5/Arabic conformance, and trigger ownership is proven on Bun/libSQL.
 
 ## Blockers
 
-None for Phases 0–9.
+None for Phases 0–10.
 
 ## Latest verification result
 
-`bun run verify` passed after Phase 9 (format, lint, typecheck, build, 118 bun tests, 5 D1 Workers tests, export check).
+`bun run verify` passed after Phase 10 (format, lint, typecheck, build, 127 bun tests, 5 D1 Workers tests, export check).

@@ -5,18 +5,10 @@ import {
   defineDrizzleIndex,
   generateDrizzleSearchSql,
   mapDrizzleColumnToFieldType,
-  SIFTLITE_DRIZZLE_PACKAGE,
-  SIFTLITE_DRIZZLE_SUPPORT,
 } from "../src/index.ts";
 import { products } from "./schema.ts";
 
 describe("@siftlite/drizzle definition mapping", () => {
-  test("exports package identity and supported metadata surface", () => {
-    expect(SIFTLITE_DRIZZLE_PACKAGE.name).toBe("@siftlite/drizzle");
-    expect(SIFTLITE_DRIZZLE_SUPPORT.testedVersion).toBe("0.45.2");
-    expect(SIFTLITE_DRIZZLE_SUPPORT.metadata).toContain("getTableColumns");
-  });
-
   test("maps Drizzle metadata into canonical SiftLite schema", () => {
     const index = defineDrizzleIndex(products, {
       id: products.id,

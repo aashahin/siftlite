@@ -1,14 +1,15 @@
 import {
-  assertSourceId,
   chunkIdsForHydration,
   createStatementBudget,
   DEFAULT_APPLICATION_LIMITS,
+  SearchError,
   type ApplicationLimits,
   type DocumentHydrator,
   type IndexDefinition,
   type SourceId,
   type SqlAdapter,
 } from "@siftlite/core";
+import { restoreSourceId } from "@siftlite/fts5";
 import { getPrismaModel, type PrismaClientLike } from "./client.js";
 
 export function createPrismaHydrator<TRow extends Record<string, unknown>>(args: {
@@ -18,8 +19,16 @@ export function createPrismaHydrator<TRow extends Record<string, unknown>>(args:
   readonly adapter: SqlAdapter;
   readonly limits?: ApplicationLimits;
 }): DocumentHydrator<TRow> {
+  const source = args.definition.source;
+  if (!source) {
+    throw new SearchError({
+      code: "SEARCH_CONFIG_INVALID",
+      message: "Prisma hydration requires a source primary key",
+      details: { reason: "missing-source" },
+    });
+  }
   const limits = args.limits ?? DEFAULT_APPLICATION_LIMITS;
-  const idField = args.definition.source?.primaryKey.field ?? "id";
+  const idField = source.primaryKey.field;
   const delegate = getPrismaModel(args.prisma, args.model);
 
   return {
@@ -36,10 +45,7 @@ export function createPrismaHydrator<TRow extends Record<string, unknown>>(args:
           }),
         );
         for (const row of rows) {
-          const id = assertSourceId(
-            typeof row[idField] === "number" ? row[idField] : String(row[idField]),
-          );
-          documents.set(id, row as TRow);
+          documents.set(restoreSourceId(args.definition, row[idField]), row as TRow);
         }
       }
       return documents;

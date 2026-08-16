@@ -1,8 +1,14 @@
-import type { IndexDefinition, SearchRequest, SqlAdapter } from "@siftlite/core";
+import {
+  SearchError,
+  type IndexDefinition,
+  type SearchRequest,
+  type SqlAdapter,
+} from "@siftlite/core";
 import type { PrismaClientLike } from "./client.js";
 import { createPrismaSearch } from "./search.js";
 
 export interface SearchExtensionOptions {
+  readonly prisma: PrismaClientLike;
   readonly adapter: SqlAdapter;
   readonly models: Readonly<Record<string, IndexDefinition>>;
 }
@@ -10,6 +16,9 @@ export interface SearchExtensionOptions {
 /**
  * Optional Prisma Client Extension wrapper. Ergonomic only — not required
  * for correctness and not used as a write hook.
+ *
+ * Close over the real Prisma client. `$extends` model methods do not receive
+ * `{ client }` as `this`.
  */
 export function searchExtension(options: SearchExtensionOptions): {
   readonly name: "siftlite-search";
@@ -18,7 +27,6 @@ export function searchExtension(options: SearchExtensionOptions): {
       string,
       {
         search(
-          this: unknown,
           query: string,
           request?: SearchRequest,
         ): ReturnType<ReturnType<typeof createPrismaSearch>["search"]>;
@@ -26,23 +34,29 @@ export function searchExtension(options: SearchExtensionOptions): {
     >
   >;
 } {
+  if (options.prisma === null || typeof options.prisma !== "object") {
+    throw new SearchError({
+      code: "SEARCH_CONFIG_INVALID",
+      message: "searchExtension requires the Prisma client instance",
+      details: { reason: "missing-prisma-client" },
+    });
+  }
+  const { prisma, adapter, models } = options;
   const model: Record<
     string,
     {
       search(
-        this: unknown,
         query: string,
         request?: SearchRequest,
       ): ReturnType<ReturnType<typeof createPrismaSearch>["search"]>;
     }
   > = {};
-  for (const [name, index] of Object.entries(options.models)) {
+  for (const [name, index] of Object.entries(models)) {
     model[name] = {
       search(query, request = {}) {
-        const prisma = resolveExtendedClient(this);
         return createPrismaSearch({
           prisma,
-          adapter: options.adapter,
+          adapter,
           model: name,
           index,
         }).search(query, request);
@@ -53,11 +67,4 @@ export function searchExtension(options: SearchExtensionOptions): {
     name: "siftlite-search",
     model,
   };
-}
-
-function resolveExtendedClient(self: unknown): PrismaClientLike {
-  if (self !== null && typeof self === "object" && "client" in self) {
-    return (self as { client: PrismaClientLike }).client;
-  }
-  return self as PrismaClientLike;
 }

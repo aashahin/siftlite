@@ -14,7 +14,7 @@ import {
   type PortableDrizzleIdColumn,
 } from "./columns.js";
 
-export interface DrizzleIndexInput<TTable> {
+export interface DrizzleIndexInput {
   readonly id: PortableDrizzleIdColumn;
   readonly name?: string;
   readonly mode?: "linked" | "manual";
@@ -27,7 +27,6 @@ export interface DrizzleIndexInput<TTable> {
   readonly typoTolerance?: IndexDefinitionInput["typoTolerance"];
   readonly synonyms?: IndexDefinitionInput["synonyms"];
   readonly matchingStrategy?: IndexDefinitionInput["matchingStrategy"];
-  readonly table?: TTable;
 }
 
 export interface DrizzleIndex<TTable = unknown> {
@@ -38,7 +37,7 @@ export interface DrizzleIndex<TTable = unknown> {
 
 export function defineDrizzleIndex<TTable extends object>(
   table: TTable,
-  input: DrizzleIndexInput<TTable>,
+  input: DrizzleIndexInput,
 ): DrizzleIndex<TTable> {
   const tableName = getTableName(table as never);
   const columns = getTableColumns(table as never) as Record<string, DrizzleColumnLike>;

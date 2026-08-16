@@ -108,17 +108,27 @@ export function libsqlAdapter(
  */
 export function wrapLibsqlClient(client: object): LibsqlClientLike {
   const official = client as {
-    execute: (statement: unknown) => Promise<LibsqlResultLike>;
+    execute?: (statement: unknown) => Promise<LibsqlResultLike>;
     batch?: (statements: unknown, mode?: string) => Promise<readonly LibsqlResultLike[]>;
     transaction?: (mode: string) => Promise<LibsqlTransactionLike>;
   };
+  if (typeof official.execute !== "function") {
+    throw new SearchError({
+      code: "SEARCH_ADAPTER_ERROR",
+      message: "libSQL client must expose execute()",
+      details: { reason: "libsql-execute" },
+    });
+  }
+  const execute = official.execute;
+  const batch = official.batch;
+  const transaction = official.transaction;
   return {
-    execute: (statement) => official.execute(statement),
-    ...(official.batch
-      ? { batch: (statements, mode) => official.batch?.(statements, mode) ?? Promise.resolve([]) }
+    execute: (statement) => execute(statement),
+    ...(typeof batch === "function"
+      ? { batch: (statements, mode) => batch(statements, mode) }
       : {}),
-    ...(official.transaction
-      ? { transaction: (mode) => official.transaction?.(mode) as Promise<LibsqlTransactionLike> }
+    ...(typeof transaction === "function"
+      ? { transaction: (mode) => transaction(mode) as Promise<LibsqlTransactionLike> }
       : {}),
   };
 }

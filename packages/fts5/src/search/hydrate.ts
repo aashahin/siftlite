@@ -103,6 +103,13 @@ export function createSourceTableHydrator(args: {
 }
 
 export function restoreSourceId(definition: IndexDefinition, value: unknown): SourceId {
+  if (value === undefined || value === null) {
+    throw new SearchError({
+      code: "SEARCH_VALUE_INVALID",
+      message: "source id is missing from the hydrated row",
+      details: { reason: "missing-source-id" },
+    });
+  }
   if (definition.source?.primaryKey.type === "safe-integer") {
     return assertSourceId(typeof value === "number" ? value : Number(value));
   }

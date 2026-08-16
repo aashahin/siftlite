@@ -1,5 +1,4 @@
 import { SearchError } from "../errors/search-error.js";
-import type { TextQuery } from "../ast/text-query.js";
 import { getPortableNormalizer } from "./registry.js";
 import type { SqlExpression } from "./types.js";
 
@@ -20,35 +19,6 @@ export function compileIndexNormalizationSql(
     current = getPortableNormalizer(id).compileSql(current);
   }
   return current;
-}
-
-export function normalizeTextQuery(query: TextQuery, profiles: readonly string[]): TextQuery {
-  if (profiles.length === 0) {
-    return query;
-  }
-  switch (query.kind) {
-    case "empty":
-      return query;
-    case "term":
-      return {
-        kind: "term",
-        value: normalizeIndexText(query.value, profiles),
-        ...(query.field !== undefined ? { field: query.field } : {}),
-        ...(query.prefix === true ? { prefix: true } : {}),
-      };
-    case "phrase":
-      return {
-        kind: "phrase",
-        terms: query.terms.map((term) => normalizeIndexText(term, profiles)),
-        ...(query.field !== undefined ? { field: query.field } : {}),
-      };
-    case "and":
-    case "or":
-      return {
-        kind: query.kind,
-        children: query.children.map((child) => normalizeTextQuery(child, profiles)),
-      };
-  }
 }
 
 /**

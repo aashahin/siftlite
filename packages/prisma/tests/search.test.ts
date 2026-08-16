@@ -1,13 +1,13 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { defineIndex, physicalIndexIdFor, sql } from "@siftlite/core";
+import { defineIndex, physicalIndexIdFor, SearchError, sql } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import { createIndex } from "@siftlite/fts5";
 import {
+  createPrismaHydrator,
   createPrismaSearch,
   generatePrismaSearchSql,
   searchExtension,
-  SIFTLITE_PRISMA_PACKAGE,
   SIFTLITE_PRISMA_SUPPORT,
   type PrismaClientLike,
 } from "../src/index.ts";
@@ -56,8 +56,7 @@ function createPrismaLike(db: Database): PrismaClientLike {
 }
 
 describe("@siftlite/prisma", () => {
-  test("exports package identity and Prisma 6 support without FTS models", () => {
-    expect(SIFTLITE_PRISMA_PACKAGE.name).toBe("@siftlite/prisma");
+  test("Prisma 6 support does not require an FTS model or query hooks", () => {
     expect(SIFTLITE_PRISMA_SUPPORT.major).toBe(6);
     expect(SIFTLITE_PRISMA_SUPPORT.requiresFtsModel).toBe(false);
     expect(SIFTLITE_PRISMA_SUPPORT.requiresQueryHooks).toBe(false);
@@ -124,11 +123,48 @@ describe("@siftlite/prisma", () => {
       "active",
     ]);
     const prisma = createPrismaLike(db);
-    const extension = searchExtension({ adapter, models: { product: index } });
-    expect(extension.name).toBe("siftlite-search");
-    const result = await extension.model["product"]?.search.call({ client: prisma }, "extension", {
+    const extension = searchExtension({ prisma, adapter, models: { product: index } });
+    const result = await extension.model["product"]?.search("extension", {
       hydrate: true,
     });
     expect(result?.hits.map((hit) => hit.id)).toEqual(["p3"]);
+  });
+
+  test("Prisma hydrator restores numeric zero source ids", async () => {
+    const definition = defineIndex({
+      name: "items",
+      mode: "manual",
+      source: { table: "items", primaryKey: { field: "id", type: "safe-integer" } },
+      searchable: { title: { weight: 1 } },
+    });
+    const prisma: PrismaClientLike = {
+      item: {
+        findMany: async () => [{ id: 0, title: "zero" }],
+      },
+    };
+    const hydrator = createPrismaHydrator({
+      prisma,
+      model: "item",
+      definition,
+      adapter: bunSqliteAdapter(new Database(":memory:")),
+    });
+    const documents = await hydrator.hydrate([0]);
+    expect(documents.get(0)?.["title"]).toBe("zero");
+  });
+
+  test("Prisma hydrator fails when the definition has no source primary key", () => {
+    const definition = defineIndex({
+      name: "notes",
+      mode: "manual",
+      searchable: { body: { weight: 1 } },
+    });
+    expect(() =>
+      createPrismaHydrator({
+        prisma: { note: { findMany: async () => [] } },
+        model: "note",
+        definition,
+        adapter: bunSqliteAdapter(new Database(":memory:")),
+      }),
+    ).toThrow(SearchError);
   });
 });

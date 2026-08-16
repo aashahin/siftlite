@@ -23,8 +23,10 @@ const migration = generatePrismaSearchSql(productsIndex);
 Optional Client Extension (ergonomic only):
 
 ```ts
-const prisma = new PrismaClient().$extends(
+const base = new PrismaClient();
+const prisma = base.$extends(
   searchExtension({
+    prisma: base,
     adapter,
     models: { product: productsIndex },
   }),

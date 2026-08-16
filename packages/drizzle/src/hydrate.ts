@@ -1,5 +1,4 @@
 import {
-  assertSourceId,
   chunkIdsForHydration,
   createStatementBudget,
   DEFAULT_APPLICATION_LIMITS,
@@ -8,6 +7,7 @@ import {
   type SourceId,
   type SqlAdapter,
 } from "@siftlite/core";
+import { restoreSourceId } from "@siftlite/fts5";
 import { getTableColumns, inArray } from "drizzle-orm";
 import type { DrizzleColumnLike } from "./columns.js";
 import type { DrizzleIndex } from "./define-index.js";
@@ -46,7 +46,7 @@ export function createDrizzleHydrator<TTable, TRow extends Record<string, unknow
         );
         for (const row of rows) {
           const raw = row[idKey] ?? row[idColumn.name];
-          documents.set(restoreId(raw), row);
+          documents.set(restoreSourceId(args.index.definition, raw), row);
         }
       }
       return documents;
@@ -62,8 +62,4 @@ function jsKeyForColumn(table: unknown, column: DrizzleColumnLike): string {
     }
   }
   return column.name;
-}
-
-function restoreId(value: unknown): SourceId {
-  return assertSourceId(typeof value === "number" ? value : String(value));
 }

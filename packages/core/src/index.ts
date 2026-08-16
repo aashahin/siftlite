@@ -207,7 +207,6 @@ export {
   compileIndexNormalizationSql,
   normalizeIndexText,
   normalizeSynonymCatalog,
-  normalizeTextQuery,
 } from "./normalize/apply.js";
 export type { ParseIndexQueryOptions } from "./normalize/query.js";
 export { parseIndexTextQuery } from "./normalize/query.js";

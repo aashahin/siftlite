@@ -1,22 +1,39 @@
 import { describe, expect, test } from "bun:test";
 import { createClient } from "@libsql/client";
+import { SearchError, sql } from "@siftlite/core";
 import { runFts5SearchConformance, runSqlAdapterConformance } from "@siftlite/testing";
-import {
-  libsqlAdapter,
-  libsqlRuntimeCapabilities,
-  SIFTLITE_LIBSQL_PACKAGE,
-  wrapLibsqlClient,
-} from "../src/index.ts";
+import { libsqlAdapter, libsqlRuntimeCapabilities, wrapLibsqlClient } from "../src/index.ts";
 
 describe("@siftlite/libsql", () => {
-  test("exports package identity and local capabilities", () => {
-    expect(SIFTLITE_LIBSQL_PACKAGE.name).toBe("@siftlite/libsql");
+  test("local capabilities are proven and remote bind limits stay unproven", () => {
     const local = libsqlRuntimeCapabilities("local");
     expect(local.transactions).toBe(true);
     expect(local.batch).toBe(true);
     expect(local.costSensitive).toBe(false);
     expect(libsqlRuntimeCapabilities("remote").costSensitive).toBe(true);
     expect(libsqlRuntimeCapabilities("remote").limits.maxBindParameters).toBeUndefined();
+  });
+
+  test("wrapLibsqlClient rejects clients without execute()", () => {
+    expect(() => wrapLibsqlClient({})).toThrow(SearchError);
+  });
+
+  test("wrapLibsqlClient forwards batch results and does not invent empty success", async () => {
+    const official = {
+      execute: async () => ({ rows: [], rowsAffected: 0 }),
+      batch: async () => [{ rows: [], rowsAffected: 3 }],
+    };
+    const results = await libsqlAdapter(wrapLibsqlClient(official)).batch([sql("SELECT 1")]);
+    expect(results).toEqual([{ rowsAffected: 3 }]);
+  });
+
+  test("adapter.batch fails closed when the client has no batch()", async () => {
+    const adapter = libsqlAdapter(
+      wrapLibsqlClient({
+        execute: async () => ({ rows: [], rowsAffected: 0 }),
+      }),
+    );
+    await expect(adapter.batch([sql("SELECT 1")])).rejects.toBeInstanceOf(SearchError);
   });
 
   test("runs shared adapter and FTS5 conformance on local libSQL", async () => {

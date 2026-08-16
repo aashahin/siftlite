@@ -4,13 +4,7 @@ import {
   physicalIndexIdFor,
   type IndexDefinition,
 } from "@siftlite/core";
-import {
-  compileBackfillSql,
-  compileDocsDdl,
-  compileFts5PhysicalManifest,
-  compileFtsDdl,
-  compileLinkedTriggers,
-} from "@siftlite/fts5";
+import { compileFts5PhysicalManifest, compileIndexLifecycleSql } from "@siftlite/fts5";
 import type { DrizzleIndex } from "./define-index.js";
 
 export interface DrizzleSearchMigration {
@@ -28,16 +22,7 @@ export function generateDrizzleSearchSql(
   const definition = "definition" in index ? index.definition : index;
   const physicalIndexId = options.physicalIndexId ?? physicalIndexIdFor(definition.name);
   const generation = options.generation ?? 1;
-  const statements = [
-    compileDocsDdl(definition, physicalIndexId, generation),
-    compileFtsDdl(definition, physicalIndexId, generation),
-    ...(definition.mode === "linked"
-      ? compileLinkedTriggers(definition, physicalIndexId, generation)
-      : []),
-    ...(definition.mode === "linked"
-      ? compileBackfillSql(definition, physicalIndexId, generation)
-      : []),
-  ];
+  const statements = compileIndexLifecycleSql(definition, physicalIndexId, generation);
   const physical = compileFts5PhysicalManifest({ definition, physicalIndexId, generation });
   return {
     indexName: definition.name,

@@ -22,6 +22,7 @@ import { sqliteFts5 } from "./backend.js";
 import { compileFts5PhysicalManifest } from "./manifest.js";
 import { physicalNames, sourceIdColumnType } from "./names.js";
 import { publicScoreFromFts5Bm25 } from "./score.js";
+import { restoreSourceId } from "./search/hydrate.js";
 
 export interface ManualProofDocument {
   readonly id: SourceId;
@@ -262,13 +263,6 @@ async function upsertDocument(
       [...normalizedSearchable, docId],
     ),
   );
-}
-
-function restoreSourceId(definition: IndexDefinition, value: SourceId): SourceId {
-  if (definition.source?.primaryKey.type === "safe-integer") {
-    return assertSourceId(typeof value === "number" ? value : Number(value));
-  }
-  return assertSourceId(String(value));
 }
 
 function sqlType(kind: string): string {

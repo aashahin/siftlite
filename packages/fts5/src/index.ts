@@ -17,7 +17,12 @@ export { compileFts5Search } from "./compile-search.js";
 export { compileFilter, compileScope } from "./compile-filter.js";
 export { searchFts5Index } from "./search/execute.js";
 export type { Fts5SearchContext } from "./search/execute.js";
-export { createProjectionHydrator, createSourceTableHydrator } from "./search/hydrate.js";
+export {
+  createProjectionHydrator,
+  createSourceTableHydrator,
+  restoreSourceId,
+} from "./search/hydrate.js";
+export { compileIndexLifecycleSql } from "./lifecycle/companion-sql.js";
 export { resolveHighlightColumns } from "./search/highlight.js";
 export { emitFts5Match } from "./emit.js";
 export { escapeFts5Literal, emitFts5Phrase, emitFts5Term } from "./escape.js";

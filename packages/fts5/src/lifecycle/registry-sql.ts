@@ -1,4 +1,26 @@
-import { quoteIdent, REGISTRY_TABLE, sql, type RegistryRow, type SqlAdapter } from "@siftlite/core";
+import {
+  quoteIdent,
+  REGISTRY_TABLE,
+  SearchError,
+  sql,
+  type RegistryRow,
+  type SqlAdapter,
+} from "@siftlite/core";
+
+const REGISTRY_COLUMNS = [
+  "index_name",
+  "physical_index_id",
+  "active_generation",
+  "definition_hash",
+  "physical_schema_version",
+  "physical_schema_hash",
+  "backend",
+  "source_table",
+  "mode",
+  "created_at",
+  "updated_at",
+  "health",
+] as const;
 
 export async function ensureRegistry(adapter: SqlAdapter): Promise<void> {
   await adapter.execute(
@@ -17,6 +39,18 @@ export async function ensureRegistry(adapter: SqlAdapter): Promise<void> {
       health TEXT NOT NULL
     )`),
   );
+  const columns = await adapter.query<{ name: string }>(
+    sql(`PRAGMA table_info(${quoteIdent(REGISTRY_TABLE)})`),
+  );
+  const present = new Set(columns.map((column) => column.name));
+  const missing = REGISTRY_COLUMNS.filter((column) => !present.has(column));
+  if (missing.length > 0) {
+    throw new SearchError({
+      code: "SEARCH_MAINTENANCE_FAILED",
+      message: "registry table is missing required columns",
+      details: { reason: "registry-schema-drift" },
+    });
+  }
 }
 
 export async function readRegistry(
@@ -62,6 +96,13 @@ export async function readRegistry(
     updatedAt: row.updated_at,
     health: row.health,
   };
+}
+
+export async function writePendingRegistry(adapter: SqlAdapter, row: RegistryRow): Promise<void> {
+  await writeRegistry(adapter, {
+    ...row,
+    health: "pending",
+  });
 }
 
 export async function writeRegistry(adapter: SqlAdapter, row: RegistryRow): Promise<void> {

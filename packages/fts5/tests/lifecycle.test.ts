@@ -137,6 +137,108 @@ describe("lifecycle", () => {
     expect(after?.definitionHash).not.toBe(before?.definitionHash);
   });
 
+  test("linked create then rebuild stays searchable on the new generation", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+        "p1",
+        "sqlite",
+        "database",
+        "active",
+      ]),
+    );
+    const definition = linkedDefinition();
+    await createIndex({ adapter, definition });
+    const before = await readRegistry(adapter, "products");
+    expect(before?.health).toBe("healthy");
+    const beforeNames = (await import("../src/names.ts")).physicalNames(
+      definition,
+      before?.physicalIndexId ?? physicalIndexIdFor("products"),
+      before?.activeGeneration ?? 1,
+    );
+
+    await rebuildIndex({ adapter, definition });
+    const after = await readRegistry(adapter, "products");
+    expect(after?.health).toBe("healthy");
+    expect(after?.activeGeneration).toBe((before?.activeGeneration ?? 1) + 1);
+    expect(after?.physicalIndexId).toBe(before?.physicalIndexId);
+
+    const oldDocs = await adapter.query<{ name: string }>(
+      sql(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, [beforeNames.docs]),
+    );
+    const oldFts = await adapter.query<{ name: string }>(
+      sql(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, [beforeNames.fts]),
+    );
+    expect(oldDocs).toEqual([]);
+    expect(oldFts).toEqual([]);
+
+    const index = await createManualFts5Proof({
+      adapter,
+      definition: defineIndex({
+        name: "products",
+        mode: "manual",
+        source: { table: "products", primaryKey: { field: "id", type: "string" } },
+        searchable: { name: { weight: 5 }, description: { weight: 1 } },
+        filterable: { status: "text" },
+      }),
+      physicalIndexId: after?.physicalIndexId ?? physicalIndexIdFor("products"),
+      generation: after?.activeGeneration ?? 2,
+      existingSchema: true,
+    });
+    expect((await index.search("sqlite")).map((hit) => hit.id)).toEqual(["p1"]);
+    expect((await doctorIndex(adapter, definition)).healthy).toBe(true);
+  });
+
+  test("failed linked rebuild keeps the old generation and is not healthy", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+        "p1",
+        "sqlite",
+        "database",
+        "active",
+      ]),
+    );
+    const definition = linkedDefinition();
+    await createIndex({ adapter, definition });
+    const before = await readRegistry(adapter, "products");
+    const names = (await import("../src/names.ts")).physicalNames(
+      definition,
+      before?.physicalIndexId ?? physicalIndexIdFor("products"),
+      before?.activeGeneration ?? 1,
+    );
+    await adapter.execute(sql("DROP TABLE products"));
+    try {
+      await rebuildIndex({ adapter, definition });
+      throw new Error("expected rebuild to fail after source drop");
+    } catch (error) {
+      expect(error).toBeInstanceOf(Error);
+      expect((error as { message?: string }).message).not.toBe(
+        "expected rebuild to fail after source drop",
+      );
+    }
+    const after = await readRegistry(adapter, "products");
+    expect(after?.health).toBe("pending");
+    expect(after?.activeGeneration).toBe(before?.activeGeneration);
+    const docs = await adapter.query<{ name: string }>(
+      sql(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, [names.docs]),
+    );
+    const fts = await adapter.query<{ name: string }>(
+      sql(`SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?`, [names.fts]),
+    );
+    expect(docs.length).toBe(1);
+    expect(fts.length).toBe(1);
+    const report = await doctorIndex(adapter, definition);
+    expect(report.healthy).toBe(false);
+    expect(report.findings.some((finding) => finding.code === "registry-pending")).toBe(true);
+  });
+
   test("partial physical objects are never healthy", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     const definition = defineIndex({

@@ -2,6 +2,7 @@ import {
   assertBoundScope,
   bindScope,
   SearchError,
+  validateApplicationLimits,
   type ApplicationLimits,
   type BoundScope,
   type CheckReport,
@@ -12,6 +13,7 @@ import {
   type SearchPolicy,
   type SearchRequest,
   type SearchResponse,
+  type SourceId,
   type SqlAdapter,
   type UnsafeBackendQuery,
 } from "@siftlite/core";
@@ -19,6 +21,12 @@ import { checkIndex, doctorIndex } from "./lifecycle/doctor.js";
 import type { SecureDeletePolicy } from "./lifecycle/maintenance.js";
 import { createIndex, dropIndex, rebuildIndex } from "./lifecycle/operations.js";
 import { ensureRegistry, readRegistry } from "./lifecycle/registry-sql.js";
+import {
+  deleteManualDocument,
+  upsertManualDocuments,
+  type ManualProofDocument,
+} from "./manual-proof.js";
+import { physicalNames, type PhysicalNames } from "./names.js";
 import { searchFts5Index, searchFts5IndexRaw } from "./search/execute.js";
 
 export interface Fts5EngineOptions {
@@ -34,6 +42,8 @@ export interface Fts5IndexHandle {
   scope(values: Record<string, unknown>): Fts5IndexHandle;
   search(query: string, request?: SearchRequest): Promise<SearchResponse>;
   searchRaw(raw: UnsafeBackendQuery, request?: SearchRequest): Promise<SearchResponse>;
+  upsert(documents: readonly ManualProofDocument[]): Promise<void>;
+  delete(id: SourceId): Promise<void>;
   create(): Promise<void>;
   drop(): Promise<void>;
   rebuild(): Promise<void>;
@@ -56,6 +66,7 @@ interface IndexHandleState {
 }
 
 export function createFts5Engine(options: Fts5EngineOptions): Fts5Engine {
+  const limits = options.limits ? validateApplicationLimits(options.limits) : undefined;
   const adapter = options.adapter;
   const secureDelete = options.secureDelete ?? "off";
   return {
@@ -64,7 +75,10 @@ export function createFts5Engine(options: Fts5EngineOptions): Fts5Engine {
         adapter,
         definition,
         secureDelete,
-        ...optionalEngineFields(options),
+        ...optionalEngineFields({
+          ...options,
+          ...(limits ? { limits } : {}),
+        }),
       });
     },
   };
@@ -94,6 +108,16 @@ function createIndexHandle(state: IndexHandleState): Fts5IndexHandle {
       return runIndexSearch(state, request, (physical, resolved) =>
         searchFts5IndexRaw(searchContext(state, physical), raw, resolved),
       );
+    },
+    async upsert(documents) {
+      assertManualIngest(state.definition);
+      await writeManualDocuments(state, (names) =>
+        upsertManualDocuments(state.adapter, state.definition, names, documents),
+      );
+    },
+    async delete(id) {
+      assertManualIngest(state.definition);
+      await writeManualDocuments(state, (names) => deleteManualDocument(state.adapter, names, id));
     },
     create() {
       return createIndex(lifecycle);
@@ -135,6 +159,24 @@ async function runIndexSearch(
     fuzzyUsed: false,
   });
   return response;
+}
+
+function assertManualIngest(definition: IndexDefinition): void {
+  if (definition.mode !== "manual") {
+    throw new SearchError({
+      code: "SEARCH_CAPABILITY_UNSUPPORTED",
+      message: "linked indexes write through source-table triggers",
+      details: { reason: "linked-writes" },
+    });
+  }
+}
+
+async function writeManualDocuments(
+  state: IndexHandleState,
+  write: (names: PhysicalNames) => Promise<void>,
+): Promise<void> {
+  const physical = await resolvePhysical(state.adapter, state.definition);
+  await write(physicalNames(state.definition, physical.physicalIndexId, physical.generation));
 }
 
 function searchContext(

@@ -1,6 +1,7 @@
 import {
   assertSourceId,
   chunkIdsForHydration,
+  codecForFieldType,
   SearchError,
   createStatementBudget,
   DEFAULT_APPLICATION_LIMITS,
@@ -8,6 +9,7 @@ import {
   sql,
   type ApplicationLimits,
   type DocumentHydrator,
+  type EncodedFieldValue,
   type IndexDefinition,
   type RuntimeSqlLimits,
   type SourceId,
@@ -163,9 +165,20 @@ function toDocument(
     document[field] = row[`${field}_source`] ?? null;
   }
   for (const field of projected) {
-    document[field] = row[field] ?? null;
+    document[field] = decodeProjectedField(definition, field, row[field]);
   }
   return document;
+}
+
+function decodeProjectedField(definition: IndexDefinition, field: string, value: unknown): unknown {
+  if (value === null || value === undefined) {
+    return null;
+  }
+  const spec = definition.filterable[field] ?? definition.sortable[field];
+  if (!spec) {
+    return value;
+  }
+  return codecForFieldType(spec).decode(value as EncodedFieldValue);
 }
 
 function unique(values: readonly string[]): string[] {

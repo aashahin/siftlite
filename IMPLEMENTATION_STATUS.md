@@ -5,11 +5,12 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 11 — Prisma integration
+Phase 11 complete. 0.x publish blockers from the audit are being closed in
+this pass for the Phase 0–11 package set. This is not a production-ready 1.0.
 
 ## Status
 
-PASS
+PASS for Phases 0–11. Phase 12–14 remain open.
 
 ## Completed tasks
 
@@ -28,11 +29,20 @@ PASS
 
 ## Remaining
 
-Phases 12–14 (fuzzy, CLI, RC) and conditional Phase 15.
+- Phase 12 — bounded typo-tolerant fallback (not implemented; do not claim
+  fuzzy search or enable fallback until this phase exists)
+- Phase 13 — CLI (`@siftlite/cli`)
+- Phase 14 — v1.0 RC hardening
+- Conditional Phase 15
+
+0.x publish blockers from the audit (LICENSE in packed files, `prepack`,
+changeset ignore/fixed groups, `tsBuildInfoFile` outside `dist`, export
+checks, example versions, executable examples) are being closed in this pass.
 
 ## Tests executed
 
-`bun run verify`
+`bun run typecheck`, `bun run build`, `bun run check-exports`, and Stream G
+example/workspace tests. Full `bun run verify` was not rerun in this pass.
 
 ## Significant implementation decisions
 
@@ -52,8 +62,10 @@ Phases 12–14 (fuzzy, CLI, RC) and conditional Phase 15.
 
 ## Blockers
 
-None for Phases 0–11.
+None for Phases 0–11. Phase 12 fuzzy/typo fallback does not exist.
 
 ## Latest verification result
 
-`bun run verify` passed after the Phase 8–11 guard pass (format, lint, typecheck, build, 137 bun tests, 5 D1 Workers tests, export check).
+Typecheck, package build, `check-exports`, and Stream G example/workspace
+tests passed after this publish-metadata pass. Phase 12 fuzzy search is
+still not implemented.

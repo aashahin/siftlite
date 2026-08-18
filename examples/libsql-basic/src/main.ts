@@ -1,3 +1,7 @@
+import { mkdtemp } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
 import { createClient } from "@libsql/client";
 import { defineIndex, eq } from "@siftlite/core";
 import { createManualFts5Proof, searchFts5Index } from "@siftlite/fts5";
@@ -11,7 +15,8 @@ const definition = defineIndex({
   filterable: { status: "text" },
 });
 
-const client = createClient({ url: ":memory:" });
+const dir = await mkdtemp(join(tmpdir(), "siftlite-libsql-"));
+const client = createClient({ url: pathToFileURL(join(dir, "siftlite.db")).href });
 const adapter = libsqlAdapter(wrapLibsqlClient(client), { kind: "local" });
 const index = await createManualFts5Proof({ adapter, definition });
 await index.upsert([
@@ -28,3 +33,4 @@ const result = await searchFts5Index(
   { filter: eq("status", "active") },
 );
 console.log(JSON.stringify({ hits: result.hits.map((hit) => hit.id) }));
+client.close();

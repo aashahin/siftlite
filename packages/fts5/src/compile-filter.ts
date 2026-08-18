@@ -29,7 +29,7 @@ export function compileScope(
   const params: unknown[] = [];
   for (const predicate of scope.predicates) {
     parts.push(`${columnRef(predicate.field)} = ?`);
-    params.push(encodeProjectedValue(definition, predicate.field, predicate.value));
+    params.push(encodeScopedValue(definition, predicate.field, predicate.value));
   }
   return { sql: parts.join(" AND "), params };
 }
@@ -64,8 +64,10 @@ function compileNode(
       return { sql: `NOT (${child.sql})`, params: child.params };
     }
     case "isNull":
+      assertFilterableField(definition, node.field);
       return { sql: `${columnRef(node.field)} IS NULL`, params: [] };
     case "isNotNull":
+      assertFilterableField(definition, node.field);
       return { sql: `${columnRef(node.field)} IS NOT NULL`, params: [] };
     case "in":
     case "notIn": {
@@ -121,7 +123,33 @@ function columnRef(field: string): string {
   return `${DOCS_ALIAS}.${quoteIdent(field)}`;
 }
 
+function assertFilterableField(definition: IndexDefinition, field: string): void {
+  if (!definition.filterable[field]) {
+    throw new SearchError({
+      code: "SEARCH_FILTER_INVALID",
+      message: `field ${field} is not declared filterable`,
+      details: { reason: "undeclared-field" },
+    });
+  }
+}
+
 function encodeProjectedValue(
+  definition: IndexDefinition,
+  field: string,
+  value: PortableScalar,
+): string | number {
+  const spec = definition.filterable[field];
+  if (!spec) {
+    throw new SearchError({
+      code: "SEARCH_FILTER_INVALID",
+      message: `field ${field} is not declared filterable`,
+      details: { reason: "undeclared-field" },
+    });
+  }
+  return encodeComparisonValue(spec, value);
+}
+
+function encodeScopedValue(
   definition: IndexDefinition,
   field: string,
   value: PortableScalar,
@@ -129,11 +157,18 @@ function encodeProjectedValue(
   const spec = definition.filterable[field] ?? definition.sortable[field];
   if (!spec) {
     throw new SearchError({
-      code: "SEARCH_FILTER_INVALID",
+      code: "SEARCH_QUERY_INVALID",
       message: `field ${field} is not declared filterable or sortable`,
-      details: { reason: "undeclared-field" },
+      details: { reason: "undeclared-scope-field" },
     });
   }
+  return encodeComparisonValue(spec, value);
+}
+
+function encodeComparisonValue(
+  spec: NonNullable<IndexDefinition["filterable"][string]>,
+  value: PortableScalar,
+): string | number {
   const encoded = encodeFieldValue(spec, value);
   if (encoded === null) {
     throw new SearchError({

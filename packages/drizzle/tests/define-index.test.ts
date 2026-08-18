@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { blob, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
-import { SearchError } from "@siftlite/core";
+import { physicalIndexIdFor, SearchError } from "@siftlite/core";
+import { compileIndexLifecycleSql, REGISTRY_SQL_COLUMNS } from "@siftlite/fts5";
 import {
   defineDrizzleIndex,
   generateDrizzleSearchSql,
@@ -80,6 +81,25 @@ describe("@siftlite/drizzle definition mapping", () => {
     expect(left.sql).toContain("CREATE TABLE");
     expect(left.sql).toContain("USING fts5");
     expect(left.sql).toContain("CREATE TRIGGER");
+  });
+
+  test("companion SQL forwards compileIndexLifecycleSql including registry", () => {
+    const index = defineDrizzleIndex(products, {
+      id: products.id,
+      searchable: { name: { weight: 1 } },
+      filterable: { status: products.status },
+    });
+    const migration = generateDrizzleSearchSql(index);
+    const lifecycle = compileIndexLifecycleSql(
+      index.definition,
+      physicalIndexIdFor(index.definition.name),
+      1,
+    );
+    expect(migration.statements).toEqual(lifecycle);
+    expect(migration.sql).toContain("__sift_registry");
+    for (const column of REGISTRY_SQL_COLUMNS) {
+      expect(migration.sql).toContain(column);
+    }
   });
 
   test("integer IDs map to safe-integer source IDs", () => {

@@ -7,7 +7,7 @@ import {
   type SqlAdapter,
 } from "@siftlite/core";
 
-const REGISTRY_COLUMNS = [
+export const REGISTRY_SQL_COLUMNS = [
   "index_name",
   "physical_index_id",
   "active_generation",
@@ -22,9 +22,8 @@ const REGISTRY_COLUMNS = [
   "health",
 ] as const;
 
-export async function ensureRegistry(adapter: SqlAdapter): Promise<void> {
-  await adapter.execute(
-    sql(`CREATE TABLE IF NOT EXISTS ${quoteIdent(REGISTRY_TABLE)} (
+export function compileEnsureRegistrySql(): string {
+  return `CREATE TABLE IF NOT EXISTS ${quoteIdent(REGISTRY_TABLE)} (
       index_name TEXT PRIMARY KEY,
       physical_index_id TEXT NOT NULL UNIQUE,
       active_generation INTEGER NOT NULL,
@@ -37,13 +36,16 @@ export async function ensureRegistry(adapter: SqlAdapter): Promise<void> {
       created_at INTEGER NOT NULL,
       updated_at INTEGER NOT NULL,
       health TEXT NOT NULL
-    )`),
-  );
+    )`;
+}
+
+export async function ensureRegistry(adapter: SqlAdapter): Promise<void> {
+  await adapter.execute(sql(compileEnsureRegistrySql()));
   const columns = await adapter.query<{ name: string }>(
     sql(`PRAGMA table_info(${quoteIdent(REGISTRY_TABLE)})`),
   );
   const present = new Set(columns.map((column) => column.name));
-  const missing = REGISTRY_COLUMNS.filter((column) => !present.has(column));
+  const missing = REGISTRY_SQL_COLUMNS.filter((column) => !present.has(column));
   if (missing.length > 0) {
     throw new SearchError({
       code: "SEARCH_MAINTENANCE_FAILED",
@@ -72,8 +74,7 @@ export async function readRegistry(
     health: "healthy" | "pending";
   }>(
     sql(
-      `SELECT index_name, physical_index_id, active_generation, definition_hash, physical_schema_version,
-              physical_schema_hash, backend, source_table, mode, created_at, updated_at, health
+      `SELECT ${REGISTRY_SQL_COLUMNS.join(", ")}
        FROM ${quoteIdent(REGISTRY_TABLE)} WHERE index_name = ?`,
       [indexName],
     ),
@@ -109,9 +110,8 @@ export async function writeRegistry(adapter: SqlAdapter, row: RegistryRow): Prom
   await adapter.execute(
     sql(
       `INSERT INTO ${quoteIdent(REGISTRY_TABLE)} (
-        index_name, physical_index_id, active_generation, definition_hash, physical_schema_version,
-        physical_schema_hash, backend, source_table, mode, created_at, updated_at, health
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ${REGISTRY_SQL_COLUMNS.join(", ")}
+      ) VALUES (${REGISTRY_SQL_COLUMNS.map(() => "?").join(", ")})
       ON CONFLICT(index_name) DO UPDATE SET
         physical_index_id = excluded.physical_index_id,
         active_generation = excluded.active_generation,

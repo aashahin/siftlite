@@ -19,5 +19,11 @@ describe("unsafe FTS5 query brand", () => {
     expect(isUnsafeFts5Query("title:sqlite")).toBe(false);
     expect(() => unsafeFts5Query("")).toThrow(SearchError);
     expect(() => unsafeFts5Query("match\u0000all")).toThrow(SearchError);
+    expect(isUnsafeFts5Query({ kind: "unsafe-backend-query", backend: "fts5", value: "" })).toBe(
+      false,
+    );
+    expect(
+      isUnsafeFts5Query({ kind: "unsafe-backend-query", backend: "fts5", value: "match\u0000all" }),
+    ).toBe(false);
   });
 });

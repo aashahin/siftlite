@@ -3,8 +3,11 @@ import { Database } from "bun:sqlite";
 import {
   and,
   bindScope,
+  DEFAULT_APPLICATION_LIMITS,
   defineIndex,
   eq,
+  physicalIndexIdFor,
+  quoteIdent,
   SearchError,
   sql,
   type SearchHooks,
@@ -12,6 +15,7 @@ import {
 import { bunSqliteAdapter } from "@siftlite/bun";
 import {
   createFts5Engine,
+  physicalNames,
   unsafeFts5Query,
   writePendingRegistry,
   readRegistry,
@@ -139,5 +143,73 @@ describe("createFts5Engine", () => {
     expect(events[0]?.resultCount).toBe(1);
     expect(events[0]).not.toHaveProperty("query");
     expect(JSON.stringify(events[0])).not.toContain("sqlite");
+  });
+
+  test("manual create + upsert writes to the registered generation", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const definition = defineIndex({
+      name: "notes",
+      mode: "manual",
+      source: { table: "notes", primaryKey: { field: "id", type: "string" } },
+      searchable: { title: { weight: 1 } },
+    });
+    const engine = createFts5Engine({ adapter });
+    const handle = engine.index(definition);
+    await handle.create();
+    await handle.upsert([{ id: "n1", searchable: { title: "portable search" } }]);
+
+    const row = await readRegistry(adapter, "notes");
+    expect(row?.physicalIndexId).toBe(physicalIndexIdFor("notes"));
+    expect(row?.physicalIndexId).not.toBe("proof");
+    expect(row?.activeGeneration).toBe(1);
+    const names = physicalNames(
+      definition,
+      row?.physicalIndexId ?? physicalIndexIdFor("notes"),
+      row?.activeGeneration ?? 1,
+    );
+    const stored = await adapter.query<{ source_id: string }>(
+      sql(`SELECT ${quoteIdent("source_id")} AS source_id FROM ${quoteIdent(names.docs)}`),
+    );
+    expect(stored.map((item) => item.source_id)).toEqual(["n1"]);
+    const proofTables = await adapter.query<{ name: string }>(
+      sql("SELECT name FROM sqlite_master WHERE name LIKE ?", ["%_proof_%"]),
+    );
+    expect(proofTables).toEqual([]);
+
+    const result = await handle.search("portable");
+    expect(result.hits.map((hit) => hit.id)).toEqual(["n1"]);
+    await handle.delete("n1");
+    expect((await handle.search("portable")).hits).toEqual([]);
+  });
+
+  test("linked upsert and delete are unsupported", async () => {
+    const { handle } = await seededHandle();
+    await expect(
+      handle.upsert([{ id: "p9", searchable: { name: "widget" } }]),
+    ).rejects.toMatchObject({
+      code: "SEARCH_CAPABILITY_UNSUPPORTED",
+    });
+    await expect(handle.delete("p1")).rejects.toMatchObject({
+      code: "SEARCH_CAPABILITY_UNSUPPORTED",
+    });
+  });
+
+  test("invalid application limits are rejected before the engine is stored", () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    expect(() =>
+      createFts5Engine({
+        adapter,
+        limits: { ...DEFAULT_APPLICATION_LIMITS, defaultLimit: -1 },
+      }),
+    ).toThrow(SearchError);
+    try {
+      createFts5Engine({
+        adapter,
+        limits: { ...DEFAULT_APPLICATION_LIMITS, defaultLimit: 200, maxLimit: 100 },
+      });
+      throw new Error("expected invalid limits to throw");
+    } catch (error) {
+      expect(error).toMatchObject({ code: "SEARCH_CONFIG_INVALID" });
+    }
   });
 });

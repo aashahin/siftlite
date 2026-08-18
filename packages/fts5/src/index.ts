@@ -28,7 +28,11 @@ export { emitFts5Match } from "./emit.js";
 export { escapeFts5Literal, emitFts5Phrase, emitFts5Term } from "./escape.js";
 export { probeFts5Capabilities } from "./probes.js";
 export { publicScoreFromFts5Bm25 } from "./score.js";
-export { createManualFts5Proof } from "./manual-proof.js";
+export {
+  createManualFts5Proof,
+  deleteManualDocument,
+  upsertManualDocuments,
+} from "./manual-proof.js";
 export type {
   ManualFts5Proof,
   ManualProofDocument,
@@ -44,7 +48,12 @@ export {
 } from "./lifecycle/operations.js";
 export type { LifecycleContext } from "./lifecycle/operations.js";
 export { checkIndex, doctorIndex } from "./lifecycle/doctor.js";
-export { ensureRegistry, readRegistry } from "./lifecycle/registry-sql.js";
+export {
+  compileEnsureRegistrySql,
+  ensureRegistry,
+  readRegistry,
+  REGISTRY_SQL_COLUMNS,
+} from "./lifecycle/registry-sql.js";
 export { compileLinkedTriggers } from "./lifecycle/triggers.js";
 export { compileSearchableExpression } from "./normalize-sql.js";
 export { compileBackfillSql, compileDocsDdl, compileFtsDdl } from "./lifecycle/schema.js";

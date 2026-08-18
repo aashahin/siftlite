@@ -18,6 +18,8 @@ export function createPrismaHydrator<TRow extends Record<string, unknown>>(args:
   readonly definition: IndexDefinition;
   readonly adapter: SqlAdapter;
   readonly limits?: ApplicationLimits;
+  /** Prisma model field for findMany/row reads. SQL still uses source.primaryKey.field. */
+  readonly prismaIdField?: string;
 }): DocumentHydrator<TRow> {
   const source = args.definition.source;
   if (!source) {
@@ -28,7 +30,7 @@ export function createPrismaHydrator<TRow extends Record<string, unknown>>(args:
     });
   }
   const limits = args.limits ?? DEFAULT_APPLICATION_LIMITS;
-  const idField = source.primaryKey.field;
+  const idField = args.prismaIdField ?? source.primaryKey.field;
   const delegate = getPrismaModel(args.prisma, args.model);
 
   return {

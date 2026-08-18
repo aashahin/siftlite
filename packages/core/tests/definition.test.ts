@@ -27,7 +27,6 @@ function productsInput() {
     },
     facets: ["status"],
     prefix: [2, 3],
-    typoTolerance: { mode: "fallback" as const },
     synonyms: { iphone: ["ايفون"] },
   };
 }
@@ -103,5 +102,51 @@ describe("index definition", () => {
         filterable: { createdAt: "timestamp-integer" },
       }),
     ).toThrow(SearchError);
+  });
+
+  test("rejects typo fallback until Phase 12", () => {
+    expect(() =>
+      defineIndex({
+        ...productsInput(),
+        typoTolerance: { mode: "fallback" },
+      }),
+    ).toThrow(SearchError);
+    try {
+      defineIndex({
+        ...productsInput(),
+        typoTolerance: { mode: "fallback" },
+      });
+      throw new Error("expected typo fallback to throw");
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: "SEARCH_CAPABILITY_UNSUPPORTED",
+        details: { reason: "typo-fallback-unimplemented" },
+      });
+    }
+  });
+
+  test.each([
+    [
+      "searchable doc_id",
+      { searchable: { doc_id: { weight: 1 } } },
+    ],
+    [
+      "filterable source_id",
+      { filterable: { source_id: "text" as const } },
+    ],
+    [
+      "sortable rowid",
+      { sortable: { rowid: "number" as const } },
+    ],
+    [
+      "filterable rank",
+      { filterable: { rank: "number" as const } },
+    ],
+    [
+      "filterable searchable source column",
+      { filterable: { name_source: "text" as const } },
+    ],
+  ] as const)("rejects reserved or colliding field %s", (_label, override) => {
+    expect(() => defineIndex({ ...productsInput(), ...override })).toThrow(SearchError);
   });
 });

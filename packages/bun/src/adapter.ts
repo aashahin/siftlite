@@ -61,7 +61,11 @@ class BunSqliteAdapter implements SqlAdapter {
       this.database.exec("COMMIT");
       return result;
     } catch (error) {
-      this.database.exec("ROLLBACK");
+      try {
+        this.database.exec("ROLLBACK");
+      } catch {
+        // rollback errors must not hide the original failure
+      }
       throw wrap(error);
     } finally {
       this.#inTransaction = false;
@@ -88,10 +92,19 @@ function toSqliteBindings(values: readonly unknown[]): SqliteBinding[] {
     if (
       value === null ||
       typeof value === "string" ||
-      typeof value === "number" ||
       typeof value === "boolean" ||
       value instanceof Uint8Array
     ) {
+      return value;
+    }
+    if (typeof value === "number") {
+      if (Number.isInteger(value) && !Number.isSafeInteger(value)) {
+        throw new SearchError({
+          code: "SEARCH_VALUE_INVALID",
+          message: "bun:sqlite rejects integer binds outside the safe-integer range",
+          details: { reason: "unsafe-integer" },
+        });
+      }
       return value;
     }
     throw new SearchError({
@@ -108,6 +121,7 @@ function wrap(error: unknown): SearchError {
   }
   return new SearchError({
     code: "SEARCH_ADAPTER_ERROR",
+    // driver text stays on cause; do not copy it into message
     message: "bun:sqlite adapter error",
     details: { reason: "adapter" },
     cause: error,

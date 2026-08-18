@@ -1,5 +1,6 @@
 {
   "name": "@siftlite/example-d1-worker",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {

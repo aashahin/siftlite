@@ -6,9 +6,11 @@ import {
   normalizeIndexText,
   parseIndexTextQuery,
   quoteIdent,
+  resolveSearchPage,
   SearchError,
   sql,
   sourceIdKind,
+  validateApplicationLimits,
   validateFilter,
   type ApplicationLimits,
   type BoundScope,
@@ -24,8 +26,9 @@ import {
 import { sqliteFts5 } from "./backend.js";
 import { compileFts5PhysicalManifest } from "./manifest.js";
 import { sqlTypeForStorageKind } from "./lifecycle/schema.js";
-import { physicalNames, sourceIdColumnType } from "./names.js";
+import { physicalNames, sourceIdColumnType, type PhysicalNames } from "./names.js";
 import { publicScoreFromFts5Bm25 } from "./score.js";
+import { searchFts5Index } from "./search/execute.js";
 import { restoreSourceId } from "./search/hydrate.js";
 
 export interface ManualProofDocument {
@@ -73,7 +76,9 @@ export async function createManualFts5Proof(args: {
   }
   const physicalIndexId = args.physicalIndexId ?? "proof";
   const generation = args.generation ?? 1;
-  const limits = args.limits ?? DEFAULT_APPLICATION_LIMITS;
+  const limits = args.limits
+    ? validateApplicationLimits(args.limits)
+    : DEFAULT_APPLICATION_LIMITS;
   const definition = args.definition;
   const names = physicalNames(definition, physicalIndexId, generation);
   const backend = sqliteFts5();
@@ -86,35 +91,39 @@ export async function createManualFts5Proof(args: {
   return {
     physicalIndexId,
     generation,
-    async upsert(documents) {
-      if (args.adapter.batch) {
-        await upsertDocumentsBatched(args.adapter, definition, names, documents);
-        return;
-      }
-      for (const document of documents) {
-        await upsertDocument(args.adapter, definition, names, document);
-      }
+    upsert(documents) {
+      return upsertManualDocuments(args.adapter, definition, names, documents);
     },
-    async delete(id) {
-      const sourceId = assertSourceId(id);
-      const rows = await args.adapter.query<{ doc_id: number }>(
-        sql(
-          `SELECT ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("source_id")} = ?`,
-          [sourceId],
-        ),
-      );
-      const docId = rows[0]?.doc_id;
-      if (docId === undefined) {
-        return;
-      }
-      await args.adapter.execute(
-        sql(`DELETE FROM ${quoteIdent(names.fts)} WHERE ${quoteIdent("rowid")} = ?`, [docId]),
-      );
-      await args.adapter.execute(
-        sql(`DELETE FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("doc_id")} = ?`, [docId]),
-      );
+    delete(id) {
+      return deleteManualDocument(args.adapter, names, id);
     },
     async search(query, options = {}) {
+      if (definition.typoTolerance.mode === "fallback") {
+        throw new SearchError({
+          code: "SEARCH_CAPABILITY_UNSUPPORTED",
+          message: "typo fallback is not supported",
+          details: { reason: "typo-fallback-unsupported" },
+        });
+      }
+      const page = resolveSearchPage(options, limits);
+      if (args.existingSchema === true) {
+        const result = await searchFts5Index(
+          {
+            adapter: args.adapter,
+            definition,
+            physicalIndexId,
+            generation,
+            limits,
+          },
+          query,
+          {
+            ...options,
+            limit: page.limit,
+            offset: page.offset,
+          },
+        );
+        return result.hits.map((hit) => ({ id: hit.id, score: hit.score }));
+      }
       if (options.filter) {
         validateFilter(options.filter, { limits, definition });
       }
@@ -132,8 +141,8 @@ export async function createManualFts5Proof(args: {
         ...(options.filter ? { filter: options.filter } : {}),
         ...(options.scope ? { scope: options.scope } : {}),
         ...(options.sort ? { sort: options.sort } : {}),
-        limit: options.limit ?? limits.defaultLimit,
-        offset: options.offset ?? 0,
+        limit: page.limit,
+        offset: page.offset,
         limits,
         runtimeLimits: args.adapter.runtimeCapabilities.limits,
       });
@@ -148,10 +157,49 @@ export async function createManualFts5Proof(args: {
   };
 }
 
+export async function upsertManualDocuments(
+  adapter: SqlAdapter,
+  definition: IndexDefinition,
+  names: PhysicalNames,
+  documents: readonly ManualProofDocument[],
+): Promise<void> {
+  if (adapter.batch) {
+    await upsertDocumentsBatched(adapter, definition, names, documents);
+    return;
+  }
+  for (const document of documents) {
+    await upsertDocument(adapter, definition, names, document);
+  }
+}
+
+export async function deleteManualDocument(
+  adapter: SqlAdapter,
+  names: PhysicalNames,
+  id: SourceId,
+): Promise<void> {
+  const sourceId = assertSourceId(id);
+  const rows = await adapter.query<{ doc_id: number }>(
+    sql(
+      `SELECT ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("source_id")} = ?`,
+      [sourceId],
+    ),
+  );
+  const docId = rows[0]?.doc_id;
+  if (docId === undefined) {
+    return;
+  }
+  await adapter.execute(
+    sql(`DELETE FROM ${quoteIdent(names.fts)} WHERE ${quoteIdent("rowid")} = ?`, [docId]),
+  );
+  await adapter.execute(
+    sql(`DELETE FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("doc_id")} = ?`, [docId]),
+  );
+}
+
 async function createSchema(
   adapter: SqlAdapter,
   definition: IndexDefinition,
-  names: ReturnType<typeof physicalNames>,
+  names: PhysicalNames,
 ): Promise<void> {
   const projected = unique([...definition.filterableOrder, ...definition.sortableOrder]).map(
     (field) => {
@@ -179,7 +227,7 @@ async function createSchema(
 async function upsertDocument(
   adapter: SqlAdapter,
   definition: IndexDefinition,
-  names: ReturnType<typeof physicalNames>,
+  names: PhysicalNames,
   document: ManualProofDocument,
 ): Promise<void> {
   const sourceId = assertSourceId(document.id);
@@ -276,7 +324,7 @@ async function upsertDocument(
 async function upsertDocumentsBatched(
   adapter: SqlAdapter,
   definition: IndexDefinition,
-  names: ReturnType<typeof physicalNames>,
+  names: PhysicalNames,
   documents: readonly ManualProofDocument[],
 ): Promise<void> {
   if (documents.length === 0) {
@@ -365,7 +413,7 @@ function prepareManualDocument(
 async function loadExistingDocIds(
   adapter: SqlAdapter,
   definition: IndexDefinition,
-  names: ReturnType<typeof physicalNames>,
+  names: PhysicalNames,
   ids: readonly SourceId[],
 ): Promise<Map<SourceId, number>> {
   const found = new Map<SourceId, number>();
@@ -391,10 +439,7 @@ async function loadExistingDocIds(
   return found;
 }
 
-async function nextAvailableDocId(
-  adapter: SqlAdapter,
-  names: ReturnType<typeof physicalNames>,
-): Promise<number> {
+async function nextAvailableDocId(adapter: SqlAdapter, names: PhysicalNames): Promise<number> {
   const rows = await adapter.query<{ max_id: number | null }>(
     sql(`SELECT MAX(${quoteIdent("doc_id")}) AS max_id FROM ${quoteIdent(names.docs)}`),
   );
@@ -403,7 +448,7 @@ async function nextAvailableDocId(
 
 function insertDocsStatement(
   definition: IndexDefinition,
-  names: ReturnType<typeof physicalNames>,
+  names: PhysicalNames,
   document: PreparedManualDocument,
   docId: number,
 ): SqlStatement {
@@ -423,7 +468,7 @@ function insertDocsStatement(
 
 function insertFtsStatement(
   definition: IndexDefinition,
-  names: ReturnType<typeof physicalNames>,
+  names: PhysicalNames,
   document: PreparedManualDocument,
   docId: number,
 ): SqlStatement {
@@ -435,7 +480,7 @@ function insertFtsStatement(
 
 function updateDocsStatement(
   definition: IndexDefinition,
-  names: ReturnType<typeof physicalNames>,
+  names: PhysicalNames,
   document: PreparedManualDocument,
   docId: number,
 ): SqlStatement {
@@ -452,7 +497,7 @@ function updateDocsStatement(
 
 function updateFtsStatement(
   definition: IndexDefinition,
-  names: ReturnType<typeof physicalNames>,
+  names: PhysicalNames,
   document: PreparedManualDocument,
   docId: number,
 ): SqlStatement {

@@ -30,7 +30,13 @@ export function resolveHighlightColumns(
     return [];
   }
   const resolved = assertHighlightMarkers(markers ?? DEFAULT_MARKERS);
-  return fields.map((field) => {
+  const columns: CompiledHighlightColumn[] = [];
+  const seen = new Set<string>();
+  for (const field of fields) {
+    if (seen.has(field)) {
+      continue;
+    }
+    seen.add(field);
     const ftsColumnIndex = definition.searchableOrder.indexOf(field);
     if (ftsColumnIndex < 0) {
       throw new SearchError({
@@ -39,15 +45,16 @@ export function resolveHighlightColumns(
         details: { reason: "undeclared-highlight-field" },
       });
     }
-    return {
+    columns.push({
       field,
       ftsColumnIndex,
       start: resolved.start,
       end: resolved.end,
       ellipsis: resolved.ellipsis,
       tokens: SNIPPET_TOKENS,
-    };
-  });
+    });
+  }
+  return columns;
 }
 
 /**

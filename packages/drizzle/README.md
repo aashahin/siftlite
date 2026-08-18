@@ -39,6 +39,19 @@ Unsupported Drizzle types (`blob`, `bigint`, JSON blobs) fail at definition
 time. Timestamp columns use Drizzle's explicit `timestamp` / `timestamp_ms`
 mode; generic integers are not guessed to be dates.
 
+Companion SQL is a deterministic migration fragment:
+
+```ts
+const migration = generateDrizzleSearchSql(productsSearch);
+```
+
+`generateDrizzleSearchSql` forwards `compileIndexLifecycleSql`, so the
+fragment includes `__sift_registry` DDL when that compiler emits it. Search
+still requires a healthy registry row. After the source table exists, call
+`createIndex` and then `drizzleSearch`. Applying companion SQL alone is not
+enough, and applying it then calling `createIndex` rematerializes the same
+physical objects.
+
 Canonical escape hatch:
 
 ```ts

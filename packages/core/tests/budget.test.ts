@@ -9,6 +9,7 @@ import {
   remainingBindBudget,
   reserveBinds,
   SearchError,
+  validateApplicationLimits,
 } from "../src/index.ts";
 
 describe("runtime SQL limits and budgets", () => {
@@ -44,5 +45,17 @@ describe("runtime SQL limits and budgets", () => {
     );
     reserveBinds(budget, 3, "search");
     expect(effectiveMaxInValues(budget)).toBe(8);
+  });
+
+  test("validateApplicationLimits requires defaultLimit and maxLimit of at least 1", () => {
+    expect(() =>
+      validateApplicationLimits({ ...DEFAULT_APPLICATION_LIMITS, defaultLimit: 0 }),
+    ).toThrow(SearchError);
+    expect(() => validateApplicationLimits({ ...DEFAULT_APPLICATION_LIMITS, maxLimit: 0 })).toThrow(
+      SearchError,
+    );
+    expect(
+      validateApplicationLimits({ ...DEFAULT_APPLICATION_LIMITS, maxFacets: 0 }).maxFacets,
+    ).toBe(0);
   });
 });

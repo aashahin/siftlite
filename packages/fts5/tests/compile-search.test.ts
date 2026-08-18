@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+  bindScope,
   DEFAULT_APPLICATION_LIMITS,
   defineIndex,
   eq,
@@ -10,7 +11,14 @@ import {
   parsePlainTextQuery,
   SearchError,
 } from "@siftlite/core";
-import { compileFilter, compileFts5PhysicalManifest, compileFts5Search } from "../src/index.ts";
+import {
+  compileFilter,
+  compileScope,
+  compileFts5PhysicalManifest,
+  compileFts5Search,
+  FTS5_BASE_CAPABILITIES,
+  resolveHighlightColumns,
+} from "../src/index.ts";
 
 function definition() {
   return defineIndex({
@@ -25,12 +33,15 @@ function definition() {
 
 function compile(options: {
   readonly query?: string;
+  readonly textQuery?: Parameters<typeof compileFts5Search>[0]["textQuery"];
   readonly filter?: Parameters<typeof compileFts5Search>[0]["filter"];
   readonly sort?: Parameters<typeof compileFts5Search>[0]["sort"];
   readonly runtimeLimits?: Parameters<typeof compileFts5Search>[0]["runtimeLimits"];
   readonly scope?: Parameters<typeof compileFts5Search>[0]["scope"];
+  readonly highlight?: Parameters<typeof compileFts5Search>[0]["highlight"];
+  readonly definition?: ReturnType<typeof definition>;
 }) {
-  const def = definition();
+  const def = options.definition ?? definition();
   return compileFts5Search({
     definition: def,
     physical: compileFts5PhysicalManifest({
@@ -40,12 +51,15 @@ function compile(options: {
     }),
     physicalIndexId: "proof",
     generation: 1,
-    textQuery: parsePlainTextQuery(options.query ?? "sqlite", {
-      limits: DEFAULT_APPLICATION_LIMITS,
-    }),
+    textQuery:
+      options.textQuery ??
+      parsePlainTextQuery(options.query ?? "sqlite", {
+        limits: DEFAULT_APPLICATION_LIMITS,
+      }),
     ...(options.filter ? { filter: options.filter } : {}),
     ...(options.sort ? { sort: options.sort } : {}),
     ...(options.scope ? { scope: options.scope } : {}),
+    ...(options.highlight ? { highlight: options.highlight } : {}),
     limit: 20,
     offset: 0,
     limits: DEFAULT_APPLICATION_LIMITS,
@@ -113,5 +127,78 @@ describe("FTS5 search compilation", () => {
     expect(compiled.statement.sql).not.toContain("MATCH");
     expect(compiled.statement.sql).toContain("NULL AS rank");
     expect(compiled.statement.sql).toContain('ORDER BY d."doc_id" ASC');
+  });
+
+  test("reserved compile still works for valid searchable fields", () => {
+    expect(FTS5_BASE_CAPABILITIES.typoFallback).toBe(false);
+    const compiled = compile({
+      textQuery: { kind: "term", value: "sqlite", field: "title" },
+      runtimeLimits: { maxStatementBytes: 16_384 },
+    });
+    expect(compiled.statement.sql).toContain("MATCH ?");
+    expect(compiled.statement.params[0]).toBe('title:"sqlite"');
+  });
+
+  test("reserves compiled statement bytes against the proven budget", () => {
+    expect(() => compile({ runtimeLimits: { maxStatementBytes: 8 } })).toThrow(SearchError);
+    try {
+      compile({ runtimeLimits: { maxStatementBytes: 8 } });
+    } catch (error) {
+      expect((error as { code?: string }).code).toBe("SEARCH_RUNTIME_LIMIT_EXCEEDED");
+    }
+  });
+
+  test("unknown fielded AST is rejected", () => {
+    expect(() => compile({ textQuery: { kind: "term", value: "sqlite", field: "body" } })).toThrow(
+      SearchError,
+    );
+    try {
+      compile({ textQuery: { kind: "term", value: "sqlite", field: "body" } });
+    } catch (error) {
+      expect((error as { code?: string }).code).toBe("SEARCH_QUERY_INVALID");
+    }
+  });
+
+  test("duplicate highlight fields emit a single alias", () => {
+    const def = definition();
+    const highlight = resolveHighlightColumns(def, ["title", "title"], undefined);
+    expect(highlight.map((column) => column.field)).toEqual(["title"]);
+    const compiled = compile({ definition: def, highlight });
+    expect(compiled.statement.sql.match(/AS "highlight_title"/g)).toEqual(['AS "highlight_title"']);
+  });
+
+  test("filter encoding accepts only declared filterable fields", () => {
+    const def = defineIndex({
+      name: "products",
+      mode: "manual",
+      source: { table: "products", primaryKey: { field: "id", type: "string" } },
+      searchable: { title: { weight: 1 } },
+      filterable: { status: "text" },
+      sortable: { price: "number" },
+    });
+    const compiled = compileFilter(eq("status", "active"), def);
+    expect(compiled.params).toEqual(["active"]);
+    expect(() => compileFilter(eq("price", 10), def)).toThrow(SearchError);
+    expect(() => compileFilter(isNull("price"), def)).toThrow(SearchError);
+    try {
+      compileFilter(eq("price", 10), def);
+    } catch (error) {
+      expect((error as { code?: string }).code).toBe("SEARCH_FILTER_INVALID");
+    }
+  });
+
+  test("scope encoding accepts projected sortable fields that are not filterable", () => {
+    const def = defineIndex({
+      name: "products",
+      mode: "manual",
+      source: { table: "products", primaryKey: { field: "id", type: "string" } },
+      searchable: { title: { weight: 1 } },
+      filterable: { status: "text" },
+      sortable: { price: "number" },
+    });
+    const scoped = compileScope(bindScope({ price: 10 }), def);
+    expect(scoped.sql).toContain('d."price" = ?');
+    expect(scoped.params).toEqual([10]);
+    expect(() => compileScope(bindScope({ missing: "x" }), def)).toThrow(SearchError);
   });
 });

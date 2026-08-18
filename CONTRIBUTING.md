@@ -20,12 +20,16 @@ tests, package build, and export checks. Do not hide failures with `|| true`.
 
 ## Workspace
 
-Phase 0 publishes only:
+The Phase 0–11 publish set is:
 
 - `@siftlite/core`
 - `@siftlite/fts5`
 - `@siftlite/bun`
+- `@siftlite/d1`
+- `@siftlite/libsql`
 - `@siftlite/testing`
+- `@siftlite/drizzle`
+- `@siftlite/prisma`
 
 Do not add empty packages to reserve names. Create a package when its
 implementation phase begins.

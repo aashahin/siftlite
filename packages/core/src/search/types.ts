@@ -12,6 +12,14 @@ export interface SearchWarning {
 }
 
 /**
+ * Portable cancellation signal. Structural subset of Web AbortSignal so core
+ * can name the API without compiling against the DOM lib.
+ */
+export interface SearchAbortSignal {
+  readonly aborted: boolean;
+}
+
+/**
  * Application search request. Ordinary `query` text is parsed separately and
  * never treated as backend grammar.
  */
@@ -28,7 +36,7 @@ export interface SearchRequest {
   readonly diagnostics?: boolean;
   readonly matchingStrategy?: MatchingStrategy;
   readonly scope?: BoundScope;
-  readonly signal?: AbortSignal;
+  readonly signal?: SearchAbortSignal;
 }
 
 /** Caller-selected snippet markers. Formatted text is not trusted HTML. */
@@ -95,14 +103,4 @@ export interface SearchResponse<TDocument = unknown> {
  */
 export interface DocumentHydrator<TDocument = unknown> {
   hydrate(ids: readonly SourceId[]): Promise<ReadonlyMap<SourceId, TDocument>>;
-}
-
-/**
- * Web AbortSignal. Declared here so portable core can name the cancellation
- * API without compiling against the DOM lib.
- */
-declare global {
-  interface AbortSignal {
-    readonly aborted: boolean;
-  }
 }

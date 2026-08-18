@@ -1,4 +1,4 @@
-import { defineIndex } from "@siftlite/core";
+import { bindScope, defineIndex, isSearchError } from "@siftlite/core";
 import {
   d1Adapter,
   d1SessionAdapter,
@@ -32,13 +32,27 @@ function withBookmark(body: unknown, adapter: D1SqlAdapter, status = 200): Respo
   });
 }
 
+export function resolveRequestTenant(request: Request, url: URL): string | undefined {
+  return request.headers.get("x-tenant-id") || url.searchParams.get("tenant") || undefined;
+}
+
+export function isAlreadyExistsError(error: unknown): boolean {
+  return isSearchError(error) && error.details?.["reason"] === "already-exists";
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
     if (url.pathname === "/migrate") {
       // Demo-only. Do not expose unauthenticated DDL in production.
       const adapter = executionAdapter(env, "first-primary");
-      await createIndex({ adapter, definition: products });
+      try {
+        await createIndex({ adapter, definition: products });
+      } catch (error) {
+        if (!isAlreadyExistsError(error)) {
+          throw error;
+        }
+      }
       return withBookmark({ ok: true }, adapter);
     }
     if (url.pathname === "/search") {
@@ -53,6 +67,7 @@ export default {
       if (entry.health !== "healthy") {
         return withBookmark({ error: "index is not healthy" }, adapter, 503);
       }
+      const tenant = resolveRequestTenant(request, url);
       const result = await searchFts5Index(
         {
           adapter,
@@ -61,6 +76,7 @@ export default {
           generation: entry.activeGeneration,
         },
         url.searchParams.get("q") ?? "",
+        tenant ? { scope: bindScope({ tenant_id: tenant }) } : {},
       );
       return withBookmark(result, adapter);
     }

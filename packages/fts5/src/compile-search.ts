@@ -3,6 +3,7 @@ import {
   quoteIdent,
   reserveBinds,
   reserveFunctionArgs,
+  reserveStatementBytes,
   SearchError,
   type CompiledSearch,
   type SearchCompileContext,
@@ -16,7 +17,7 @@ export function compileFts5Search(ctx: SearchCompileContext): CompiledSearch {
   const names = physicalNames(ctx.definition, ctx.physicalIndexId, ctx.generation);
   const docs = quoteIdent(names.docs);
   const fts = quoteIdent(names.fts);
-  const match = emitFts5Match(ctx.textQuery);
+  const match = emitFts5Match(ctx.textQuery, ctx.definition);
   const budget = createStatementBudget(ctx.runtimeLimits ?? {}, ctx.limits);
   const highlight = ctx.highlight ?? [];
 
@@ -68,6 +69,7 @@ ${fromSql}
 WHERE ${whereSql}
 ORDER BY ${order.orderBy}
 LIMIT ? OFFSET ?`;
+  reserveStatementBytes(budget, utf8ByteLength(sql), "search");
 
   const params = [...highlightParams, ...whereParams, ctx.limit, ctx.offset];
   return {
@@ -121,4 +123,21 @@ function sortSql(entry: SearchSort, bm25: string, ctx: SearchCompileContext): st
     });
   }
   return `d.${quoteIdent(entry.field)} ${entry.direction === "desc" ? "DESC" : "ASC"}`;
+}
+
+function utf8ByteLength(value: string): number {
+  let bytes = 0;
+  for (const char of value) {
+    const codePoint = char.codePointAt(0) ?? 0;
+    if (codePoint <= 0x7f) {
+      bytes += 1;
+    } else if (codePoint <= 0x7ff) {
+      bytes += 2;
+    } else if (codePoint <= 0xffff) {
+      bytes += 3;
+    } else {
+      bytes += 4;
+    }
+  }
+  return bytes;
 }

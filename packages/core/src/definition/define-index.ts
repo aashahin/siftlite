@@ -1,7 +1,12 @@
 import { SearchError } from "../errors/search-error.js";
 import { normalizeSynonymCatalog } from "../normalize/apply.js";
 import { validateNormalizationProfiles } from "../normalize/registry.js";
-import { assertFieldName, assertIndexName, assertTableName } from "./identifiers.js";
+import {
+  assertFieldName,
+  assertIndexName,
+  assertProjectedFieldName,
+  assertTableName,
+} from "./identifiers.js";
 import { resolveFieldType } from "./resolve-field-type.js";
 import {
   LOGICAL_FORMAT_VERSION,
@@ -54,7 +59,7 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
 
   const searchable: Record<string, { readonly weight: number }> = {};
   for (const field of searchableOrder) {
-    assertFieldName(field, "searchable");
+    assertProjectedFieldName(field, "searchable");
     const config = input.searchable[field];
     if (!config || !Number.isFinite(config.weight) || config.weight <= 0) {
       throw new SearchError({
@@ -69,7 +74,7 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
   const filterableOrder = Object.keys(input.filterable ?? {});
   const filterable: Record<string, ResolvedFieldType> = {};
   for (const field of filterableOrder) {
-    assertFieldName(field, "filterable");
+    assertProjectedFieldName(field, "filterable");
     const spec = input.filterable?.[field];
     if (spec === undefined) {
       throw new SearchError({
@@ -84,7 +89,7 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
   const sortableOrder = Object.keys(input.sortable ?? {});
   const sortable: Record<string, ResolvedFieldType> = {};
   for (const field of sortableOrder) {
-    assertFieldName(field, "sortable");
+    assertProjectedFieldName(field, "sortable");
     const spec = input.sortable?.[field];
     if (spec === undefined) {
       throw new SearchError({
@@ -98,7 +103,7 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
 
   const facets = [...(input.facets ?? [])];
   for (const field of facets) {
-    assertFieldName(field, "facet");
+    assertProjectedFieldName(field, "facet");
     if (!(field in filterable) && !(field in sortable)) {
       throw new SearchError({
         code: "SEARCH_CONFIG_INVALID",
@@ -134,11 +139,29 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
     });
   }
 
+  const sourceColumnNames = new Set(searchableOrder.map((field) => `${field}_source`));
+  for (const field of [...filterableOrder, ...sortableOrder]) {
+    if (sourceColumnNames.has(field)) {
+      throw new SearchError({
+        code: "SEARCH_CONFIG_INVALID",
+        message: `field ${field} collides with a searchable source column`,
+        details: { reason: "searchable-source-collision" },
+      });
+    }
+  }
+
   const typoTolerance = input.typoTolerance ?? { mode: "off" };
-  if (typoTolerance.mode !== "off" && typoTolerance.mode !== "fallback") {
+  if (typoTolerance.mode === "fallback") {
+    throw new SearchError({
+      code: "SEARCH_CAPABILITY_UNSUPPORTED",
+      message: "typo fallback is not implemented",
+      details: { reason: "typo-fallback-unimplemented" },
+    });
+  }
+  if (typoTolerance.mode !== "off") {
     throw new SearchError({
       code: "SEARCH_CONFIG_INVALID",
-      message: "typoTolerance.mode must be off or fallback",
+      message: "typoTolerance.mode must be off",
       details: { reason: "invalid-typo-mode" },
     });
   }

@@ -33,6 +33,12 @@ export const LIBSQL_REMOTE_CONSISTENCY: ReadConsistencyCapabilities = {
   readReplicaEligible: false,
 };
 
+/**
+ * Local capabilities advertise transactions. Interactive commit/rollback
+ * works on `file:` URLs. libSQL `:memory:` detaches the connection, so
+ * callers must use `file:` for transaction conformance. The adapter cannot
+ * see the client URL, so it cannot flip this flag automatically.
+ */
 export function libsqlRuntimeCapabilities(kind: "local" | "remote" = "local"): RuntimeCapabilities {
   return {
     id: kind === "remote" ? "libsql-remote" : "libsql-local",

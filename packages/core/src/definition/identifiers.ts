@@ -15,12 +15,26 @@ export function assertIndexName(name: string): string {
   return name;
 }
 
+const RESERVED_PHYSICAL_FIELDS = new Set(["doc_id", "source_id", "rowid", "rank"]);
+
 export function assertFieldName(name: string, role: string): string {
   if (!FIELD_NAME.test(name)) {
     throw new SearchError({
       code: "SEARCH_CONFIG_INVALID",
       message: `${role} field name is not a conservative identifier`,
       details: { reason: "invalid-field-name", role },
+    });
+  }
+  return name;
+}
+
+export function assertProjectedFieldName(name: string, role: string): string {
+  assertFieldName(name, role);
+  if (RESERVED_PHYSICAL_FIELDS.has(name)) {
+    throw new SearchError({
+      code: "SEARCH_CONFIG_INVALID",
+      message: `${role} field ${name} is reserved`,
+      details: { reason: "reserved-field-name", role },
     });
   }
   return name;

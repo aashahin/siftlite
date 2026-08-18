@@ -25,7 +25,7 @@ export const FTS5_BASE_CAPABILITIES: SearchCapabilities = {
   filters: true,
   sort: true,
   facets: true,
-  typoFallback: true,
+  typoFallback: false,
   vocabulary: true,
   cancellation: false,
 };

@@ -15,12 +15,16 @@
     },
     "examples/bun-basic": {
       "name": "@siftlite/example-bun-basic",
+      "version": "0.0.0",
       "dependencies": {
+        "@siftlite/bun": "workspace:*",
         "@siftlite/core": "workspace:*",
+        "@siftlite/fts5": "workspace:*",
       },
     },
     "examples/d1-worker": {
       "name": "@siftlite/example-d1-worker",
+      "version": "0.0.0",
       "dependencies": {
         "@siftlite/core": "workspace:*",
         "@siftlite/d1": "workspace:*",
@@ -29,6 +33,7 @@
     },
     "examples/drizzle-bun": {
       "name": "@siftlite/example-drizzle-bun",
+      "version": "0.0.0",
       "dependencies": {
         "@siftlite/bun": "workspace:*",
         "@siftlite/core": "workspace:*",
@@ -39,6 +44,7 @@
     },
     "examples/libsql-basic": {
       "name": "@siftlite/example-libsql-basic",
+      "version": "0.0.0",
       "dependencies": {
         "@libsql/client": "0.17.4",
         "@siftlite/core": "workspace:*",
@@ -48,6 +54,7 @@
     },
     "experimental/turso-native": {
       "name": "@siftlite/turso-native-experimental",
+      "version": "0.0.0",
       "dependencies": {
         "@siftlite/core": "workspace:*",
       },

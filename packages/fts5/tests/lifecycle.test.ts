@@ -3,6 +3,7 @@ import { Database } from "bun:sqlite";
 import {
   defineIndex,
   hashLogicalDefinition,
+  hashPhysicalManifest,
   physicalIndexIdFor,
   quoteIdent,
   SearchError,
@@ -11,6 +12,8 @@ import {
 import { bunSqliteAdapter } from "@siftlite/bun";
 import {
   checkIndex,
+  compileFts5PhysicalManifest,
+  compileIndexLifecycleSql,
   createIndex,
   createManualFts5Proof,
   doctorIndex,
@@ -18,6 +21,7 @@ import {
   physicalNames,
   readRegistry,
   rebuildIndex,
+  REGISTRY_SQL_COLUMNS,
   syncRuntimeDefinition,
   writePendingRegistry,
 } from "../src/index.ts";
@@ -155,6 +159,79 @@ describe("lifecycle", () => {
     expect((await doctorIndex(adapter, definition)).healthy).toBe(true);
   });
 
+  test.each([
+    {
+      label: "arabic-basic normalization",
+      base: {
+        name: "notes",
+        mode: "manual" as const,
+        searchable: { title: { weight: 1 } },
+      },
+      edit: {
+        name: "notes",
+        mode: "manual" as const,
+        searchable: { title: { weight: 1 } },
+        normalization: ["arabic-basic" as const],
+      },
+    },
+    {
+      label: "filterable storage kind",
+      base: {
+        name: "notes",
+        mode: "manual" as const,
+        searchable: { title: { weight: 1 } },
+        filterable: { status: "text" as const },
+      },
+      edit: {
+        name: "notes",
+        mode: "manual" as const,
+        searchable: { title: { weight: 1 } },
+        filterable: { status: "integer" as const },
+      },
+    },
+  ])("$label is physical-changed and does not rewrite healthy", async ({ base, edit }) => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const definition = defineIndex(base);
+    await createIndex({ adapter, definition });
+    const before = await readRegistry(adapter, "notes");
+    const edited = defineIndex(edit);
+    const previous = compileFts5PhysicalManifest({
+      definition,
+      physicalIndexId: before?.physicalIndexId ?? physicalIndexIdFor("notes"),
+      generation: before?.activeGeneration ?? 1,
+    });
+    const next = compileFts5PhysicalManifest({
+      definition: edited,
+      physicalIndexId: before?.physicalIndexId ?? physicalIndexIdFor("notes"),
+      generation: before?.activeGeneration ?? 1,
+    });
+    expect(hashPhysicalManifest(previous)).not.toBe(hashPhysicalManifest(next));
+    const kind = await syncRuntimeDefinition({ adapter, definition: edited });
+    expect(kind).toBe("physical-changed");
+    const after = await readRegistry(adapter, "notes");
+    expect(after?.health).toBe("healthy");
+    expect(after?.definitionHash).toBe(before?.definitionHash);
+    expect(after?.physicalSchemaHash).toBe(before?.physicalSchemaHash);
+  });
+
+  test("companion SQL prepends a deterministic registry seed", () => {
+    const definition = linkedDefinition();
+    const left = compileIndexLifecycleSql(definition, "abcd1234", 1);
+    const right = compileIndexLifecycleSql(definition, "abcd1234", 1);
+    expect(left).toEqual(right);
+    expect(left[0]).toContain("__sift_registry");
+    expect(left[0]).toContain("CREATE TABLE IF NOT EXISTS");
+    expect(left[1]).toContain("__sift_registry");
+    expect(left[1]).toContain("INSERT INTO");
+    for (const column of REGISTRY_SQL_COLUMNS) {
+      expect(left[0]).toContain(column);
+      expect(left[1]).toContain(column);
+    }
+    expect(left[1]).toContain("0");
+    expect(left.join("\n")).not.toContain("Date.now");
+    expect(left.some((statement) => statement.includes("CREATE TABLE"))).toBe(true);
+  });
+
   test("runtime-only definition edits keep physical identity", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     const definition = defineIndex({
@@ -179,6 +256,14 @@ describe("lifecycle", () => {
     expect(after?.physicalSchemaHash).toBe(before?.physicalSchemaHash);
     expect(after?.definitionHash).toBe(hashLogicalDefinition(edited));
     expect(after?.definitionHash).not.toBe(before?.definitionHash);
+
+    const weighted = defineIndex({
+      name: "notes",
+      mode: "manual",
+      searchable: { title: { weight: 9 } },
+      synonyms: { phone: ["iphone", "ايفون"] },
+    });
+    expect(await syncRuntimeDefinition({ adapter, definition: weighted })).toBe("runtime-only");
   });
 
   test("linked create then rebuild stays searchable on the new generation", async () => {

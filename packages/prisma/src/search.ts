@@ -20,6 +20,8 @@ export function createPrismaSearch<TRow extends Record<string, unknown>>(options
   readonly adapter: SqlAdapter;
   readonly model: string;
   readonly index: IndexDefinition;
+  /** Prisma model field for hydration. SQL/triggers keep index.source.primaryKey.field. */
+  readonly prismaIdField?: string;
 }): PrismaSearchService<TRow> {
   if (options.model.length === 0) {
     throw new SearchError({
@@ -58,6 +60,9 @@ export function createPrismaSearch<TRow extends Record<string, unknown>>(options
             model: options.model,
             definition: options.index,
             adapter: options.adapter,
+            ...(options.prismaIdField !== undefined
+              ? { prismaIdField: options.prismaIdField }
+              : {}),
           }),
         },
         query,

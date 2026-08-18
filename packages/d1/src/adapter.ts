@@ -53,6 +53,7 @@ class D1Adapter implements D1SqlAdapter {
     try {
       const prepared = prepare(this.target, statement);
       const result = await prepared.all<T>();
+      assertD1Success(result);
       this.#lastMeta = toD1QueryMeta(result.meta);
       return result.results ?? [];
     } catch (error) {
@@ -64,6 +65,7 @@ class D1Adapter implements D1SqlAdapter {
     try {
       const prepared = prepare(this.target, statement);
       const result = await prepared.run();
+      assertD1Success(result);
       this.#lastMeta = toD1QueryMeta(result.meta);
       return { rowsAffected: result.meta?.changes ?? 0 };
     } catch (error) {
@@ -75,6 +77,9 @@ class D1Adapter implements D1SqlAdapter {
     try {
       const prepared = statements.map((statement) => prepare(this.target, statement));
       const results = await this.target.batch(prepared);
+      for (const result of results) {
+        assertD1Success(result);
+      }
       const last = results[results.length - 1];
       this.#lastMeta = toD1QueryMeta(last?.meta);
       return results.map((result) => ({ rowsAffected: result.meta?.changes ?? 0 }));
@@ -111,12 +116,24 @@ function prepare(target: D1ExecutionTarget, statement: SqlStatement): D1Prepared
   return stmt.bind(...assertD1BindValues(statement.params));
 }
 
+function assertD1Success<T>(result: D1ResultLike<T>): void {
+  if (result.success === false) {
+    throw new SearchError({
+      code: "SEARCH_ADAPTER_ERROR",
+      message: "D1 adapter error",
+      details: { reason: "d1-unsuccessful" },
+      ...(typeof result.error === "string" ? { cause: result.error } : {}),
+    });
+  }
+}
+
 function wrap(error: unknown): SearchError {
   if (error instanceof SearchError) {
     return error;
   }
   return new SearchError({
     code: "SEARCH_ADAPTER_ERROR",
+    // driver text stays on cause; do not copy it into message
     message: "D1 adapter error",
     details: { reason: "adapter" },
     cause: error,

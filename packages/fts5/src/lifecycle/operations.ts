@@ -342,6 +342,7 @@ export async function syncRuntimeDefinition(
     physicalIndexId: row.physicalIndexId,
     generation: row.activeGeneration,
   });
+  // Synonyms/weights stay query-time; physical hash covers normalization, storage kinds, source, triggers.
   if (row.physicalSchemaHash !== hashPhysicalManifest(nextManifest)) {
     return "physical-changed";
   }

@@ -1,4 +1,13 @@
-import type { IndexDefinition } from "@siftlite/core";
+import {
+  hashLogicalDefinition,
+  hashPhysicalManifest,
+  quoteIdent,
+  REGISTRY_TABLE,
+  sqlStringLiteral,
+  type IndexDefinition,
+} from "@siftlite/core";
+import { compileFts5PhysicalManifest } from "../manifest.js";
+import { compileEnsureRegistrySql, REGISTRY_SQL_COLUMNS } from "./registry-sql.js";
 import {
   compileBackfillSql,
   compileDocsDdl,
@@ -14,6 +23,8 @@ export function compileIndexLifecycleSql(
   options?: { readonly secureDelete?: boolean },
 ): readonly string[] {
   return [
+    compileEnsureRegistrySql(),
+    compileRegistrySeedSql(definition, physicalIndexId, generation),
     compileDocsDdl(definition, physicalIndexId, generation),
     ...compileProjectionIndexes(definition, physicalIndexId, generation),
     compileFtsDdl(definition, physicalIndexId, generation, options),
@@ -24,4 +35,31 @@ export function compileIndexLifecycleSql(
         ]
       : []),
   ];
+}
+
+// Pending: this INSERT is emitted before object DDL in the companion script.
+function compileRegistrySeedSql(
+  definition: IndexDefinition,
+  physicalIndexId: string,
+  generation: number,
+): string {
+  const manifest = compileFts5PhysicalManifest({ definition, physicalIndexId, generation });
+  const sourceTable = definition.source ? sqlStringLiteral(definition.source.table) : "NULL";
+  return `INSERT INTO ${quoteIdent(REGISTRY_TABLE)} (
+      ${REGISTRY_SQL_COLUMNS.join(", ")}
+    ) VALUES (
+      ${sqlStringLiteral(definition.name)},
+      ${sqlStringLiteral(physicalIndexId)},
+      ${generation},
+      ${sqlStringLiteral(hashLogicalDefinition(definition))},
+      ${manifest.version},
+      ${sqlStringLiteral(hashPhysicalManifest(manifest))},
+      ${sqlStringLiteral("fts5")},
+      ${sourceTable},
+      ${sqlStringLiteral(definition.mode)},
+      0,
+      0,
+      ${sqlStringLiteral("pending")}
+    )
+    ON CONFLICT(index_name) DO NOTHING`;
 }

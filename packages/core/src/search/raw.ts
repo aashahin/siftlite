@@ -20,11 +20,15 @@ export function unsafeFts5Query(value: string): UnsafeBackendQuery {
 }
 
 export function isUnsafeFts5Query(value: unknown): value is UnsafeBackendQuery {
+  if (typeof value !== "object" || value === null) {
+    return false;
+  }
+  const raw = value as { kind?: unknown; backend?: unknown; value?: unknown };
   return (
-    typeof value === "object" &&
-    value !== null &&
-    (value as { kind?: unknown }).kind === "unsafe-backend-query" &&
-    (value as { backend?: unknown }).backend === "fts5" &&
-    typeof (value as { value?: unknown }).value === "string"
+    raw.kind === "unsafe-backend-query" &&
+    raw.backend === "fts5" &&
+    typeof raw.value === "string" &&
+    raw.value.length > 0 &&
+    !raw.value.includes("\u0000")
   );
 }

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
-import { defineIndex, physicalIndexIdFor, quoteIdent, sql } from "@siftlite/core";
+import { defineIndex, physicalIndexIdFor, quoteIdent, sql, type SqlAdapter } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import {
   applyProjectionMigration,
@@ -146,7 +146,7 @@ describe("projection migration and maintenance", () => {
     expect(rows.every((row) => row.category != null && row.category.length > 0)).toBe(true);
   });
 
-  test("bounded merge and incremental optimize run without full optimize", async () => {
+  test("bounded merge and incremental optimize report honest remaining work", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     await adapter.execute(
       sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, status TEXT)"),
@@ -166,6 +166,63 @@ describe("projection migration and maintenance", () => {
     });
     expect(optimized.pageBudget).toBe(2);
     expect(optimized.workRemaining).toBe(false);
+  });
+
+  test("unprovable partial merge does not claim workRemaining false", async () => {
+    const inner = bunSqliteAdapter(new Database(":memory:"));
+    await inner.execute(sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, status TEXT)"));
+    await createIndex({ adapter: inner, definition: baseDefinition() });
+    const adapter: SqlAdapter = {
+      id: inner.id,
+      dialect: inner.dialect,
+      runtimeCapabilities: inner.runtimeCapabilities,
+      query: async (statement) => {
+        if (/\btotal_changes\s*\(/.test(statement.sql)) {
+          throw new Error("total_changes unavailable");
+        }
+        return inner.query(statement);
+      },
+      execute: (statement) => inner.execute(statement),
+    };
+    const merged = await mergeFtsIndex({
+      adapter,
+      definition: baseDefinition(),
+      pageBudget: 2,
+    });
+    expect(merged.pageBudget).toBe(2);
+    expect(merged.workRemaining).toBe(true);
+  });
+
+  test("probeFts5Capabilities is repeatable on one bun:sqlite connection", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const first = await probeFts5Capabilities(adapter);
+    const second = await probeFts5Capabilities(adapter);
+    expect(first.fts5).toBe(true);
+    expect(first.trigramTokenizer).toBe(true);
+    expect(first.fts5Vocab).toBe(true);
+    expect(second.fts5).toBe(first.fts5);
+    expect(second.trigramTokenizer).toBe(first.trigramTokenizer);
+    expect(second.fts5SecureDelete).toBe(first.fts5SecureDelete);
+    expect(second.fts5Vocab).toBe(first.fts5Vocab);
+  });
+
+  test("probe cleanup failure does not hide a successful CREATE", async () => {
+    const inner = bunSqliteAdapter(new Database(":memory:"));
+    const adapter: SqlAdapter = {
+      id: inner.id,
+      dialect: inner.dialect,
+      runtimeCapabilities: inner.runtimeCapabilities,
+      query: (statement) => inner.query(statement),
+      execute: async (statement) => {
+        if (/DROP TABLE/i.test(statement.sql)) {
+          throw new Error("drop-probe-failed");
+        }
+        return inner.execute(statement);
+      },
+    };
+    const probes = await probeFts5Capabilities(adapter);
+    expect(probes.fts5).toBe(true);
+    expect(probes.trigramTokenizer).toBe(true);
   });
 
   test("secure-delete required policy fails closed when unsupported", async () => {

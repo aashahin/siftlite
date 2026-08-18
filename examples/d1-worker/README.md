@@ -11,8 +11,11 @@ bunx wrangler dev
 
 Then:
 
-- `GET /migrate` materializes the linked SiftLite index from `products`
-- `GET /search?q=sqlite` searches through the D1 adapter
+- `GET /migrate` materializes the linked SiftLite index from `products`. The
+  route is demo-only and idempotent: an already-existing index returns `{ ok: true }`.
+- `GET /search?q=sqlite` searches through the D1 adapter.
+- Optional tenant scope: header `x-tenant-id` or query `tenant`. When present,
+  search applies `bindScope({ tenant_id })`. This is not authentication.
 
 `/migrate` is demo-only. Do not expose unauthenticated DDL in production.
 

@@ -64,6 +64,11 @@ class LibsqlAdapter implements SqlAdapter {
     }
   }
 
+  /**
+   * Interactive transactions are unsupported on libSQL `:memory:` URLs: the
+   * client detaches the connection and later queries see an empty database.
+   * Use a `file:` path for commit/rollback. Query/execute on `:memory:` is fine.
+   */
   async transaction<T>(fn: (tx: SqlAdapter) => Promise<T>): Promise<T> {
     if (!this.client.transaction) {
       throw new SearchError({
@@ -90,7 +95,11 @@ class LibsqlAdapter implements SqlAdapter {
       }
       throw wrap(error);
     } finally {
-      tx?.close();
+      try {
+        tx?.close();
+      } catch {
+        // close() must not hide commit, rollback, or callback failures
+      }
     }
   }
 }
@@ -139,8 +148,19 @@ export function wrapLibsqlClient(client: object): LibsqlClientLike {
 function toLibsql(statement: SqlStatement): LibsqlStatement {
   return {
     sql: statement.sql,
-    args: assertBindValues(statement.params),
+    args: assertBindValues(statement.params).map(assertSafeIntegerBind),
   };
+}
+
+function assertSafeIntegerBind<T>(value: T): T {
+  if (typeof value === "number" && Number.isInteger(value) && !Number.isSafeInteger(value)) {
+    throw new SearchError({
+      code: "SEARCH_VALUE_INVALID",
+      message: "libSQL rejects integer binds outside the safe-integer range",
+      details: { reason: "unsafe-integer" },
+    });
+  }
+  return value;
 }
 
 function asClient(tx: LibsqlTransactionLike): LibsqlClientLike {
@@ -189,6 +209,7 @@ function wrap(error: unknown): SearchError {
   }
   return new SearchError({
     code: "SEARCH_ADAPTER_ERROR",
+    // driver text stays on cause; do not copy it into message
     message: "libSQL adapter error",
     details: { reason: "adapter" },
     cause: error,

@@ -16,6 +16,7 @@ import {
   type EffectiveCapabilities,
   type IndexDefinition,
   type SearchHit,
+  type SearchAbortSignal,
   type SearchPolicy,
   type SearchRequest,
   type SearchResponse,
@@ -42,7 +43,7 @@ export interface Fts5SearchContext {
   readonly hydrator?: DocumentHydrator<Record<string, unknown>>;
 }
 
-export function throwIfAborted(signal?: AbortSignal): void {
+export function throwIfAborted(signal?: SearchAbortSignal): void {
   if (signal?.aborted) {
     throw new SearchError({
       code: "SEARCH_QUERY_INVALID",
@@ -97,6 +98,7 @@ async function runFts5Search(
   request: SearchRequest,
   prepared: PreparedSearch,
 ): Promise<SearchResponse<Record<string, unknown>>> {
+  rejectUnsupportedTypoFallback(ctx.definition);
   const started = Date.now();
   const limits = ctx.limits ?? DEFAULT_APPLICATION_LIMITS;
   const page = resolveSearchPage(request, limits);
@@ -276,6 +278,16 @@ function bindRawMatch(compiled: CompiledSearch, rawMatch: string): CompiledSearc
     whereParams,
     statement: { sql: compiled.statement.sql, params },
   };
+}
+
+function rejectUnsupportedTypoFallback(definition: IndexDefinition): void {
+  if (definition.typoTolerance.mode === "fallback") {
+    throw new SearchError({
+      code: "SEARCH_CAPABILITY_UNSUPPORTED",
+      message: "typo fallback is not supported",
+      details: { reason: "typo-fallback-unsupported" },
+    });
+  }
 }
 
 function resolveSearchCapabilities(ctx: Fts5SearchContext): EffectiveCapabilities {

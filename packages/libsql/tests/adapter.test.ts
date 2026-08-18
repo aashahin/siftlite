@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { createClient } from "@libsql/client";
 import { SearchError, sql } from "@siftlite/core";
 import { runFts5SearchConformance, runSqlAdapterConformance } from "@siftlite/testing";
@@ -117,11 +120,94 @@ describe("@siftlite/libsql", () => {
     expect(executed).toEqual(["INSERT INTO t"]);
   });
 
-  test("runs shared adapter and FTS5 conformance on local libSQL", async () => {
+  test("query and execute work on local libSQL :memory:", async () => {
     const client = createClient({ url: ":memory:" });
     const adapter = libsqlAdapter(wrapLibsqlClient(client), { kind: "local" });
-    await runSqlAdapterConformance(adapter);
-    await runFts5SearchConformance(adapter);
-    expect(adapter.id).toBe("libsql-local");
+    await adapter.execute(sql("CREATE TABLE items (id INTEGER PRIMARY KEY, name TEXT)"));
+    await adapter.execute(sql("INSERT INTO items (name) VALUES (?)", ["alpha"]));
+    const rows = await adapter.query<{ name: string }>(
+      sql("SELECT name FROM items WHERE name = ?", ["alpha"]),
+    );
+    expect(rows).toEqual([{ name: "alpha" }]);
+    client.close();
+  });
+
+  test("rejects unsafe integer binds", async () => {
+    const client = createClient({ url: ":memory:" });
+    const adapter = libsqlAdapter(wrapLibsqlClient(client), { kind: "local" });
+    try {
+      await expect(
+        adapter.query(sql("SELECT ?", [Number.MAX_SAFE_INTEGER + 1])),
+      ).rejects.toMatchObject({
+        code: "SEARCH_VALUE_INVALID",
+        details: { reason: "unsafe-integer" },
+      });
+    } finally {
+      client.close();
+    }
+  });
+
+  test("wraps driver errors without copying the driver message", async () => {
+    const client = createClient({ url: ":memory:" });
+    const adapter = libsqlAdapter(wrapLibsqlClient(client), { kind: "local" });
+    const invalidSql = "THIS IS NOT VALID SQL";
+    try {
+      await adapter.query(sql(invalidSql));
+      throw new Error("expected adapter to reject invalid SQL");
+    } catch (error) {
+      expect(error).toBeInstanceOf(SearchError);
+      const wrapped = error as SearchError;
+      expect(wrapped.code).toBe("SEARCH_ADAPTER_ERROR");
+      expect(wrapped.message).toBe("libSQL adapter error");
+      expect(wrapped.message).not.toContain(invalidSql);
+      expect(wrapped.cause).toBeDefined();
+    } finally {
+      client.close();
+    }
+  });
+
+  test("transaction rollback errors do not hide the original failure", async () => {
+    const adapter = libsqlAdapter(
+      wrapLibsqlClient({
+        execute: async () => ({ rows: [], rowsAffected: 0 }),
+        transaction: async () => ({
+          execute: async () => ({ rows: [], rowsAffected: 0 }),
+          commit: async () => undefined,
+          rollback: async () => {
+            throw new Error("rollback-failed");
+          },
+          close: () => undefined,
+        }),
+      }),
+      { kind: "local" },
+    );
+
+    try {
+      await adapter.transaction?.(async () => {
+        throw new Error("original-failure");
+      });
+      throw new Error("expected transaction to reject");
+    } catch (error) {
+      expect(error).toBeInstanceOf(SearchError);
+      const wrapped = error as SearchError;
+      expect(wrapped.code).toBe("SEARCH_ADAPTER_ERROR");
+      expect(wrapped.message).toBe("libSQL adapter error");
+      expect(wrapped.cause).toBeInstanceOf(Error);
+      expect((wrapped.cause as Error).message).toBe("original-failure");
+    }
+  });
+
+  test("runs shared adapter and FTS5 conformance on a local libSQL file database", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "siftlite-libsql-"));
+    const client = createClient({ url: `file:${join(dir, "conformance.db")}` });
+    const adapter = libsqlAdapter(wrapLibsqlClient(client), { kind: "local" });
+    try {
+      await runSqlAdapterConformance(adapter, { rejectUnsafeIntegers: true });
+      await runFts5SearchConformance(adapter);
+      expect(adapter.id).toBe("libsql-local");
+    } finally {
+      client.close();
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

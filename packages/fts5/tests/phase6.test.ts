@@ -289,4 +289,16 @@ describe("Phase 6 application search semantics", () => {
     );
     expect(queries).toBe(0);
   });
+
+  test("typo fallback mode is rejected until Phase 12", async () => {
+    const ctx = await seed();
+    const definition = { ...ctx.definition, typoTolerance: { mode: "fallback" as const } };
+    await expect(searchFts5Index({ ...ctx, definition }, "sqlite")).rejects.toThrow(SearchError);
+    try {
+      await searchFts5Index({ ...ctx, definition }, "sqlite");
+      throw new Error("expected SEARCH_CAPABILITY_UNSUPPORTED");
+    } catch (error) {
+      expect((error as { code?: string }).code).toBe("SEARCH_CAPABILITY_UNSUPPORTED");
+    }
+  });
 });

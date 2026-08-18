@@ -21,6 +21,7 @@ const PUBLISHED_PACKAGES = [
 
 interface PackageExportMap {
   readonly types?: string;
+  readonly bun?: string;
   readonly import?: string;
   readonly default?: string;
 }
@@ -81,12 +82,18 @@ for (const packageDir of PUBLISHED_PACKAGES) {
       fail(`${packageDir}: exports["."] must be a conditional export map`);
     }
 
+    if (rootExport.bun !== "./src/index.ts") {
+      fail(`${packageDir}: exports["."].bun must be "./src/index.ts"`);
+    }
+
     const typesPath = resolveExportPath(packageDir, rootExport.types, "types");
+    const bunPath = resolveExportPath(packageDir, rootExport.bun, "bun");
     const importPath = resolveExportPath(packageDir, rootExport.import, "import");
     const defaultPath = resolveExportPath(packageDir, rootExport.default, "default");
 
     for (const [label, filePath] of [
       ["types", typesPath],
+      ["bun", bunPath],
       ["import", importPath],
       ["default", defaultPath],
     ] as const) {
@@ -110,6 +117,12 @@ for (const packageDir of PUBLISHED_PACKAGES) {
     }
     if (!pkg.files?.includes("dist")) {
       fail(`${packageDir}: files must include "dist"`);
+    }
+    if (!pkg.files?.includes("src")) {
+      fail(`${packageDir}: files must include "src"`);
+    }
+    if (!pkg.files?.includes("LICENSE")) {
+      fail(`${packageDir}: files must include "LICENSE"`);
     }
 
     console.log(`ok  ${pkg.name} (${packageDir})`);

@@ -1,10 +1,16 @@
 import { describe, expect, test } from "bun:test";
 import { Database } from "bun:sqlite";
 import { createClient } from "@libsql/client";
-import { defineIndex, SearchError, sql } from "@siftlite/core";
+import { defineIndex, physicalIndexIdFor, SearchError, sql } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import { libsqlAdapter, wrapLibsqlClient } from "@siftlite/libsql";
-import { createIndex, readRegistry, writePendingRegistry } from "@siftlite/fts5";
+import {
+  compileIndexLifecycleSql,
+  createIndex,
+  readRegistry,
+  REGISTRY_SQL_COLUMNS,
+  writePendingRegistry,
+} from "@siftlite/fts5";
 import {
   createPrismaHydrator,
   createPrismaSearch,
@@ -12,6 +18,7 @@ import {
   searchExtension,
   SIFTLITE_PRISMA_SUPPORT,
   type PrismaClientLike,
+  type PrismaFindManyArgs,
 } from "../src/index.ts";
 
 interface ProductRow extends Record<string, unknown> {
@@ -97,6 +104,17 @@ describe("@siftlite/prisma", () => {
     expect(left.logicalDefinitionHash).toBe(right.logicalDefinitionHash);
     expect(left.sql).toContain("CREATE TRIGGER");
     expect(left.sql).not.toContain("model Product");
+  });
+
+  test("companion SQL forwards compileIndexLifecycleSql including registry", () => {
+    const definition = productsIndex();
+    const migration = generatePrismaSearchSql(definition);
+    const lifecycle = compileIndexLifecycleSql(definition, physicalIndexIdFor(definition.name), 1);
+    expect(migration.statements).toEqual(lifecycle);
+    expect(migration.sql).toContain("__sift_registry");
+    for (const column of REGISTRY_SQL_COLUMNS) {
+      expect(migration.sql).toContain(column);
+    }
   });
 
   test("Prisma-like CRUD and raw SQL both stay synchronized through triggers", async () => {
@@ -190,7 +208,11 @@ describe("@siftlite/prisma", () => {
       "active",
     ]);
     const prisma = createPrismaLike(db);
-    const extension = searchExtension({ prisma, adapter, models: { product: index } });
+    const extension = searchExtension({
+      prisma,
+      adapter,
+      models: { product: index },
+    });
     const result = await extension.model["product"]?.search("extension", {
       hydrate: true,
     });
@@ -206,7 +228,10 @@ describe("@siftlite/prisma", () => {
     });
     const prisma: PrismaClientLike = {
       item: {
-        findMany: async () => [{ id: 0, title: "zero" }],
+        findMany: async (args: PrismaFindManyArgs) => {
+          expect(Object.keys(args.where)).toEqual(["id"]);
+          return [{ id: 0, title: "zero" }];
+        },
       },
     };
     const hydrator = createPrismaHydrator({
@@ -217,6 +242,104 @@ describe("@siftlite/prisma", () => {
     });
     const documents = await hydrator.hydrate([0]);
     expect(documents.get(0)?.["title"]).toBe("zero");
+  });
+
+  test("Prisma hydrator reads prismaIdField pid while SQL primary key stays id", async () => {
+    const definition = defineIndex({
+      name: "items",
+      mode: "manual",
+      source: { table: "items", primaryKey: { field: "id", type: "string" } },
+      searchable: { title: { weight: 1 } },
+    });
+    expect(definition.source?.primaryKey.field).toBe("id");
+    const prisma: PrismaClientLike = {
+      item: {
+        findMany: async (args: PrismaFindManyArgs) => {
+          expect(args.where["pid"]?.in).toEqual(["p1"]);
+          expect(args.where["id"]).toBeUndefined();
+          return [{ pid: "p1", title: "mapped" }];
+        },
+      },
+    };
+    const hydrator = createPrismaHydrator({
+      prisma,
+      model: "item",
+      definition,
+      adapter: bunSqliteAdapter(new Database(":memory:")),
+      prismaIdField: "pid",
+    });
+    const documents = await hydrator.hydrate(["p1"]);
+    expect(documents.get("p1")?.["title"]).toBe("mapped");
+    expect(documents.get("p1")?.["pid"]).toBe("p1");
+  });
+
+  test("createPrismaSearch hydrates via prismaIdField", async () => {
+    const db = new Database(":memory:");
+    const adapter = bunSqliteAdapter(db);
+    db.run("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)");
+    const index = productsIndex();
+    await createIndex({ adapter, definition: index });
+    db.run("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+      "p4",
+      "mapped phone",
+      "pid field",
+      "active",
+    ]);
+    const prisma: PrismaClientLike = {
+      product: {
+        async findMany(args: { where: Record<string, { in: readonly string[] }> }) {
+          const ids = args.where["pid"]?.in ?? [];
+          expect(args.where["id"]).toBeUndefined();
+          return ids.map((pid) => ({
+            pid,
+            name: "mapped phone",
+            description: "pid field",
+            status: "active",
+          }));
+        },
+      },
+    };
+    const service = createPrismaSearch({
+      prisma,
+      adapter,
+      model: "product",
+      index,
+      prismaIdField: "pid",
+    });
+    const result = await service.search("mapped", { hydrate: true });
+    expect(result.hits.map((hit) => hit.id)).toEqual(["p4"]);
+    expect(result.hits[0]?.document?.["pid"]).toBe("p4");
+  });
+
+  test("searchExtension forwards prismaIdFields into hydration", async () => {
+    const db = new Database(":memory:");
+    const adapter = bunSqliteAdapter(db);
+    db.run("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)");
+    const index = productsIndex();
+    await createIndex({ adapter, definition: index });
+    db.run("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+      "p5",
+      "extension mapped",
+      "pid field",
+      "active",
+    ]);
+    const prisma: PrismaClientLike = {
+      product: {
+        async findMany(args: { where: Record<string, { in: readonly string[] }> }) {
+          expect(args.where["pid"]?.in).toEqual(["p5"]);
+          return [{ pid: "p5", name: "extension mapped", description: "pid field", status: "active" }];
+        },
+      },
+    };
+    const extension = searchExtension({
+      prisma,
+      adapter,
+      models: { product: index },
+      prismaIdFields: { product: "pid" },
+    });
+    const result = await extension.model["product"]?.search("extension", { hydrate: true });
+    expect(result?.hits.map((hit) => hit.id)).toEqual(["p5"]);
+    expect(result?.hits[0]?.document?.["pid"]).toBe("p5");
   });
 
   test("search fails closed while the registry is pending", async () => {

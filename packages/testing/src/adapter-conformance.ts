@@ -152,22 +152,23 @@ async function assertBatchFailure(adapter: SqlAdapter): Promise<void> {
 }
 
 async function assertTransactionCommitRollback(adapter: SqlAdapter): Promise<void> {
-  if (!adapter.transaction) {
+  if (adapter.runtimeCapabilities.transactions !== true) {
     return;
   }
+  if (typeof adapter.transaction !== "function") {
+    throw fail(
+      "runtimeCapabilities.transactions requires a real adapter.transaction()",
+      "tx-capability",
+    );
+  }
+
   await recreate(adapter, "conformance_tx", "id INTEGER PRIMARY KEY, label TEXT");
-  try {
-    await adapter.transaction(async () => undefined);
-  } catch {
-    return;
-  }
-  try {
-    await adapter.query(sql("SELECT COUNT(*) AS count FROM conformance_tx"));
-  } catch {
-    // libSQL :memory: transaction() detaches the connection and lazily opens
-    // an empty database, so interactive tx semantics are unprovable here.
-    return;
-  }
+  // Do not treat transaction() or follow-up query failures as a skip.
+  // libSQL `:memory:` is not a valid target: use a `file:` temp path.
+  await adapter.transaction(async () => undefined);
+  await adapter.query(sql("SELECT COUNT(*) AS count FROM conformance_tx"));
+
+  let rejected = false;
   try {
     await adapter.transaction(async (tx) => {
       await tx.execute(
@@ -176,7 +177,10 @@ async function assertTransactionCommitRollback(adapter: SqlAdapter): Promise<voi
       throw new Error("conformance-tx-rollback");
     });
   } catch {
-    // expected
+    rejected = true;
+  }
+  if (!rejected) {
+    throw fail("transaction must reject when the callback throws", "tx-rollback");
   }
   const afterRollback = await adapter.query<{ count: number }>(
     sql("SELECT COUNT(*) AS count FROM conformance_tx"),
@@ -197,13 +201,17 @@ async function assertTransactionCommitRollback(adapter: SqlAdapter): Promise<voi
 }
 
 async function assertErrorWrapping(adapter: SqlAdapter): Promise<void> {
+  const invalidSql = "THIS IS NOT VALID SQL";
   try {
-    await adapter.query(sql("THIS IS NOT VALID SQL"));
+    await adapter.query(sql(invalidSql));
   } catch (error) {
-    if (error instanceof SearchError) {
-      return;
+    if (!(error instanceof SearchError) || error.code !== "SEARCH_ADAPTER_ERROR") {
+      throw error;
     }
-    throw error;
+    if (error.message.includes(invalidSql)) {
+      throw fail("adapter wrap must not copy SQL into SearchError.message", "error-wrap-sql");
+    }
+    return;
   }
   throw fail("invalid SQL must throw SearchError", "error-wrap");
 }

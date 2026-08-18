@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { defineIndex, SearchError } from "@siftlite/core";
-import { restoreSourceId } from "../src/index.ts";
+import { defineIndex, SearchError, type SqlAdapter } from "@siftlite/core";
+import { createProjectionHydrator, restoreSourceId } from "../src/index.ts";
 
 function numericItems() {
   return defineIndex({
@@ -44,3 +44,72 @@ describe("restoreSourceId", () => {
     expect(() => restoreSourceId(textualNotes(), undefined)).toThrow(SearchError);
   });
 });
+
+describe("toDocument codec decode", () => {
+  test("decodes boolean-integer projection storage to true/false", async () => {
+    const definition = defineIndex({
+      name: "items",
+      mode: "manual",
+      source: { table: "items", primaryKey: { field: "id", type: "string" } },
+      searchable: { title: { weight: 1 } },
+      filterable: { published: "boolean", views: "integer" },
+    });
+    const hydrator = createProjectionHydrator({
+      adapter: mockQueryAdapter([
+        { source_id: "a", title_source: "hello", published: 1, views: 3 },
+        { source_id: "b", title_source: "world", published: 0, views: 0 },
+        { source_id: "c", title_source: "none", published: null, views: null },
+      ]),
+      definition,
+      physicalIndexId: "proof",
+      generation: 1,
+    });
+    const documents = await hydrator.hydrate(["a", "b", "c"]);
+    expect(documents.get("a")).toEqual({
+      id: "a",
+      title: "hello",
+      published: true,
+      views: 3,
+    });
+    expect(documents.get("b")).toEqual({
+      id: "b",
+      title: "world",
+      published: false,
+      views: 0,
+    });
+    expect(documents.get("c")).toEqual({
+      id: "c",
+      title: "none",
+      published: null,
+      views: null,
+    });
+  });
+});
+
+function mockQueryAdapter(rows: readonly Record<string, unknown>[]): SqlAdapter {
+  return {
+    id: "test",
+    dialect: "sqlite",
+    runtimeCapabilities: {
+      id: "test",
+      dialect: "sqlite",
+      limits: { maxBindParameters: 100 },
+      consistency: {
+        transactionReadYourWrites: true,
+        postCommitReadYourWrites: true,
+        sessionAware: false,
+        sequentialSessionConsistency: false,
+        readReplicaEligible: false,
+      },
+      transactions: false,
+      batch: false,
+      cancellation: false,
+    },
+    async query() {
+      return rows as never;
+    },
+    async execute() {
+      return { rowsAffected: 0 };
+    },
+  };
+}

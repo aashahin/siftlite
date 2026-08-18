@@ -37,13 +37,43 @@ export async function mergeFtsIndex(args: {
     });
   }
   const names = physicalNames(args.definition, row.physicalIndexId, row.activeGeneration);
+  // Remaining work is true unless FTS5 total_changes() proves a no-op (delta < 2) or pageBudget is the full sentinel.
+  const before = await readTotalChanges(args.adapter);
   await args.adapter.execute(
     sql(`INSERT INTO ${quoteIdent(names.fts)}(${quoteIdent(names.fts)}, rank) VALUES (?, ?)`, [
       "merge",
       args.pageBudget,
     ]),
   );
-  return { workRemaining: false, pageBudget: args.pageBudget };
+  const after = await readTotalChanges(args.adapter);
+  return {
+    workRemaining: remainingMergeWork(before, after, args.pageBudget),
+    pageBudget: args.pageBudget,
+  };
+}
+
+/** Conventional full-merge page budget when remaining work cannot be proven. */
+const FTS5_FULL_MERGE_PAGE_BUDGET = Number.MAX_SAFE_INTEGER;
+
+function remainingMergeWork(
+  before: number | null,
+  after: number | null,
+  pageBudget: number,
+): boolean {
+  if (before !== null && after !== null) {
+    return after - before >= 2;
+  }
+  return pageBudget !== FTS5_FULL_MERGE_PAGE_BUDGET;
+}
+
+async function readTotalChanges(adapter: SqlAdapter): Promise<number | null> {
+  try {
+    const rows = await adapter.query<{ n: number }>(sql("SELECT total_changes() AS n"));
+    const value = rows[0]?.n;
+    return typeof value === "number" && Number.isFinite(value) ? value : null;
+  } catch {
+    return null;
+  }
 }
 
 export async function incrementalOptimize(args: {

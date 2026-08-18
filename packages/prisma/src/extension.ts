@@ -11,6 +11,8 @@ export interface SearchExtensionOptions {
   readonly prisma: PrismaClientLike;
   readonly adapter: SqlAdapter;
   readonly models: Readonly<Record<string, IndexDefinition>>;
+  /** Prisma model field per model name. SQL still uses source.primaryKey.field. */
+  readonly prismaIdFields?: Readonly<Record<string, string>>;
 }
 
 /**
@@ -41,7 +43,7 @@ export function searchExtension(options: SearchExtensionOptions): {
       details: { reason: "missing-prisma-client" },
     });
   }
-  const { prisma, adapter, models } = options;
+  const { prisma, adapter, models, prismaIdFields } = options;
   const model: Record<
     string,
     {
@@ -59,6 +61,9 @@ export function searchExtension(options: SearchExtensionOptions): {
           adapter,
           model: name,
           index,
+          ...(prismaIdFields?.[name] !== undefined
+            ? { prismaIdField: prismaIdFields[name] }
+            : {}),
         }).search(query, request);
       },
     };

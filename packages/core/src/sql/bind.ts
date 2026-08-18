@@ -23,6 +23,9 @@ export function assertBindValue(value: unknown): PortableBindValue {
     if (!Number.isFinite(value)) {
       rejectBind("non-finite-number", "adapters reject NaN and Infinity binds");
     }
+    if (Number.isInteger(value) && !Number.isSafeInteger(value)) {
+      rejectBind("unsafe-integer", "adapters reject integer binds outside the safe-integer range");
+    }
     return value;
   }
   if (value instanceof Uint8Array) {

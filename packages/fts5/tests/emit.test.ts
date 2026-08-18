@@ -21,13 +21,25 @@ describe("FTS5 emitter", () => {
   });
 
   test("emits FTS5 column filters from AST field selectors", () => {
-    expect(emitFts5Match({ kind: "term", value: "sqlite", field: "title" })).toBe('title:"sqlite"');
-    expect(emitFts5Match({ kind: "term", value: "sqlite", field: "title", prefix: true })).toBe(
-      'title:"sqlite"*',
+    const searchable = ["title"];
+    expect(emitFts5Match({ kind: "term", value: "sqlite", field: "title" }, searchable)).toBe(
+      'title:"sqlite"',
     );
-    expect(emitFts5Match({ kind: "phrase", terms: ["iphone", "pro"], field: "title" })).toBe(
-      'title:"iphone pro"',
+    expect(
+      emitFts5Match({ kind: "term", value: "sqlite", field: "title", prefix: true }, searchable),
+    ).toBe('title:"sqlite"*');
+    expect(
+      emitFts5Match({ kind: "phrase", terms: ["iphone", "pro"], field: "title" }, searchable),
+    ).toBe('title:"iphone pro"');
+  });
+
+  test("fielded MATCH requires a searchable allowlist", () => {
+    expect(() => emitFts5Match({ kind: "term", value: "sqlite", field: "title" })).toThrow(
+      SearchError,
     );
+    expect(() =>
+      emitFts5Match({ kind: "term", value: "sqlite", field: "status" }, ["title"]),
+    ).toThrow(SearchError);
   });
 
   test("rejects field selectors that are not FTS5 identifiers", () => {

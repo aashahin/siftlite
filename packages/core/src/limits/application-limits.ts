@@ -41,6 +41,13 @@ export function validateApplicationLimits(limits: ApplicationLimits): Applicatio
       });
     }
   }
+  if (limits.defaultLimit < 1 || limits.maxLimit < 1) {
+    throw new SearchError({
+      code: "SEARCH_CONFIG_INVALID",
+      message: "defaultLimit and maxLimit must be at least 1",
+      details: { reason: "invalid-application-limit" },
+    });
+  }
   if (limits.defaultLimit > limits.maxLimit) {
     throw new SearchError({
       code: "SEARCH_CONFIG_INVALID",

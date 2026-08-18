@@ -6,6 +6,8 @@ describe("portable bind values", () => {
     expect(assertBindValue(null)).toBe(null);
     expect(assertBindValue("active")).toBe("active");
     expect(assertBindValue(0)).toBe(0);
+    expect(assertBindValue(-0)).toBe(-0);
+    expect(assertBindValue(Number.MAX_SAFE_INTEGER)).toBe(Number.MAX_SAFE_INTEGER);
     expect(assertBindValue(12.5)).toBe(12.5);
     expect(assertBindValue(true)).toBe(true);
     expect(assertBindValue(false)).toBe(false);
@@ -25,7 +27,18 @@ describe("portable bind values", () => {
     expect(() => assertBindValue(Number.NaN)).toThrow(SearchError);
     expect(() => assertBindValue(Number.POSITIVE_INFINITY)).toThrow(SearchError);
     expect(() => assertBindValue(Number.NEGATIVE_INFINITY)).toThrow(SearchError);
+    expect(() => assertBindValue(Number.MAX_SAFE_INTEGER + 1)).toThrow(SearchError);
+    expect(() => assertBindValue(Number.MIN_SAFE_INTEGER - 1)).toThrow(SearchError);
     expect(() => assertBindValue(new ArrayBuffer(4))).toThrow(SearchError);
     expect(() => assertBindValues(["ok", undefined])).toThrow(SearchError);
+    try {
+      assertBindValue(Number.MAX_SAFE_INTEGER + 1);
+      throw new Error("expected unsafe integer to throw");
+    } catch (error) {
+      expect(error).toMatchObject({
+        code: "SEARCH_VALUE_INVALID",
+        details: { reason: "unsafe-integer" },
+      });
+    }
   });
 });

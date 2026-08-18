@@ -170,6 +170,7 @@ export type {
   SearchDiagnostics,
   SearchHit,
   SearchPage,
+  SearchAbortSignal,
   SearchRequest,
   SearchResponse,
   SearchWarning,

@@ -205,4 +205,33 @@ describe("FTS5 proof on Bun", () => {
     expect((await index.search("beta")).map((hit) => hit.id)).toEqual(["b"]);
     expect((await index.search("gamma")).map((hit) => hit.id)).toEqual(["c"]);
   });
+
+  test("proof search rejects typo fallback even on a mutated definition", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const definition = {
+      ...catalogDefinition(),
+      typoTolerance: { mode: "fallback" as const },
+    };
+    const index = await createManualFts5Proof({ adapter, definition });
+    await expect(index.search("sqlite")).rejects.toMatchObject({
+      code: "SEARCH_CAPABILITY_UNSUPPORTED",
+      details: { reason: "typo-fallback-unsupported" },
+    });
+  });
+
+  test("search rejects limit 0 and huge offset via resolveSearchPage", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const index = await createManualFts5Proof({
+      adapter,
+      definition: catalogDefinition(),
+    });
+    await expect(index.search("sqlite", { limit: 0 })).rejects.toMatchObject({
+      code: "SEARCH_QUERY_LIMIT_EXCEEDED",
+    });
+    await expect(
+      index.search("sqlite", { offset: DEFAULT_APPLICATION_LIMITS.maxOffset + 1 }),
+    ).rejects.toMatchObject({
+      code: "SEARCH_QUERY_LIMIT_EXCEEDED",
+    });
+  });
 });

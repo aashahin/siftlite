@@ -35,8 +35,8 @@ export function chunkIdsForHydration<T>(
 }
 
 /**
- * Restore search rank after batched hydration. Missing documents are omitted
- * rather than inventing placeholder rows.
+ * Restore search rank after batched hydration. Missing documents become
+ * undefined slots; hits are not dropped.
  */
 export function attachHydratedDocuments<TDocument>(
   ids: readonly SourceId[],

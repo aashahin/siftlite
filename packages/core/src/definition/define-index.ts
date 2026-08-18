@@ -37,7 +37,13 @@ export function table(
   };
 }
 
-export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
+export function defineIndex<const TInput extends IndexDefinitionInput>(
+  input: TInput,
+): IndexDefinition<
+  Extract<keyof NonNullable<TInput["filterable"]>, string>,
+  Extract<keyof NonNullable<TInput["sortable"]>, string>,
+  Extract<keyof TInput["searchable"], string>
+> {
   const name = assertIndexName(input.name);
   if (input.mode !== "linked" && input.mode !== "manual") {
     throw new SearchError({
@@ -151,17 +157,10 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
   }
 
   const typoTolerance = input.typoTolerance ?? { mode: "off" };
-  if (typoTolerance.mode === "fallback") {
-    throw new SearchError({
-      code: "SEARCH_CAPABILITY_UNSUPPORTED",
-      message: "typo fallback is not implemented",
-      details: { reason: "typo-fallback-unimplemented" },
-    });
-  }
-  if (typoTolerance.mode !== "off") {
+  if (typoTolerance.mode !== "off" && typoTolerance.mode !== "fallback") {
     throw new SearchError({
       code: "SEARCH_CONFIG_INVALID",
-      message: "typoTolerance.mode must be off",
+      message: "typoTolerance.mode must be off or fallback",
       details: { reason: "invalid-typo-mode" },
     });
   }
@@ -196,7 +195,11 @@ export function defineIndex(input: IndexDefinitionInput): IndexDefinition {
     typoTolerance,
     synonyms,
     matchingStrategy,
-  };
+  } as unknown as IndexDefinition<
+    Extract<keyof NonNullable<TInput["filterable"]>, string>,
+    Extract<keyof NonNullable<TInput["sortable"]>, string>,
+    Extract<keyof TInput["searchable"], string>
+  >;
 }
 
 function resolveSource(input: IndexDefinitionInput): IndexDefinition["source"] {

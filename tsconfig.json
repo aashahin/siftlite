@@ -8,6 +8,8 @@
     { "path": "./packages/libsql" },
     { "path": "./packages/testing" },
     { "path": "./packages/drizzle" },
-    { "path": "./packages/prisma" }
+    { "path": "./packages/prisma" },
+    { "path": "./packages/node" },
+    { "path": "./packages/cli" }
   ]
 }

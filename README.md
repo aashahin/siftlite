@@ -5,8 +5,9 @@ Typed application search for SQLite-family databases.
 SiftLite is a TypeScript search layer for SQLite, Cloudflare D1, and
 libSQL/Turso. It is not a thin FTS5 wrapper. The product contract is a stable,
 typed API for full-text retrieval, filters, sorting, facets, Arabic
-normalization, ORM integration, and managed index lifecycle. Bounded typo
-tolerance is specified for a later phase and is not implemented.
+normalization, optional bounded typo fallback, ORM integration, and managed
+index lifecycle. Typo fallback requires the trigram tokenizer and stays off
+on cost-sensitive runtimes such as D1 unless policy enables it.
 
 ```ts
 const result = await products.search("ايفون برو", {
@@ -26,9 +27,8 @@ markdown `**` markers.
 ## Status
 
 Pre-v1 implementation from the [v1.2 implementation pack](docs/README.md).
-This is not a production-ready 1.0. Bounded typo / fuzzy fallback is not
-implemented. Packages are not published until the owner finalizes branding
-and package scope.
+This is not a production-ready 1.0. Bounded typo fallback is implemented
+behind `typoTolerance.mode: "fallback"` and stays disabled on D1 by default.
 
 ## Packages
 
@@ -42,9 +42,11 @@ and package scope.
 | `@siftlite/testing` | Conformance and testkit utilities |
 | `@siftlite/drizzle` | Optional Drizzle companion |
 | `@siftlite/prisma` | Optional Prisma companion |
+| `@siftlite/node` | `better-sqlite3` Node adapter |
+| `@siftlite/cli` | check / doctor / generate CLI |
 
-`@siftlite/cli` is not part of this set. Experimental Turso-native FTS lives
-under `experimental/` and is not a stable backend.
+Experimental Turso-native FTS lives under `experimental/` and is not a
+stable backend.
 
 ## Development
 

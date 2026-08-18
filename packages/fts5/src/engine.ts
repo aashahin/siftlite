@@ -7,12 +7,16 @@ import {
   type BoundScope,
   type CheckReport,
   type DoctorReport,
+  type FilterableFields,
   type FilterNode,
   type IndexDefinition,
+  type PortableScalar,
+  type SearchableFields,
   type SearchHooks,
   type SearchPolicy,
   type SearchRequest,
   type SearchResponse,
+  type SortableFields,
   type SourceId,
   type SqlAdapter,
   type UnsafeBackendQuery,
@@ -37,11 +41,24 @@ export interface Fts5EngineOptions {
   readonly secureDelete?: SecureDeletePolicy;
 }
 
-export interface Fts5IndexHandle {
-  readonly definition: IndexDefinition;
-  scope(values: Record<string, unknown>): Fts5IndexHandle;
-  search(query: string, request?: SearchRequest): Promise<SearchResponse>;
-  searchRaw(raw: UnsafeBackendQuery, request?: SearchRequest): Promise<SearchResponse>;
+export type TypedSearchRequest<TDefinition extends IndexDefinition> = SearchRequest<
+  FilterableFields<TDefinition>,
+  SearchableFields<TDefinition>,
+  SortableFields<TDefinition>
+>;
+
+export type TypedScopeValues<TDefinition extends IndexDefinition> = {
+  readonly [K in FilterableFields<TDefinition>]?: PortableScalar;
+};
+
+export interface Fts5IndexHandle<TDefinition extends IndexDefinition = IndexDefinition> {
+  readonly definition: TDefinition;
+  scope(values: TypedScopeValues<TDefinition>): Fts5IndexHandle<TDefinition>;
+  search(query: string, request?: TypedSearchRequest<TDefinition>): Promise<SearchResponse>;
+  searchRaw(
+    raw: UnsafeBackendQuery,
+    request?: TypedSearchRequest<TDefinition>,
+  ): Promise<SearchResponse>;
   upsert(documents: readonly ManualProofDocument[]): Promise<void>;
   delete(id: SourceId): Promise<void>;
   create(): Promise<void>;
@@ -52,12 +69,12 @@ export interface Fts5IndexHandle {
 }
 
 export interface Fts5Engine {
-  index(definition: IndexDefinition): Fts5IndexHandle;
+  index<TDefinition extends IndexDefinition>(definition: TDefinition): Fts5IndexHandle<TDefinition>;
 }
 
-interface IndexHandleState {
+interface IndexHandleState<TDefinition extends IndexDefinition = IndexDefinition> {
   readonly adapter: SqlAdapter;
-  readonly definition: IndexDefinition;
+  readonly definition: TDefinition;
   readonly policy?: SearchPolicy;
   readonly limits?: ApplicationLimits;
   readonly hooks?: SearchHooks;
@@ -84,7 +101,9 @@ export function createFts5Engine(options: Fts5EngineOptions): Fts5Engine {
   };
 }
 
-function createIndexHandle(state: IndexHandleState): Fts5IndexHandle {
+function createIndexHandle<TDefinition extends IndexDefinition>(
+  state: IndexHandleState<TDefinition>,
+): Fts5IndexHandle<TDefinition> {
   const lifecycle = {
     adapter: state.adapter,
     definition: state.definition,
@@ -96,7 +115,7 @@ function createIndexHandle(state: IndexHandleState): Fts5IndexHandle {
     scope(values) {
       return createIndexHandle({
         ...state,
-        scope: appendHandleScope(state.scope, values),
+        scope: appendHandleScope(state.scope, values as Record<string, unknown>),
       });
     },
     search(query, request = {}) {
@@ -117,7 +136,9 @@ function createIndexHandle(state: IndexHandleState): Fts5IndexHandle {
     },
     async delete(id) {
       assertManualIngest(state.definition);
-      await writeManualDocuments(state, (names) => deleteManualDocument(state.adapter, names, id));
+      await writeManualDocuments(state, (names) =>
+        deleteManualDocument(state.adapter, names, id, state.definition),
+      );
     },
     create() {
       return createIndex(lifecycle);
@@ -156,7 +177,7 @@ async function runIndexSearch(
     resultCount: response.hits.length,
     filterCount: countFilterNodes(resolved.filter),
     facetCount: resolved.facets?.length ?? 0,
-    fuzzyUsed: false,
+    fuzzyUsed: response.meta?.fuzzyUsed === true,
   });
   return response;
 }

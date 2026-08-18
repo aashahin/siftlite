@@ -56,24 +56,41 @@ export interface ResolvedFieldType {
   readonly timestampUnit?: TimestampUnit;
 }
 
-export interface IndexDefinition {
+export interface IndexDefinition<
+  TFilterable extends string = string,
+  TSortable extends string = string,
+  TSearchable extends string = string,
+> {
   readonly logicalFormatVersion: typeof LOGICAL_FORMAT_VERSION;
   readonly name: string;
   readonly mode: IndexMode;
   readonly source: SourceTable | undefined;
   readonly normalization: readonly string[];
-  readonly searchable: Readonly<Record<string, SearchableFieldConfig>>;
-  readonly searchableOrder: readonly string[];
-  readonly filterable: Readonly<Record<string, ResolvedFieldType>>;
-  readonly filterableOrder: readonly string[];
-  readonly sortable: Readonly<Record<string, ResolvedFieldType>>;
-  readonly sortableOrder: readonly string[];
-  readonly facets: readonly string[];
+  readonly searchable: Readonly<Record<TSearchable, SearchableFieldConfig>>;
+  readonly searchableOrder: readonly TSearchable[];
+  readonly filterable: Readonly<Record<TFilterable, ResolvedFieldType>>;
+  readonly filterableOrder: readonly TFilterable[];
+  readonly sortable: Readonly<Record<TSortable, ResolvedFieldType>>;
+  readonly sortableOrder: readonly TSortable[];
+  readonly facets: readonly (TFilterable | TSortable)[];
   readonly prefix: readonly number[];
   readonly typoTolerance: TypoToleranceConfig;
   readonly synonyms: Readonly<Record<string, readonly string[]>>;
   readonly matchingStrategy: MatchingStrategy;
 }
+
+export type FilterableFields<TDefinition extends IndexDefinition> = Extract<
+  keyof TDefinition["filterable"],
+  string
+>;
+export type SortableFields<TDefinition extends IndexDefinition> = Extract<
+  keyof TDefinition["sortable"],
+  string
+>;
+export type SearchableFields<TDefinition extends IndexDefinition> = Extract<
+  keyof TDefinition["searchable"],
+  string
+>;
 
 export interface CanonicalLogicalDefinition {
   readonly logicalFormatVersion: number;

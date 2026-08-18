@@ -94,6 +94,9 @@ export type {
   SourceIdType,
   SourcePrimaryKey,
   SourceTable,
+  FilterableFields,
+  SortableFields,
+  SearchableFields,
   TypoToleranceConfig,
   TypoToleranceMode,
 } from "./definition/types.js";
@@ -217,6 +220,10 @@ export {
 } from "./normalize/apply.js";
 export type { ParseIndexQueryOptions } from "./normalize/query.js";
 export { parseIndexTextQuery } from "./normalize/query.js";
+export { codePointTrigrams } from "./fuzzy/trigrams.js";
+export { damerauLevenshtein, maxEditsForToken } from "./fuzzy/damerau.js";
+export { DEFAULT_FUZZY_POLICY, validateFuzzyCandidatePolicy } from "./fuzzy/policy.js";
+export type { FuzzyCandidatePolicy } from "./fuzzy/policy.js";
 export { sqlStringLiteral } from "./sql/literal.js";
 export type { BackendScoreSemantics, NativeScoreDirection } from "./backend/score-semantics.js";
 export type { MaintenanceStrategy, MaintenanceVisibility } from "./backend/maintenance.js";

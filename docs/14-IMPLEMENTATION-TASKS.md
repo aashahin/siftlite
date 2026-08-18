@@ -180,13 +180,13 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 12 — Typo tolerance
 
-- [ ] **P12-01** Implement Unicode code-point length/trigram generator.
-- [ ] **P12-02** Define `FuzzyCandidatePolicy` defaults/validation.
-- [ ] **P12-03** Compile bounded trigram OR/overlap retrieval.
-- [ ] **P12-04** Enforce minimum gram overlap and candidate cap before large payloads.
-- [ ] **P12-05** Implement/test Damerau-Levenshtein scorer.
-- [ ] **P12-06** Merge fuzzy results behind exact/prefix groups.
-- [ ] **P12-07** Test <3-code-point exclusion and Unicode edge cases.
+- [x] **P12-01** Implement Unicode code-point length/trigram generator.
+- [x] **P12-02** Define `FuzzyCandidatePolicy` defaults/validation.
+- [x] **P12-03** Compile bounded trigram OR/overlap retrieval.
+- [x] **P12-04** Enforce minimum gram overlap and candidate cap before large payloads.
+- [x] **P12-05** Implement/test Damerau-Levenshtein scorer.
+- [x] **P12-06** Merge fuzzy results behind exact/prefix groups.
+- [x] **P12-07** Test <3-code-point exclusion and Unicode edge cases.
 - [ ] **P12-08** Add 100k corpus recall/latency benchmark.
 - [ ] **P12-09** Add local 1m characterization.
 - [ ] **P12-10** Measure D1 remote cost/rows/read/time when credentials allow.
@@ -196,11 +196,11 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 13 — CLI
 
-- [ ] **P13-01** Implement portable CLI bootstrap and config loading.
+- [x] **P13-01** Implement portable CLI bootstrap and config loading.
 - [ ] **P13-02** `init`.
-- [ ] **P13-03** `generate`.
-- [ ] **P13-04** `check`.
-- [ ] **P13-05** `doctor`.
+- [x] **P13-03** `generate`.
+- [x] **P13-04** `check` (fails closed without a host adapter).
+- [x] **P13-05** `doctor` (fails closed without a host adapter).
 - [ ] **P13-06** `backfill`.
 - [ ] **P13-07** `rebuild`.
 - [ ] **P13-08** `merge`/incremental `optimize`.

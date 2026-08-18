@@ -1,0 +1,56 @@
+{
+  "name": "@siftlite/cli",
+  "version": "0.0.0",
+  "description": "SiftLite CLI for check, doctor, generate, and safe lifecycle operations.",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "siftlite": "./dist/cli.js"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "bun": "./src/index.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist",
+    "src",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "prepack": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --pretty false"
+  },
+  "dependencies": {
+    "@siftlite/core": "workspace:*",
+    "@siftlite/fts5": "workspace:*"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aashahin/siftlite.git",
+    "directory": "packages/cli"
+  },
+  "bugs": {
+    "url": "https://github.com/aashahin/siftlite/issues"
+  },
+  "homepage": "https://github.com/aashahin/siftlite#readme",
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "siftlite",
+    "cli",
+    "search"
+  ]
+}

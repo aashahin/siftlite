@@ -11,7 +11,12 @@ import {
 import { compileFts5PhysicalManifest } from "../manifest.js";
 import { adjacentLeftoverGenerations, dropTargetGenerations, physicalNames } from "../names.js";
 import { compileSearchableExpression } from "../normalize-sql.js";
-import { compileDocsDdl, compileFtsDdl, compileProjectionIndexes } from "./schema.js";
+import {
+  compileDocsDdl,
+  compileFtsDdl,
+  compileFtsTrigramDdl,
+  compileProjectionIndexes,
+} from "./schema.js";
 import {
   deleteRegistry,
   ensureRegistry,
@@ -120,6 +125,9 @@ async function materialize(
   await ctx.adapter.execute(
     sql(compileFtsDdl(ctx.definition, physicalIndexId, generation, { secureDelete })),
   );
+  if (ctx.definition.typoTolerance.mode === "fallback") {
+    await ctx.adapter.execute(sql(compileFtsTrigramDdl(ctx.definition, physicalIndexId, generation)));
+  }
   if (ctx.definition.mode === "linked") {
     await backfillLinked(ctx, physicalIndexId, generation);
     for (const statement of compileLinkedTriggers(ctx.definition, physicalIndexId, generation)) {
@@ -155,6 +163,15 @@ async function rematerializeManualFts(
   await ctx.adapter.execute(
     sql(`INSERT INTO ${fts} (${ftsCols.join(", ")}) SELECT ${ftsSelect.join(", ")} FROM ${docs}`),
   );
+  if (ctx.definition.typoTolerance.mode === "fallback") {
+    await ctx.adapter.execute(sql(`DROP TABLE IF EXISTS ${quoteIdent(names.ftsTrigram)}`));
+    await ctx.adapter.execute(sql(compileFtsTrigramDdl(ctx.definition, physicalIndexId, generation)));
+    await ctx.adapter.execute(
+      sql(
+        `INSERT INTO ${quoteIdent(names.ftsTrigram)} (${ftsCols.join(", ")}) SELECT ${ftsSelect.join(", ")} FROM ${docs}`,
+      ),
+    );
+  }
 }
 
 async function backfillLinked(
@@ -248,6 +265,13 @@ async function backfillLinked(
     );
     afterDocId = last.doc_id;
   }
+  if (definition.typoTolerance.mode === "fallback") {
+    await ctx.adapter.execute(
+      sql(
+        `INSERT INTO ${quoteIdent(names.ftsTrigram)} (${ftsCols.join(", ")}) SELECT ${ftsSelect.join(", ")} FROM ${docs}`,
+      ),
+    );
+  }
 }
 
 async function catchUpLinked(
@@ -328,6 +352,7 @@ async function dropPhysical(
     }
   }
   await adapter.execute(sql(`DROP TABLE IF EXISTS ${quoteIdent(names.fts)}`));
+  await adapter.execute(sql(`DROP TABLE IF EXISTS ${quoteIdent(names.ftsTrigram)}`));
   await adapter.execute(sql(`DROP TABLE IF EXISTS ${quoteIdent(names.docs)}`));
 }
 

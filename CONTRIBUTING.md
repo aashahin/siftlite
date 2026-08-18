@@ -30,6 +30,8 @@ The Phase 0–11 publish set is:
 - `@siftlite/testing`
 - `@siftlite/drizzle`
 - `@siftlite/prisma`
+- `@siftlite/node`
+- `@siftlite/cli`
 
 Do not add empty packages to reserve names. Create a package when its
 implementation phase begins.

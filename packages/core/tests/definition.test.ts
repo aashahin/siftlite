@@ -104,25 +104,12 @@ describe("index definition", () => {
     ).toThrow(SearchError);
   });
 
-  test("rejects typo fallback until Phase 12", () => {
-    expect(() =>
-      defineIndex({
-        ...productsInput(),
-        typoTolerance: { mode: "fallback" },
-      }),
-    ).toThrow(SearchError);
-    try {
-      defineIndex({
-        ...productsInput(),
-        typoTolerance: { mode: "fallback" },
-      });
-      throw new Error("expected typo fallback to throw");
-    } catch (error) {
-      expect(error).toMatchObject({
-        code: "SEARCH_CAPABILITY_UNSUPPORTED",
-        details: { reason: "typo-fallback-unimplemented" },
-      });
-    }
+  test("accepts typo fallback mode for Phase 12", () => {
+    const index = defineIndex({
+      ...productsInput(),
+      typoTolerance: { mode: "fallback" },
+    });
+    expect(index.typoTolerance.mode).toBe("fallback");
   });
 
   test.each([

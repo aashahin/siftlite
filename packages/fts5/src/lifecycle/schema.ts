@@ -39,6 +39,16 @@ export function compileFtsDdl(
   return `CREATE VIRTUAL TABLE ${quoteIdent(names.fts)} USING fts5(${columns}${prefix}, tokenize='unicode61'${secureDelete})`;
 }
 
+export function compileFtsTrigramDdl(
+  definition: IndexDefinition,
+  physicalIndexId: string,
+  generation: number,
+): string {
+  const names = physicalNames(definition, physicalIndexId, generation);
+  const columns = definition.searchableOrder.map((field) => quoteIdent(field)).join(", ");
+  return `CREATE VIRTUAL TABLE ${quoteIdent(names.ftsTrigram)} USING fts5(${columns}, tokenize='trigram')`;
+}
+
 export function projectionIndexName(docsTable: string, field: string): string {
   const candidate = `${docsTable}_${field}`;
   if (candidate.length <= 96) {

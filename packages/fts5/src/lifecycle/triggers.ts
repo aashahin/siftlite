@@ -28,6 +28,7 @@ export function compileLinkedTriggers(
   const pk = quoteIdent(definition.source.primaryKey.field);
   const docs = quoteIdent(names.docs);
   const fts = quoteIdent(names.fts);
+  const ftsTrigram = quoteIdent(names.ftsTrigram);
   const projected = unique([...definition.filterableOrder, ...definition.sortableOrder]);
   const searchable = definition.searchableOrder;
 
@@ -62,17 +63,36 @@ export function compileLinkedTriggers(
     `CREATE TRIGGER ${quoteIdent(triggers.insert)} AFTER INSERT ON ${source} BEGIN
   INSERT INTO ${docs} (${docInsertCols.join(", ")}) VALUES (${docInsertVals.join(", ")});
   INSERT INTO ${fts} (${ftsInsertCols.join(", ")}) VALUES (${ftsInsertVals.join(", ")});
+  ${
+    definition.typoTolerance.mode === "fallback"
+      ? `INSERT INTO ${ftsTrigram} (${ftsInsertCols.join(", ")}) VALUES (${ftsInsertVals.join(", ")});`
+      : ""
+  }
 END`,
     `CREATE TRIGGER ${quoteIdent(triggers.update)} AFTER UPDATE ON ${source} BEGIN
   UPDATE ${docs} SET ${docUpdateSet.join(", ")} WHERE ${quoteIdent("source_id")} = OLD.${pk};
   UPDATE ${fts} SET ${ftsUpdateSet.join(", ")} WHERE ${quoteIdent("rowid")} = (
     SELECT ${quoteIdent("doc_id")} FROM ${docs} WHERE ${quoteIdent("source_id")} = NEW.${pk}
   );
+  ${
+    definition.typoTolerance.mode === "fallback"
+      ? `UPDATE ${ftsTrigram} SET ${ftsUpdateSet.join(", ")} WHERE ${quoteIdent("rowid")} = (
+    SELECT ${quoteIdent("doc_id")} FROM ${docs} WHERE ${quoteIdent("source_id")} = NEW.${pk}
+  );`
+      : ""
+  }
 END`,
     `CREATE TRIGGER ${quoteIdent(triggers.delete)} AFTER DELETE ON ${source} BEGIN
   DELETE FROM ${fts} WHERE ${quoteIdent("rowid")} = (
     SELECT ${quoteIdent("doc_id")} FROM ${docs} WHERE ${quoteIdent("source_id")} = OLD.${pk}
   );
+  ${
+    definition.typoTolerance.mode === "fallback"
+      ? `DELETE FROM ${ftsTrigram} WHERE ${quoteIdent("rowid")} = (
+    SELECT ${quoteIdent("doc_id")} FROM ${docs} WHERE ${quoteIdent("source_id")} = OLD.${pk}
+  );`
+      : ""
+  }
   DELETE FROM ${docs} WHERE ${quoteIdent("source_id")} = OLD.${pk};
 END`,
   ];

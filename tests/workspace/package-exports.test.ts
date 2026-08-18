@@ -4,7 +4,18 @@ import { join } from "node:path";
 
 const ROOT = join(import.meta.dir, "../..");
 
-const PACKAGES = ["core", "fts5", "bun", "d1", "libsql", "testing", "drizzle", "prisma"] as const;
+const PACKAGES = [
+  "core",
+  "fts5",
+  "bun",
+  "d1",
+  "libsql",
+  "testing",
+  "drizzle",
+  "prisma",
+  "node",
+  "cli",
+] as const;
 
 describe("package export maps", () => {
   test("each published package has deterministic ESM exports", () => {

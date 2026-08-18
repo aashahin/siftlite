@@ -6,11 +6,11 @@ export function relevance(): SearchSort {
 }
 
 /** Ascending sort on a declared sortable field. */
-export function asc(field: string): SearchSort {
+export function asc<TField extends string>(field: TField): SearchSort<TField> {
   return { kind: "field", field, direction: "asc" };
 }
 
 /** Descending sort on a declared sortable field. */
-export function desc(field: string): SearchSort {
+export function desc<TField extends string>(field: TField): SearchSort<TField> {
   return { kind: "field", field, direction: "desc" };
 }

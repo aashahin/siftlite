@@ -11,7 +11,9 @@
       "@siftlite/d1",
       "@siftlite/libsql",
       "@siftlite/drizzle",
-      "@siftlite/prisma"
+      "@siftlite/prisma",
+      "@siftlite/node",
+      "@siftlite/cli"
     ]
   ],
   "linked": [],

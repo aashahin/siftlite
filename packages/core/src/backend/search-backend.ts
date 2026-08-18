@@ -34,9 +34,9 @@ export interface SearchCompileContext {
   readonly highlight?: readonly CompiledHighlightColumn[];
 }
 
-export type SearchSort =
+export type SearchSort<TField extends string = string> =
   | { readonly kind: "relevance" }
-  | { readonly kind: "field"; readonly field: string; readonly direction: "asc" | "desc" };
+  | { readonly kind: "field"; readonly field: TField; readonly direction: "asc" | "desc" };
 
 export interface CompiledHighlightColumn {
   readonly field: string;

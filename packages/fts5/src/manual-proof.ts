@@ -95,64 +95,26 @@ export async function createManualFts5Proof(args: {
       return upsertManualDocuments(args.adapter, definition, names, documents);
     },
     delete(id) {
-      return deleteManualDocument(args.adapter, names, id);
+      return deleteManualDocument(args.adapter, names, id, definition);
     },
     async search(query, options = {}) {
-      if (definition.typoTolerance.mode === "fallback") {
-        throw new SearchError({
-          code: "SEARCH_CAPABILITY_UNSUPPORTED",
-          message: "typo fallback is not supported",
-          details: { reason: "typo-fallback-unsupported" },
-        });
-      }
       const page = resolveSearchPage(options, limits);
-      if (args.existingSchema === true) {
-        const result = await searchFts5Index(
-          {
-            adapter: args.adapter,
-            definition,
-            physicalIndexId,
-            generation,
-            limits,
-          },
-          query,
-          {
-            ...options,
-            limit: page.limit,
-            offset: page.offset,
-          },
-        );
-        return result.hits.map((hit) => ({ id: hit.id, score: hit.score }));
-      }
-      if (options.filter) {
-        validateFilter(options.filter, { limits, definition });
-      }
-      const textQuery = parseIndexTextQuery(query, {
-        limits,
-        matchingStrategy: options.matchingStrategy ?? definition.matchingStrategy,
-        normalization: definition.normalization,
-      });
-      const compiled = backend.compileSearch({
-        definition,
-        physical,
-        physicalIndexId,
-        generation,
-        textQuery,
-        ...(options.filter ? { filter: options.filter } : {}),
-        ...(options.scope ? { scope: options.scope } : {}),
-        ...(options.sort ? { sort: options.sort } : {}),
-        limit: page.limit,
-        offset: page.offset,
-        limits,
-        runtimeLimits: args.adapter.runtimeCapabilities.limits,
-      });
-      const rows = await args.adapter.query<{ source_id: SourceId; rank: number | null }>(
-        compiled.statement,
+      const result = await searchFts5Index(
+        {
+          adapter: args.adapter,
+          definition,
+          physicalIndexId,
+          generation,
+          limits,
+        },
+        query,
+        {
+          ...options,
+          limit: page.limit,
+          offset: page.offset,
+        },
       );
-      return rows.map((row) => ({
-        id: restoreSourceId(definition, row.source_id),
-        score: compiled.emptyQuery || row.rank === null ? null : publicScoreFromFts5Bm25(row.rank),
-      }));
+      return result.hits.map((hit) => ({ id: hit.id, score: hit.score }));
     },
   };
 }
@@ -176,6 +138,7 @@ export async function deleteManualDocument(
   adapter: SqlAdapter,
   names: PhysicalNames,
   id: SourceId,
+  definition?: IndexDefinition,
 ): Promise<void> {
   const sourceId = assertSourceId(id);
   const rows = await adapter.query<{ doc_id: number }>(
@@ -191,6 +154,11 @@ export async function deleteManualDocument(
   await adapter.execute(
     sql(`DELETE FROM ${quoteIdent(names.fts)} WHERE ${quoteIdent("rowid")} = ?`, [docId]),
   );
+  if (definition?.typoTolerance.mode === "fallback") {
+    await adapter.execute(
+      sql(`DELETE FROM ${quoteIdent(names.ftsTrigram)} WHERE ${quoteIdent("rowid")} = ?`, [docId]),
+    );
+  }
   await adapter.execute(
     sql(`DELETE FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("doc_id")} = ?`, [docId]),
   );
@@ -222,6 +190,13 @@ async function createSchema(
       `CREATE VIRTUAL TABLE ${quoteIdent(names.fts)} USING fts5(${ftsColumns}${prefix}, tokenize='unicode61')`,
     ),
   );
+  if (definition.typoTolerance.mode === "fallback") {
+    await adapter.execute(
+      sql(
+        `CREATE VIRTUAL TABLE ${quoteIdent(names.ftsTrigram)} USING fts5(${ftsColumns}, tokenize='trigram')`,
+      ),
+    );
+  }
 }
 
 async function upsertDocument(
@@ -282,6 +257,14 @@ async function upsertDocument(
         [docId, ...normalizedSearchable],
       ),
     );
+    if (definition.typoTolerance.mode === "fallback") {
+      await adapter.execute(
+        sql(
+          `INSERT INTO ${quoteIdent(names.ftsTrigram)} (${quoteIdent("rowid")}, ${definition.searchableOrder.map((field) => quoteIdent(field)).join(", ")}) VALUES (${["?", ...searchableValues.map(() => "?")].join(", ")})`,
+          [docId, ...normalizedSearchable],
+        ),
+      );
+    }
     return;
   }
 
@@ -302,6 +285,14 @@ async function upsertDocument(
       [...normalizedSearchable, docId],
     ),
   );
+  if (definition.typoTolerance.mode === "fallback") {
+    await adapter.execute(
+      sql(
+        `UPDATE ${quoteIdent(names.ftsTrigram)} SET ${ftsAssignments.join(", ")} WHERE ${quoteIdent("rowid")} = ?`,
+        [...normalizedSearchable, docId],
+      ),
+    );
+  }
 }
 
 async function upsertDocumentsBatched(
@@ -331,9 +322,15 @@ async function upsertDocumentsBatched(
       allocated.set(item.sourceId, docId);
       statements.push(insertDocsStatement(definition, names, item, docId));
       statements.push(insertFtsStatement(definition, names, item, docId));
+      if (definition.typoTolerance.mode === "fallback") {
+        statements.push(insertTrigramStatement(definition, names, item, docId));
+      }
     } else {
       statements.push(updateDocsStatement(definition, names, item, existingId));
       statements.push(updateFtsStatement(definition, names, item, existingId));
+      if (definition.typoTolerance.mode === "fallback") {
+        statements.push(updateTrigramStatement(definition, names, item, existingId));
+      }
     }
   }
   if (statements.length === 0) {
@@ -429,6 +426,31 @@ function insertDocsStatement(
   return sql(
     `INSERT INTO ${quoteIdent(names.docs)} (${columns.join(", ")}) VALUES (${placeholders})`,
     [docId, document.sourceId, ...document.searchableValues, ...document.projectedValues],
+  );
+}
+
+function insertTrigramStatement(
+  definition: IndexDefinition,
+  names: PhysicalNames,
+  document: PreparedManualDocument,
+  docId: number,
+): SqlStatement {
+  return sql(
+    `INSERT INTO ${quoteIdent(names.ftsTrigram)} (${quoteIdent("rowid")}, ${definition.searchableOrder.map((field) => quoteIdent(field)).join(", ")}) VALUES (${["?", ...document.normalizedSearchable.map(() => "?")].join(", ")})`,
+    [docId, ...document.normalizedSearchable],
+  );
+}
+
+function updateTrigramStatement(
+  definition: IndexDefinition,
+  names: PhysicalNames,
+  document: PreparedManualDocument,
+  docId: number,
+): SqlStatement {
+  const assignments = definition.searchableOrder.map((field) => `${quoteIdent(field)} = ?`);
+  return sql(
+    `UPDATE ${quoteIdent(names.ftsTrigram)} SET ${assignments.join(", ")} WHERE ${quoteIdent("rowid")} = ?`,
+    [...document.normalizedSearchable, docId],
   );
 }
 

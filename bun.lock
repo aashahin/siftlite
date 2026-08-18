@@ -66,6 +66,17 @@
         "@siftlite/core": "workspace:*",
       },
     },
+    "packages/cli": {
+      "name": "@siftlite/cli",
+      "version": "0.0.0",
+      "bin": {
+        "siftlite": "./dist/cli.js",
+      },
+      "dependencies": {
+        "@siftlite/core": "workspace:*",
+        "@siftlite/fts5": "workspace:*",
+      },
+    },
     "packages/core": {
       "name": "@siftlite/core",
       "version": "0.0.0",
@@ -128,6 +139,19 @@
       },
       "optionalPeers": [
         "@libsql/client",
+      ],
+    },
+    "packages/node": {
+      "name": "@siftlite/node",
+      "version": "0.0.0",
+      "dependencies": {
+        "@siftlite/core": "workspace:*",
+      },
+      "peerDependencies": {
+        "better-sqlite3": "^11.0.0 || ^12.0.0",
+      },
+      "optionalPeers": [
+        "better-sqlite3",
       ],
     },
     "packages/prisma": {
@@ -428,6 +452,8 @@
 
     "@siftlite/bun": ["@siftlite/bun@workspace:packages/bun"],
 
+    "@siftlite/cli": ["@siftlite/cli@workspace:packages/cli"],
+
     "@siftlite/core": ["@siftlite/core@workspace:packages/core"],
 
     "@siftlite/d1": ["@siftlite/d1@workspace:packages/d1"],
@@ -445,6 +471,8 @@
     "@siftlite/fts5": ["@siftlite/fts5@workspace:packages/fts5"],
 
     "@siftlite/libsql": ["@siftlite/libsql@workspace:packages/libsql"],
+
+    "@siftlite/node": ["@siftlite/node@workspace:packages/node"],
 
     "@siftlite/prisma": ["@siftlite/prisma@workspace:packages/prisma"],
 

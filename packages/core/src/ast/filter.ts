@@ -6,16 +6,16 @@ export type MembershipOperator = "in" | "notIn";
 export type NullOperator = "isNull" | "isNotNull";
 export type BooleanOperator = "and" | "or";
 
-export type FilterNode =
-  | { readonly op: ComparisonOperator; readonly field: string; readonly value: PortableScalar }
+export type FilterNode<TField extends string = string> =
+  | { readonly op: ComparisonOperator; readonly field: TField; readonly value: PortableScalar }
   | {
       readonly op: MembershipOperator;
-      readonly field: string;
+      readonly field: TField;
       readonly values: readonly PortableScalar[];
     }
-  | { readonly op: NullOperator; readonly field: string }
-  | { readonly op: BooleanOperator; readonly children: readonly FilterNode[] }
-  | { readonly op: "not"; readonly child: FilterNode };
+  | { readonly op: NullOperator; readonly field: TField }
+  | { readonly op: BooleanOperator; readonly children: readonly FilterNode<TField>[] }
+  | { readonly op: "not"; readonly child: FilterNode<TField> };
 
 const FILTER_OPS = new Set([
   "eq",
@@ -41,57 +41,67 @@ export function isFilterNode(value: unknown): value is FilterNode {
   return typeof op === "string" && FILTER_OPS.has(op);
 }
 
-export function eq(field: string, value: unknown): FilterNode {
+export function eq<TField extends string>(field: TField, value: unknown): FilterNode<TField> {
   return { op: "eq", field, value: assertPortableScalar(value, field) };
 }
 
-export function neq(field: string, value: unknown): FilterNode {
+export function neq<TField extends string>(field: TField, value: unknown): FilterNode<TField> {
   return { op: "neq", field, value: assertPortableScalar(value, field) };
 }
 
-export function gt(field: string, value: unknown): FilterNode {
+export function gt<TField extends string>(field: TField, value: unknown): FilterNode<TField> {
   return { op: "gt", field, value: assertPortableScalar(value, field) };
 }
 
-export function gte(field: string, value: unknown): FilterNode {
+export function gte<TField extends string>(field: TField, value: unknown): FilterNode<TField> {
   return { op: "gte", field, value: assertPortableScalar(value, field) };
 }
 
-export function lt(field: string, value: unknown): FilterNode {
+export function lt<TField extends string>(field: TField, value: unknown): FilterNode<TField> {
   return { op: "lt", field, value: assertPortableScalar(value, field) };
 }
 
-export function lte(field: string, value: unknown): FilterNode {
+export function lte<TField extends string>(field: TField, value: unknown): FilterNode<TField> {
   return { op: "lte", field, value: assertPortableScalar(value, field) };
 }
 
-export function inList(field: string, values: readonly unknown[]): FilterNode {
+export function inList<TField extends string>(
+  field: TField,
+  values: readonly unknown[],
+): FilterNode<TField> {
   return { op: "in", field, values: assertMembershipValues(field, values) };
 }
 
-export function notIn(field: string, values: readonly unknown[]): FilterNode {
+export function notIn<TField extends string>(
+  field: TField,
+  values: readonly unknown[],
+): FilterNode<TField> {
   return { op: "notIn", field, values: assertMembershipValues(field, values) };
 }
 
-export function isNull(field: string): FilterNode {
+export function isNull<TField extends string>(field: TField): FilterNode<TField> {
   return { op: "isNull", field };
 }
 
-export function isNotNull(field: string): FilterNode {
+export function isNotNull<TField extends string>(field: TField): FilterNode<TField> {
   return { op: "isNotNull", field };
 }
 
-export function and(...children: readonly FilterNode[]): FilterNode {
+export function and<TField extends string>(
+  ...children: readonly FilterNode<TField>[]
+): FilterNode<TField> {
   assertBooleanChildren("and", children);
   return { op: "and", children };
 }
 
-export function or(...children: readonly FilterNode[]): FilterNode {
+export function or<TField extends string>(
+  ...children: readonly FilterNode<TField>[]
+): FilterNode<TField> {
   assertBooleanChildren("or", children);
   return { op: "or", children };
 }
 
-export function not(child: FilterNode): FilterNode {
+export function not<TField extends string>(child: FilterNode<TField>): FilterNode<TField> {
   if (!isFilterNode(child)) {
     throw new SearchError({
       code: "SEARCH_FILTER_INVALID",
@@ -102,7 +112,11 @@ export function not(child: FilterNode): FilterNode {
   return { op: "not", child };
 }
 
-export function between(field: string, min: unknown, max: unknown): FilterNode {
+export function between<TField extends string>(
+  field: TField,
+  min: unknown,
+  max: unknown,
+): FilterNode<TField> {
   return and(gte(field, min), lte(field, max));
 }
 

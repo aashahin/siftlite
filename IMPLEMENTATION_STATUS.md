@@ -5,12 +5,14 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 11 complete. 0.x publish blockers from the audit are being closed in
-this pass for the Phase 0–11 package set. This is not a production-ready 1.0.
+Phase 13 CLI and Node adapter are in the publish set. Bounded Phase 12
+typo fallback is implemented (D1 remains off by default). This is not a
+production-ready 1.0.
 
 ## Status
 
-PASS for Phases 0–11. Phase 12–14 remain open.
+PASS for Phases 0–13 except Phase 12 remote D1 cost benchmarks (P12-08–10)
+and Phase 14 RC.
 
 ## Completed tasks
 
@@ -29,9 +31,7 @@ PASS for Phases 0–11. Phase 12–14 remain open.
 
 ## Remaining
 
-- Phase 12 — bounded typo-tolerant fallback (not implemented; do not claim
-  fuzzy search or enable fallback until this phase exists)
-- Phase 13 — CLI (`@siftlite/cli`)
+- Phase 12 remote 100k/1m/D1 cost characterization (P12-08–10)
 - Phase 14 — v1.0 RC hardening
 - Conditional Phase 15
 

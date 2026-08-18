@@ -17,6 +17,7 @@ import {
 } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import {
+  createFts5Engine,
   createManualFts5Proof,
   searchFts5Index,
   searchFts5IndexRaw,
@@ -290,15 +291,22 @@ describe("Phase 6 application search semantics", () => {
     expect(queries).toBe(0);
   });
 
-  test("typo fallback mode is rejected until Phase 12", async () => {
-    const ctx = await seed();
-    const definition = { ...ctx.definition, typoTolerance: { mode: "fallback" as const } };
-    await expect(searchFts5Index({ ...ctx, definition }, "sqlite")).rejects.toThrow(SearchError);
-    try {
-      await searchFts5Index({ ...ctx, definition }, "sqlite");
-      throw new Error("expected SEARCH_CAPABILITY_UNSUPPORTED");
-    } catch (error) {
-      expect((error as { code?: string }).code).toBe("SEARCH_CAPABILITY_UNSUPPORTED");
-    }
+  test("typo fallback finds a one-edit misspelling after exact misses", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const definition = defineIndex({
+      name: "notes",
+      mode: "manual",
+      searchable: { title: { weight: 1 } },
+      typoTolerance: { mode: "fallback" },
+    });
+    const engine = createFts5Engine({ adapter });
+    const handle = engine.index(definition);
+    await handle.create();
+    await handle.upsert([{ id: "n1", searchable: { title: "iphone" } }]);
+    const exact = await handle.search("iphone");
+    expect(exact.hits.map((hit) => hit.id)).toEqual(["n1"]);
+    const fuzzy = await handle.search("iphoen", { diagnostics: true });
+    expect(fuzzy.hits.map((hit) => hit.id)).toEqual(["n1"]);
+    expect(fuzzy.meta?.fuzzyUsed).toBe(true);
   });
 });

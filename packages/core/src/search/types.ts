@@ -23,11 +23,15 @@ export interface SearchAbortSignal {
  * Application search request. Ordinary `query` text is parsed separately and
  * never treated as backend grammar.
  */
-export interface SearchRequest {
-  readonly filter?: FilterNode;
-  readonly sort?: readonly SearchSort[];
-  readonly facets?: readonly string[];
-  readonly highlight?: readonly string[];
+export interface SearchRequest<
+  TFilterable extends string = string,
+  TSearchable extends string = string,
+  TSortable extends string = string,
+> {
+  readonly filter?: FilterNode<TFilterable>;
+  readonly sort?: readonly SearchSort<TSortable>[];
+  readonly facets?: readonly TFilterable[];
+  readonly highlight?: readonly TSearchable[];
   readonly highlightMarkers?: HighlightMarkers;
   readonly limit?: number;
   readonly offset?: number;

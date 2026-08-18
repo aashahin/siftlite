@@ -130,7 +130,7 @@ describe("FTS5 search compilation", () => {
   });
 
   test("reserved compile still works for valid searchable fields", () => {
-    expect(FTS5_BASE_CAPABILITIES.typoFallback).toBe(false);
+    expect(FTS5_BASE_CAPABILITIES.typoFallback).toBe(true);
     const compiled = compile({
       textQuery: { kind: "term", value: "sqlite", field: "title" },
       runtimeLimits: { maxStatementBytes: 16_384 },

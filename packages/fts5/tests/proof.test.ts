@@ -224,17 +224,17 @@ describe("FTS5 proof on Bun", () => {
     expect((await index.search("text")).map((hit) => hit.id)).toEqual(["123"]);
   });
 
-  test("proof search rejects typo fallback even on a mutated definition", async () => {
+  test("proof search with fallback finds a one-edit misspelling", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
-    const definition = {
-      ...catalogDefinition(),
-      typoTolerance: { mode: "fallback" as const },
-    };
-    const index = await createManualFts5Proof({ adapter, definition });
-    await expect(index.search("sqlite")).rejects.toMatchObject({
-      code: "SEARCH_CAPABILITY_UNSUPPORTED",
-      details: { reason: "typo-fallback-unsupported" },
+    const definition = defineIndex({
+      name: "products",
+      mode: "manual",
+      searchable: { title: { weight: 1 } },
+      typoTolerance: { mode: "fallback" },
     });
+    const index = await createManualFts5Proof({ adapter, definition });
+    await index.upsert([{ id: "p1", searchable: { title: "iphone" } }]);
+    expect((await index.search("iphoen")).map((hit) => hit.id)).toEqual(["p1"]);
   });
 
   test("search rejects limit 0 and huge offset via resolveSearchPage", async () => {

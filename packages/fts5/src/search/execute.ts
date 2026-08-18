@@ -2,10 +2,18 @@ import {
   assertBoundScope,
   assertFilterCannotCarryScope,
   attachHydratedDocuments,
+  collectTextTerms,
+  codePointLength,
+  codePointTrigrams,
+  damerauLevenshtein,
   DEFAULT_APPLICATION_LIMITS,
+  DEFAULT_FUZZY_POLICY,
   expandTextQueryWithSynonyms,
+  maxEditsForToken,
+  normalizeIndexText,
   normalizeSynonymCatalog,
   parseIndexTextQuery,
+  quoteIdent,
   resolveSearchPage,
   SearchError,
   sql,
@@ -28,6 +36,8 @@ import {
 } from "@siftlite/core";
 import { FTS5_BASE_CAPABILITIES, sqliteFts5 } from "../backend.js";
 import { compileFts5PhysicalManifest } from "../manifest.js";
+import { physicalNames } from "../names.js";
+import { probeFts5Capabilities } from "../probes.js";
 import { publicScoreFromFts5Bm25 } from "../score.js";
 import { executeFacets } from "./facets.js";
 import { resolveHighlightColumns } from "./highlight.js";
@@ -98,11 +108,17 @@ async function runFts5Search(
   request: SearchRequest,
   prepared: PreparedSearch,
 ): Promise<SearchResponse<Record<string, unknown>>> {
-  rejectUnsupportedTypoFallback(ctx.definition);
   const started = Date.now();
   const limits = ctx.limits ?? DEFAULT_APPLICATION_LIMITS;
   const page = resolveSearchPage(request, limits);
-  const capabilities = resolveSearchCapabilities(ctx);
+  const capabilities = await resolveSearchCapabilities(ctx);
+  if (ctx.definition.typoTolerance.mode === "fallback" && !capabilities.features.typoFallback) {
+    throw new SearchError({
+      code: "SEARCH_CAPABILITY_UNSUPPORTED",
+      message: "typo fallback is not available on this runtime",
+      details: { reason: "typo-fallback-unsupported" },
+    });
+  }
   const warnings: SearchWarning[] = [...capabilities.warnings];
 
   if (request.filter) {
@@ -186,7 +202,8 @@ async function runFts5Search(
   }
   const hydrated = documents ? attachHydratedDocuments(ids, documents) : undefined;
 
-  const hits: SearchHit<Record<string, unknown>>[] = pageRows.map((row, index) => {
+  let fuzzyUsed = false;
+  let hits: SearchHit<Record<string, unknown>>[] = pageRows.map((row, index) => {
     const formatted = formattedFromRow(row, highlight);
     const document = hydrated?.[index];
     return {
@@ -197,6 +214,16 @@ async function runFts5Search(
       ...(formatted ? { formatted } : {}),
     };
   });
+
+  if (
+    hits.length === 0 &&
+    prepared.mode === "parsed" &&
+    ctx.definition.typoTolerance.mode === "fallback" &&
+    capabilities.features.typoFallback
+  ) {
+    hits = await searchFuzzyFallback(ctx, prepared.textQuery, page, request);
+    fuzzyUsed = hits.length > 0;
+  }
 
   let totalHits: number | undefined;
   if (request.includeTotal === true) {
@@ -230,7 +257,7 @@ async function runFts5Search(
     ? {
         backend: backend.id,
         runtime: ctx.adapter.runtimeCapabilities.id,
-        fuzzyUsed: false,
+        fuzzyUsed,
         bindParametersUsed: compiled.bindParameterCount,
         ...(warnings.length > 0 ? { warnings } : {}),
       }
@@ -280,23 +307,102 @@ function bindRawMatch(compiled: CompiledSearch, rawMatch: string): CompiledSearc
   };
 }
 
-function rejectUnsupportedTypoFallback(definition: IndexDefinition): void {
-  if (definition.typoTolerance.mode === "fallback") {
-    throw new SearchError({
-      code: "SEARCH_CAPABILITY_UNSUPPORTED",
-      message: "typo fallback is not supported",
-      details: { reason: "typo-fallback-unsupported" },
-    });
-  }
-}
-
-function resolveSearchCapabilities(ctx: Fts5SearchContext): EffectiveCapabilities {
+async function resolveSearchCapabilities(ctx: Fts5SearchContext): Promise<EffectiveCapabilities> {
+  const probes =
+    ctx.definition.typoTolerance.mode === "fallback"
+      ? await probeFts5Capabilities(ctx.adapter)
+      : {};
   return sqliteFts5().resolveCapabilities({
     backend: FTS5_BASE_CAPABILITIES,
     runtime: ctx.adapter.runtimeCapabilities,
-    probes: {},
-    policy: ctx.policy ?? { typoFallback: "disabled" },
+    probes,
+    policy: ctx.policy ?? { typoFallback: "disabled-on-cost-sensitive-runtimes" },
   });
+}
+
+async function searchFuzzyFallback(
+  ctx: Fts5SearchContext,
+  textQuery: TextQuery,
+  page: { readonly limit: number; readonly offset: number },
+  request: SearchRequest,
+): Promise<SearchHit<Record<string, unknown>>[]> {
+  const policy = DEFAULT_FUZZY_POLICY;
+  const terms = collectTextTerms(textQuery)
+    .map((term) => normalizeIndexText(term, ctx.definition.normalization))
+    .filter((term) => codePointLength(term) >= policy.minTokenCodepoints)
+    .slice(0, policy.maxQueryTokens);
+  const grams = [...new Set(terms.flatMap((term) => codePointTrigrams(term)))].slice(
+    0,
+    policy.maxTrigramsPerToken * Math.max(terms.length, 1),
+  );
+  if (grams.length === 0) {
+    return [];
+  }
+  const names = physicalNames(ctx.definition, ctx.physicalIndexId, ctx.generation);
+  const match = grams.map((gram) => `"${gram.replaceAll('"', '""')}"`).join(" OR ");
+  const rows = await ctx.adapter.query<{ source_id: unknown; rank: number | null }>(
+    sql(
+      `SELECT d.${quoteIdent("source_id")} AS source_id, NULL AS rank
+FROM ${quoteIdent(names.ftsTrigram)} AS t
+JOIN ${quoteIdent(names.docs)} AS d ON d.${quoteIdent("doc_id")} = t.${quoteIdent("rowid")}
+WHERE ${quoteIdent(names.ftsTrigram)} MATCH ?
+LIMIT ?`,
+      [match, policy.maxCandidates],
+    ),
+  );
+  const scored: Array<{ id: ReturnType<typeof restoreSourceId>; distance: number }> = [];
+  for (const row of rows) {
+    const id = restoreSourceId(ctx.definition, row.source_id);
+    const stored = await ctx.adapter.query<Record<string, unknown>>(
+      sql(
+        `SELECT ${ctx.definition.searchableOrder.map((field) => quoteIdent(`${field}_source`)).join(", ")} FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("source_id")} = ?`,
+        [id],
+      ),
+    );
+    const haystack = ctx.definition.searchableOrder
+      .map((field) =>
+        normalizeIndexText(String(stored[0]?.[`${field}_source`] ?? ""), ctx.definition.normalization),
+      )
+      .join(" ");
+    let best = Number.POSITIVE_INFINITY;
+    for (const term of terms) {
+      for (const token of haystack.split(/\s+/).filter(Boolean)) {
+        const allowed = Math.min(policy.maxEditDistance, maxEditsForToken(codePointLength(term)));
+        const distance = damerauLevenshtein(term, token);
+        if (distance <= allowed) {
+          best = Math.min(best, distance);
+        }
+      }
+    }
+    if (Number.isFinite(best)) {
+      scored.push({ id, distance: best });
+    }
+  }
+  scored.sort((left, right) => left.distance - right.distance);
+  const pageHits = scored.slice(page.offset, page.offset + page.limit);
+  if (request.hydrate !== true) {
+    return pageHits.map((hit) => ({ id: hit.id, score: null }));
+  }
+  const hydrator =
+    ctx.hydrator ??
+    createProjectionHydrator({
+      adapter: ctx.adapter,
+      definition: ctx.definition,
+      physicalIndexId: ctx.physicalIndexId,
+      generation: ctx.generation,
+      limits: ctx.limits ?? DEFAULT_APPLICATION_LIMITS,
+      runtimeLimits: ctx.adapter.runtimeCapabilities.limits,
+    });
+  const documents = await hydrator.hydrate(pageHits.map((hit) => hit.id));
+  const hydrated = attachHydratedDocuments(
+    pageHits.map((hit) => hit.id),
+    documents,
+  );
+  return pageHits.map((hit, index) => ({
+    id: hit.id,
+    score: null,
+    ...(hydrated[index] !== undefined ? { document: hydrated[index] } : {}),
+  }));
 }
 
 interface HitRow {

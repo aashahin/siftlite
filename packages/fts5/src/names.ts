@@ -3,6 +3,7 @@ import { assertSqlIdentifier, type IndexDefinition } from "@siftlite/core";
 export interface PhysicalNames {
   readonly docs: string;
   readonly fts: string;
+  readonly ftsTrigram: string;
 }
 
 export function physicalNames(
@@ -14,6 +15,7 @@ export function physicalNames(
   return {
     docs: assertSqlIdentifier(`${prefix}_docs`),
     fts: assertSqlIdentifier(`${prefix}_fts`),
+    ftsTrigram: assertSqlIdentifier(`${prefix}_tri`),
   };
 }
 

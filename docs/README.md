@@ -7,7 +7,7 @@ Project name: **SiftLite** (`siftlite`)
 
 > **SiftLite — typed application search for SQLite-family databases.**
 
-SiftLite is a TypeScript-first application-search layer for SQLite, Cloudflare D1, and libSQL/Turso. It is deliberately **not** a thin FTS5 wrapper. The product contract is a stable, typed search API for full-text retrieval, filters, sorting, facets, Arabic normalization, bounded typo tolerance, ORM integration, and managed index lifecycle while keeping backend-specific query syntax behind explicit capabilities.
+SiftLite is a TypeScript-first application-search layer for SQLite, Cloudflare D1, and libSQL/Turso. It is deliberately **not** a thin FTS5 wrapper. The product contract is a stable, typed search API for full-text retrieval, filters, sorting, facets, Arabic normalization, optional bounded typo fallback (trigram + Damerau-Levenshtein, D1 off by default), ORM integration, and managed index lifecycle while keeping backend-specific query syntax behind explicit capabilities.
 
 ## Target package ecosystem
 

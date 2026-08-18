@@ -20,3 +20,14 @@ export function physicalNames(
 export function sourceIdColumnType(definition: IndexDefinition): "TEXT" | "INTEGER" {
   return definition.source?.primaryKey.type === "safe-integer" ? "INTEGER" : "TEXT";
 }
+
+/** Failed rebuilds can leave objects at N-1 and N+1. */
+export function adjacentLeftoverGenerations(activeGeneration: number): readonly number[] {
+  return activeGeneration > 1
+    ? [activeGeneration + 1, activeGeneration - 1]
+    : [activeGeneration + 1];
+}
+
+export function dropTargetGenerations(activeGeneration: number): readonly number[] {
+  return [activeGeneration, ...adjacentLeftoverGenerations(activeGeneration)];
+}

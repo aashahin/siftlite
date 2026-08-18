@@ -144,29 +144,18 @@ function toLibsql(statement: SqlStatement): LibsqlStatement {
 }
 
 function asClient(tx: LibsqlTransactionLike): LibsqlClientLike {
-  const batch: NonNullable<LibsqlClientLike["batch"]> =
-    typeof tx.batch === "function"
-      ? (statements, mode) => {
-          const run = tx.batch;
-          if (!run) {
-            throw new SearchError({
-              code: "SEARCH_CAPABILITY_UNSUPPORTED",
-              message: "libSQL transaction does not expose batch()",
-              details: { reason: "libsql-batch" },
-            });
-          }
-          return run(statements, mode);
-        }
+  const runBatch = typeof tx.batch === "function" ? tx.batch.bind(tx) : undefined;
+  return {
+    execute: (statement) => tx.execute(statement),
+    batch: runBatch
+      ? (statements, mode) => runBatch(statements, mode)
       : async (statements) => {
           const results: LibsqlResultLike[] = [];
           for (const statement of statements) {
             results.push(await tx.execute(statement));
           }
           return results;
-        };
-  return {
-    execute: (statement) => tx.execute(statement),
-    batch,
+        },
   };
 }
 

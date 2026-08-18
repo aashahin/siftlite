@@ -1,4 +1,5 @@
 import {
+  assertBoundScope,
   bindScope,
   SearchError,
   type ApplicationLimits,
@@ -37,7 +38,7 @@ export interface Fts5IndexHandle {
   drop(): Promise<void>;
   rebuild(): Promise<void>;
   check(): Promise<CheckReport>;
-  doctor(options?: { level?: "fast" | "deep" }): Promise<DoctorReport>;
+  doctor(): Promise<DoctorReport>;
 }
 
 export interface Fts5Engine {
@@ -106,8 +107,8 @@ function createIndexHandle(state: IndexHandleState): Fts5IndexHandle {
     check() {
       return checkIndex(state.adapter, state.definition);
     },
-    doctor(options) {
-      return doctorIndex(state.adapter, state.definition, options);
+    doctor() {
+      return doctorIndex(state.adapter, state.definition);
     },
   };
 }
@@ -197,6 +198,9 @@ function withHandleScope(
   request: SearchRequest,
   handleScope: BoundScope | undefined,
 ): SearchRequest {
+  if (request.scope !== undefined) {
+    assertBoundScope(request.scope);
+  }
   if (!handleScope) {
     return request;
   }

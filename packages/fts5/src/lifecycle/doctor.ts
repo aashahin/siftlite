@@ -10,14 +10,10 @@ import {
   type SqlAdapter,
 } from "@siftlite/core";
 import { compileFts5PhysicalManifest } from "../manifest.js";
-import { physicalNames } from "../names.js";
+import { adjacentLeftoverGenerations, physicalNames } from "../names.js";
 import { ensureRegistry, readRegistry } from "./registry-sql.js";
 import { triggerNames } from "./triggers.js";
 import { collectIntegrityFindings, triggerExists } from "./verify.js";
-
-export interface DoctorOptions {
-  readonly level?: "fast" | "deep";
-}
 
 export async function checkIndex(
   adapter: SqlAdapter,
@@ -30,7 +26,6 @@ export async function checkIndex(
 export async function doctorIndex(
   adapter: SqlAdapter,
   definition: IndexDefinition,
-  _options?: DoctorOptions,
 ): Promise<DoctorReport> {
   await ensureRegistry(adapter);
   const findings: DoctorFinding[] = [];
@@ -115,7 +110,7 @@ export async function doctorIndex(
     }
   }
 
-  for (const leftover of leftoverGenerations(generation)) {
+  for (const leftover of adjacentLeftoverGenerations(generation)) {
     const leftoverNames = physicalNames(definition, physicalIndexId, leftover);
     if (
       (await tableExists(adapter, leftoverNames.docs)) ||
@@ -143,14 +138,6 @@ export async function doctorIndex(
 
   const healthy = findings.every((finding) => finding.severity !== "error");
   return { healthy, findings, registry };
-}
-
-function leftoverGenerations(activeGeneration: number): readonly number[] {
-  const leftovers: number[] = [activeGeneration + 1];
-  if (activeGeneration > 1) {
-    leftovers.push(activeGeneration - 1);
-  }
-  return leftovers;
 }
 
 async function tableExists(adapter: SqlAdapter, name: string): Promise<boolean> {

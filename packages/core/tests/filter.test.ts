@@ -79,28 +79,16 @@ describe("filter AST", () => {
     expect(() => and({ kind: "bound-scope", predicates: [] } as never)).toThrow(SearchError);
   });
 
-  test("validateFilter rejects malformed trees with SearchError", () => {
+  test.each([
+    ["non-array boolean children", { op: "and", children: "ab" }],
+    ["null boolean child", { op: "and", children: [eq("status", "active"), null] }],
+    ["eq without a field", { op: "eq" }],
+    ["empty boolean children", { op: "and", children: [] }],
+  ])("validateFilter rejects %s with SearchError", (_name, node) => {
     expect(() =>
-      validateFilter({ op: "and", children: "ab" } as never, {
+      validateFilter(node as never, {
         limits: DEFAULT_APPLICATION_LIMITS,
         definition,
-      }),
-    ).toThrow(SearchError);
-    expect(() =>
-      validateFilter({ op: "and", children: [eq("status", "active"), null] } as never, {
-        limits: DEFAULT_APPLICATION_LIMITS,
-        definition,
-      }),
-    ).toThrow(SearchError);
-    expect(() =>
-      validateFilter({ op: "eq" } as never, {
-        limits: DEFAULT_APPLICATION_LIMITS,
-        definition,
-      }),
-    ).toThrow(SearchError);
-    expect(() =>
-      validateFilter({ op: "and", children: [] } as never, {
-        limits: DEFAULT_APPLICATION_LIMITS,
       }),
     ).toThrow(SearchError);
   });

@@ -42,15 +42,17 @@ export default {
       return withBookmark({ ok: true }, adapter);
     }
     if (url.pathname === "/search") {
-      const bootstrap = d1Adapter(env.DB);
-      const entry = await readRegistry(bootstrap, products.name);
-      if (!entry) {
-        return Response.json({ error: "index not created" }, { status: 400 });
-      }
       const adapter = executionAdapter(
         env,
         request.headers.get("x-d1-bookmark") ?? "first-primary",
       );
+      const entry = await readRegistry(adapter, products.name);
+      if (!entry) {
+        return withBookmark({ error: "index not created" }, adapter, 400);
+      }
+      if (entry.health !== "healthy") {
+        return withBookmark({ error: "index is not healthy" }, adapter, 503);
+      }
       const result = await searchFts5Index(
         {
           adapter,

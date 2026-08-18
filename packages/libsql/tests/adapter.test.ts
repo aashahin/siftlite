@@ -87,15 +87,22 @@ describe("@siftlite/libsql", () => {
     await expect(overflowing.query(sql("SELECT 1 AS ok"))).rejects.toBeInstanceOf(SearchError);
   });
 
-  test("transaction batch executes statements on the open handle", async () => {
+  test("transaction batch preserves the official client this", async () => {
     const executed: string[] = [];
     const adapter = libsqlAdapter(
       wrapLibsqlClient({
         execute: async () => ({ rows: [], rowsAffected: 0 }),
         transaction: async () => ({
-          execute: async (statement: { sql?: string } | string) => {
-            executed.push(typeof statement === "string" ? statement : (statement.sql ?? ""));
-            return { rows: [], rowsAffected: 1 };
+          label: "tx",
+          execute: async () => ({ rows: [], rowsAffected: 0 }),
+          batch(this: { label: string }, statements: readonly ({ sql?: string } | string)[]) {
+            if (this.label !== "tx") {
+              throw new Error("libSQL transaction lost this");
+            }
+            for (const statement of statements) {
+              executed.push(typeof statement === "string" ? statement : (statement.sql ?? ""));
+            }
+            return Promise.resolve([{ rows: [], rowsAffected: 1 }]);
           },
           commit: async () => undefined,
           rollback: async () => undefined,

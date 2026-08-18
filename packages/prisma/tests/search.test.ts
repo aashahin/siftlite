@@ -4,7 +4,7 @@ import { createClient } from "@libsql/client";
 import { defineIndex, SearchError, sql } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import { libsqlAdapter, wrapLibsqlClient } from "@siftlite/libsql";
-import { createIndex } from "@siftlite/fts5";
+import { createIndex, readRegistry, writePendingRegistry } from "@siftlite/fts5";
 import {
   createPrismaHydrator,
   createPrismaSearch,
@@ -217,6 +217,29 @@ describe("@siftlite/prisma", () => {
     });
     const documents = await hydrator.hydrate([0]);
     expect(documents.get(0)?.["title"]).toBe("zero");
+  });
+
+  test("search fails closed while the registry is pending", async () => {
+    const db = new Database(":memory:");
+    const adapter = bunSqliteAdapter(db);
+    db.run("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)");
+    const index = productsIndex();
+    const service = createPrismaSearch<ProductRow>({
+      prisma: createPrismaLike(db),
+      adapter,
+      model: "product",
+      index,
+    });
+    await createIndex({ adapter, definition: index });
+    const row = await readRegistry(adapter, "products");
+    expect(row).not.toBeNull();
+    if (!row) {
+      throw new Error("expected registry row");
+    }
+    await writePendingRegistry(adapter, { ...row, updatedAt: Date.now() });
+    await expect(service.search("prisma")).rejects.toMatchObject({
+      code: "SEARCH_MAINTENANCE_FAILED",
+    });
   });
 
   test("Prisma hydrator fails when the definition has no source primary key", () => {

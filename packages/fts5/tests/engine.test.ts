@@ -73,6 +73,14 @@ describe("createFts5Engine", () => {
     expect(replaced.hits).toEqual([]);
   });
 
+  test("malformed request scope fails closed as SearchError", async () => {
+    const { handle } = await seededHandle();
+    const scoped = handle.scope({ status: "active" });
+    await expect(
+      scoped.search("sqlite", { scope: { kind: "bound-scope" } as never }),
+    ).rejects.toBeInstanceOf(SearchError);
+  });
+
   test("searchRaw on the handle uses unsafe FTS5 grammar", async () => {
     const { handle } = await seededHandle();
     const raw = await handle.searchRaw(unsafeFts5Query('name:"sqlite"'));

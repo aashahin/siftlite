@@ -9,7 +9,7 @@ import {
   type SqlAdapter,
 } from "@siftlite/core";
 import { compileFts5PhysicalManifest } from "../manifest.js";
-import { physicalNames } from "../names.js";
+import { adjacentLeftoverGenerations, dropTargetGenerations, physicalNames } from "../names.js";
 import { compileSearchableExpression } from "../normalize-sql.js";
 import { compileDocsDdl, compileFtsDdl, compileProjectionIndexes } from "./schema.js";
 import {
@@ -77,7 +77,7 @@ export async function dropIndex(ctx: LifecycleContext): Promise<void> {
   const row = await readRegistry(ctx.adapter, ctx.definition.name);
   const physicalIndexId = row?.physicalIndexId ?? physicalIndexIdFor(ctx.definition.name);
   const generation = row?.activeGeneration ?? 1;
-  for (const leftover of leftoverGenerations(generation)) {
+  for (const leftover of dropTargetGenerations(generation)) {
     await dropPhysical(ctx.adapter, ctx.definition, physicalIndexId, leftover);
   }
   await deleteRegistry(ctx.adapter, ctx.definition.name);
@@ -345,7 +345,9 @@ export async function syncRuntimeDefinition(
   if (row.physicalSchemaHash !== hashPhysicalManifest(nextManifest)) {
     return "physical-changed";
   }
-  await dropPhysical(ctx.adapter, ctx.definition, row.physicalIndexId, row.activeGeneration + 1);
+  for (const leftover of adjacentLeftoverGenerations(row.activeGeneration)) {
+    await dropPhysical(ctx.adapter, ctx.definition, row.physicalIndexId, leftover);
+  }
   await verifyOrThrow(ctx, row.physicalIndexId, row.activeGeneration);
   await writeHealthyRegistry(ctx, row.physicalIndexId, row.activeGeneration);
   return "runtime-only";
@@ -363,14 +365,6 @@ async function docsTableExists(
     ]),
   );
   return rows.length > 0;
-}
-
-function leftoverGenerations(generation: number): readonly number[] {
-  const leftovers = new Set([generation, generation + 1]);
-  if (generation > 1) {
-    leftovers.add(generation - 1);
-  }
-  return [...leftovers];
 }
 
 async function generationIsIntact(

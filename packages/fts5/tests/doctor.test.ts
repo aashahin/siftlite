@@ -67,7 +67,19 @@ describe("doctor", () => {
     const report = await doctorIndex(adapter, definition);
     expect(report.healthy).toBe(false);
     expect(report.findings.some((finding) => finding.code === "count-mismatch")).toBe(true);
+  });
 
+  test("doctor reports leftover rebuild generations", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO products (id, name, status) VALUES (?, ?, ?)", ["p1", "sqlite", "active"]),
+    );
+    const definition = linkedDefinition();
+    await createIndex({ adapter, definition });
+    const row = await readRegistry(adapter, "products");
     const leftover = physicalNames(
       definition,
       row?.physicalIndexId ?? physicalIndexIdFor("products"),

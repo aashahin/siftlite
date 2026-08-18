@@ -1,5 +1,5 @@
 import type { IndexDefinition } from "../definition/types.js";
-import { SearchError } from "../errors/search-error.js";
+import { isSearchError, SearchError } from "../errors/search-error.js";
 import type { ApplicationLimits } from "../limits/application-limits.js";
 import {
   booleanIntegerCodec,
@@ -119,7 +119,10 @@ function assertFilterField(field: unknown): asserts field is string {
   }
   try {
     assertFieldName(field, "filter");
-  } catch {
+  } catch (error) {
+    if (!isSearchError(error)) {
+      throw error;
+    }
     throw new SearchError({
       code: "SEARCH_FILTER_INVALID",
       message: "filter field name is not a conservative identifier",

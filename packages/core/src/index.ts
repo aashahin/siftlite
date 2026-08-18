@@ -79,7 +79,6 @@ export {
   bindScope,
   composeScopedFilter,
   isBoundScope,
-  isScopePredicate,
 } from "./ast/scope.js";
 
 export type { MatchingStrategy } from "./definition/types.js";

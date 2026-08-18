@@ -1,5 +1,5 @@
 import { assertFieldName } from "../definition/identifiers.js";
-import { SearchError } from "../errors/search-error.js";
+import { isSearchError, SearchError } from "../errors/search-error.js";
 import { assertPortableScalar, type PortableScalar } from "./scalar.js";
 import type { FilterNode } from "./filter.js";
 import { isFilterNode } from "./filter.js";
@@ -31,17 +31,27 @@ export interface ScopedFilter {
   readonly userFilter: FilterNode | undefined;
 }
 
-export function isScopePredicate(value: unknown): value is ScopePredicate {
+function isScopePredicate(value: unknown): value is ScopePredicate {
   if (value === null || typeof value !== "object") {
     return false;
   }
   const predicate = value as { kind?: unknown; field?: unknown; value?: unknown };
-  return (
-    predicate.kind === "scope-eq" &&
-    typeof predicate.field === "string" &&
-    predicate.field.length > 0 &&
-    isPortableScopeValue(predicate.value)
-  );
+  if (
+    predicate.kind !== "scope-eq" ||
+    typeof predicate.field !== "string" ||
+    !isPortableScopeValue(predicate.value)
+  ) {
+    return false;
+  }
+  try {
+    assertFieldName(predicate.field, "scope");
+  } catch (error) {
+    if (isSearchError(error)) {
+      return false;
+    }
+    throw error;
+  }
+  return true;
 }
 
 export function isBoundScope(value: unknown): value is BoundScope {
@@ -68,9 +78,6 @@ export function assertBoundScope(value: unknown): BoundScope {
       message: "scope requires at least one predicate",
       details: { reason: "empty-scope" },
     });
-  }
-  for (const predicate of value.predicates) {
-    assertScopeField(predicate.field);
   }
   return value;
 }
@@ -162,7 +169,7 @@ export function assertFilterCannotCarryScope(node: FilterNode): void {
 }
 
 function assertScopeField(field: string): void {
-  if (typeof field !== "string" || field.length === 0) {
+  if (field.length === 0) {
     throw new SearchError({
       code: "SEARCH_SCOPE_INVALID",
       message: "scope field names must be non-empty",
@@ -171,7 +178,10 @@ function assertScopeField(field: string): void {
   }
   try {
     assertFieldName(field, "scope");
-  } catch {
+  } catch (error) {
+    if (!isSearchError(error)) {
+      throw error;
+    }
     throw new SearchError({
       code: "SEARCH_SCOPE_INVALID",
       message: "scope field name is not a conservative identifier",

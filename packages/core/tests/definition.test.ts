@@ -146,6 +146,14 @@ describe("index definition", () => {
       "filterable searchable source column",
       { filterable: { name_source: "text" as const } },
     ],
+    [
+      "searchable Rank",
+      { searchable: { Rank: { weight: 1 } } },
+    ],
+    [
+      "searchable AND",
+      { searchable: { AND: { weight: 1 } } },
+    ],
   ] as const)("rejects reserved or colliding field %s", (_label, override) => {
     expect(() => defineIndex({ ...productsInput(), ...override })).toThrow(SearchError);
   });

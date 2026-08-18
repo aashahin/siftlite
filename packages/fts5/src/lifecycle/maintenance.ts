@@ -67,6 +67,9 @@ function remainingMergeWork(
 }
 
 async function readTotalChanges(adapter: SqlAdapter): Promise<number | null> {
+  if (!adapterHasStickyTotalChanges(adapter)) {
+    return null;
+  }
   try {
     const rows = await adapter.query<{ n: number }>(sql("SELECT total_changes() AS n"));
     const value = rows[0]?.n;
@@ -74,6 +77,10 @@ async function readTotalChanges(adapter: SqlAdapter): Promise<number | null> {
   } catch {
     return null;
   }
+}
+
+function adapterHasStickyTotalChanges(adapter: SqlAdapter): boolean {
+  return adapter.id === "bun-sqlite" || adapter.id === "libsql-local";
 }
 
 export async function incrementalOptimize(args: {

@@ -1,6 +1,6 @@
 import { SearchError } from "../errors/search-error.js";
 import type { ApplicationLimits } from "./application-limits.js";
-import { interpretLimit, type ProvenLimit, type RuntimeSqlLimits } from "./runtime-sql-limits.js";
+import { remainingOf, type ProvenLimit, type RuntimeSqlLimits } from "./runtime-sql-limits.js";
 
 export type BudgetReason =
   | "search"
@@ -36,18 +36,15 @@ export function createStatementBudget(
 }
 
 export function remainingBindBudget(budget: StatementBudget): ProvenLimit {
-  const limit = interpretLimit(budget.limits.maxBindParameters);
-  return limit === "unproven" ? "unproven" : limit - budget.reservedBinds;
+  return remainingOf(budget.limits.maxBindParameters, budget.reservedBinds);
 }
 
 export function remainingFunctionArgBudget(budget: StatementBudget): ProvenLimit {
-  const limit = interpretLimit(budget.limits.maxFunctionArguments);
-  return limit === "unproven" ? "unproven" : limit - budget.reservedFunctionArgs;
+  return remainingOf(budget.limits.maxFunctionArguments, budget.reservedFunctionArgs);
 }
 
 export function remainingStatementByteBudget(budget: StatementBudget): ProvenLimit {
-  const limit = interpretLimit(budget.limits.maxStatementBytes);
-  return limit === "unproven" ? "unproven" : limit - budget.reservedStatementBytes;
+  return remainingOf(budget.limits.maxStatementBytes, budget.reservedStatementBytes);
 }
 
 export function reserveBinds(budget: StatementBudget, count: number, reason: BudgetReason): void {

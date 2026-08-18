@@ -56,6 +56,9 @@ describe("filter AST", () => {
     expect(() =>
       validateFilter(eq("count", 1.5), { limits: DEFAULT_APPLICATION_LIMITS, definition }),
     ).toThrow(SearchError);
+    expect(() =>
+      validateFilter(isNull("constructor"), { limits: DEFAULT_APPLICATION_LIMITS, definition }),
+    ).toThrow(SearchError);
   });
 
   test("enforces filter tree limits", () => {

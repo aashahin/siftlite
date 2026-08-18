@@ -1,5 +1,6 @@
 import type { FieldCodec } from "./kinds.js";
 import { rejectUnsupportedPublicValue, rejectValue } from "./reject.js";
+import { decodeIntegerStorage, decodeRealStorage } from "./storage.js";
 
 export const textCodec: FieldCodec<string> = {
   storageKind: "text",
@@ -35,14 +36,15 @@ export const safeIntegerCodec: FieldCodec<number> = {
     return value;
   },
   decode(value) {
-    if (typeof value !== "number" || !Number.isSafeInteger(value)) {
+    const decoded = decodeIntegerStorage(value);
+    if (decoded === undefined) {
       rejectValue(
         "safe-integer",
         "storage-mismatch",
         "safe-integer codec expected INTEGER storage",
       );
     }
-    return value;
+    return decoded;
   },
 };
 
@@ -61,10 +63,11 @@ export const finiteRealCodec: FieldCodec<number> = {
     return value;
   },
   decode(value) {
-    if (typeof value !== "number" || !Number.isFinite(value)) {
+    const decoded = decodeRealStorage(value);
+    if (decoded === undefined) {
       rejectValue("finite-real", "storage-mismatch", "finite-real codec expected REAL storage");
     }
-    return value;
+    return decoded;
   },
 };
 
@@ -77,10 +80,11 @@ export const booleanIntegerCodec: FieldCodec<boolean> = {
     return value ? 1 : 0;
   },
   decode(value) {
-    if (value === 1) {
+    const decoded = decodeIntegerStorage(value);
+    if (decoded === 1) {
       return true;
     }
-    if (value === 0) {
+    if (decoded === 0) {
       return false;
     }
     rejectValue(

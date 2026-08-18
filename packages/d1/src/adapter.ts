@@ -117,7 +117,7 @@ function prepare(target: D1ExecutionTarget, statement: SqlStatement): D1Prepared
 }
 
 function assertD1Success<T>(result: D1ResultLike<T>): void {
-  if (result.success === false) {
+  if (result.success === false || typeof result.error === "string") {
     throw new SearchError({
       code: "SEARCH_ADAPTER_ERROR",
       message: "D1 adapter error",

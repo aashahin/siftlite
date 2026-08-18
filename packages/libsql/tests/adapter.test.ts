@@ -120,6 +120,18 @@ describe("@siftlite/libsql", () => {
     expect(executed).toEqual(["INSERT INTO t"]);
   });
 
+  test("does not advertise transactions for a :memory: client URL", () => {
+    const official = {
+      url: ":memory:",
+      execute: async () => ({ rows: [], rowsAffected: 0 }),
+      transaction: async () => {
+        throw new Error("must not start a memory transaction");
+      },
+    };
+    const adapter = libsqlAdapter(wrapLibsqlClient(official), { kind: "local" });
+    expect(adapter.runtimeCapabilities.transactions).toBe(false);
+  });
+
   test("query and execute work on local libSQL :memory:", async () => {
     const client = createClient({ url: ":memory:" });
     const adapter = libsqlAdapter(wrapLibsqlClient(client), { kind: "local" });

@@ -8,7 +8,7 @@ import {
   textCodec,
 } from "../codecs/codecs.js";
 import { timestampIntegerCodec } from "../codecs/timestamp.js";
-import { assertFieldName } from "../definition/identifiers.js";
+import { assertFieldName, hasOwnField } from "../definition/identifiers.js";
 import type { FilterNode } from "./filter.js";
 import { isFilterNode } from "./filter.js";
 import { assertPortableScalar, type PortableScalar } from "./scalar.js";
@@ -135,7 +135,7 @@ function assertDeclaredField(field: string, definition: IndexDefinition | undefi
   if (!definition) {
     return;
   }
-  if (!(field in definition.filterable)) {
+  if (!hasOwnField(definition.filterable, field)) {
     throw new SearchError({
       code: "SEARCH_FILTER_INVALID",
       message: `field ${field} is not declared filterable`,
@@ -152,6 +152,13 @@ function assertFieldValue(
   if (!definition) {
     assertPortableScalar(value, field);
     return;
+  }
+  if (!hasOwnField(definition.filterable, field)) {
+    throw new SearchError({
+      code: "SEARCH_FILTER_INVALID",
+      message: `field ${field} is not declared filterable`,
+      details: { reason: "undeclared-field" },
+    });
   }
   const spec = definition.filterable[field];
   if (!spec) {

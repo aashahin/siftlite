@@ -115,7 +115,7 @@ function sortSql(entry: SearchSort, bm25: string, ctx: SearchCompileContext): st
   if (entry.kind === "relevance") {
     return `${bm25} ASC`;
   }
-  if (!(entry.field in ctx.definition.sortable)) {
+  if (!Object.prototype.hasOwnProperty.call(ctx.definition.sortable, entry.field)) {
     throw new SearchError({
       code: "SEARCH_QUERY_INVALID",
       message: `field ${entry.field} is not declared sortable`,

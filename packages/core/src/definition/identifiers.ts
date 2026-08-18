@@ -16,6 +16,7 @@ export function assertIndexName(name: string): string {
 }
 
 const RESERVED_PHYSICAL_FIELDS = new Set(["doc_id", "source_id", "rowid", "rank"]);
+const RESERVED_FTS5_MATCH_FIELDS = new Set(["and", "or", "not", "near"]);
 
 export function assertFieldName(name: string, role: string): string {
   if (!FIELD_NAME.test(name)) {
@@ -30,14 +31,29 @@ export function assertFieldName(name: string, role: string): string {
 
 export function assertProjectedFieldName(name: string, role: string): string {
   assertFieldName(name, role);
-  if (RESERVED_PHYSICAL_FIELDS.has(name)) {
+  const folded = name.toLowerCase();
+  if (RESERVED_PHYSICAL_FIELDS.has(folded)) {
     throw new SearchError({
       code: "SEARCH_CONFIG_INVALID",
       message: `${role} field ${name} is reserved`,
       details: { reason: "reserved-field-name", role },
     });
   }
+  if (role === "searchable" && RESERVED_FTS5_MATCH_FIELDS.has(folded)) {
+    throw new SearchError({
+      code: "SEARCH_CONFIG_INVALID",
+      message: `${role} field ${name} collides with FTS5 MATCH grammar`,
+      details: { reason: "reserved-fts5-match-field", role },
+    });
+  }
   return name;
+}
+
+export function hasOwnField(
+  record: Readonly<Record<string, unknown>>,
+  field: string,
+): boolean {
+  return Object.prototype.hasOwnProperty.call(record, field);
 }
 
 export function assertTableName(name: string): string {

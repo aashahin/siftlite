@@ -24,7 +24,7 @@ export function compileIndexLifecycleSql(
 ): readonly string[] {
   return [
     compileEnsureRegistrySql(),
-    compileRegistrySeedSql(definition, physicalIndexId, generation),
+    compileRegistrySeedSql(definition, physicalIndexId, generation, options),
     compileDocsDdl(definition, physicalIndexId, generation),
     ...compileProjectionIndexes(definition, physicalIndexId, generation),
     compileFtsDdl(definition, physicalIndexId, generation, options),
@@ -42,8 +42,12 @@ function compileRegistrySeedSql(
   definition: IndexDefinition,
   physicalIndexId: string,
   generation: number,
+  options?: { readonly secureDelete?: boolean },
 ): string {
-  const manifest = compileFts5PhysicalManifest({ definition, physicalIndexId, generation });
+  const manifest = compileFts5PhysicalManifest(
+    { definition, physicalIndexId, generation },
+    { secureDelete: options?.secureDelete === true },
+  );
   const sourceTable = definition.source ? sqlStringLiteral(definition.source.table) : "NULL";
   return `INSERT INTO ${quoteIdent(REGISTRY_TABLE)} (
       ${REGISTRY_SQL_COLUMNS.join(", ")}

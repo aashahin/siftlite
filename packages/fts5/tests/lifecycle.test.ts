@@ -8,6 +8,7 @@ import {
   quoteIdent,
   SearchError,
   sql,
+  type SqlAdapter,
 } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import {
@@ -321,6 +322,60 @@ describe("lifecycle", () => {
     expect((await doctorIndex(adapter, definition)).healthy).toBe(true);
   });
 
+  test("linked rebuild catch-up indexes source rows written after the backfill cursor", async () => {
+    const inner = bunSqliteAdapter(new Database(":memory:"));
+    await inner.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)"),
+    );
+    await inner.execute(
+      sql("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+        "p1",
+        "sqlite",
+        "database",
+        "active",
+      ]),
+    );
+    const definition = linkedDefinition();
+    await createIndex({ adapter: inner, definition });
+    let injected = false;
+    const adapter: SqlAdapter = {
+      id: inner.id,
+      dialect: inner.dialect,
+      runtimeCapabilities: inner.runtimeCapabilities,
+      query: (statement) => inner.query(statement),
+      execute: async (statement) => {
+        if (!injected && /CREATE TRIGGER/i.test(statement.sql)) {
+          injected = true;
+          await inner.execute(
+            sql("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+              "p-race",
+              "catchupterm",
+              "late",
+              "active",
+            ]),
+          );
+        }
+        return inner.execute(statement);
+      },
+    };
+    await rebuildIndex({ adapter, definition });
+    const after = await readRegistry(adapter, "products");
+    const index = await createManualFts5Proof({
+      adapter,
+      definition: defineIndex({
+        name: "products",
+        mode: "manual",
+        source: { table: "products", primaryKey: { field: "id", type: "string" } },
+        searchable: { name: { weight: 5 }, description: { weight: 1 } },
+        filterable: { status: "text" },
+      }),
+      physicalIndexId: after?.physicalIndexId ?? physicalIndexIdFor("products"),
+      generation: after?.activeGeneration ?? 2,
+      existingSchema: true,
+    });
+    expect((await index.search("catchupterm")).map((hit) => hit.id)).toEqual(["p-race"]);
+  });
+
   test("failed linked rebuild keeps the old generation and is not healthy", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     await adapter.execute(
@@ -436,6 +491,43 @@ describe("lifecycle", () => {
       existingSchema: true,
     });
     expect((await index.search("canaryterm")).map((hit) => hit.id)).toEqual(["canary"]);
+  });
+
+  test("createIndex does not stamp a new definition hash onto an intact pending generation", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+        "p1",
+        "sqlite",
+        "database",
+        "active",
+      ]),
+    );
+    const definition = linkedDefinition();
+    await createIndex({ adapter, definition });
+    const before = await readRegistry(adapter, "products");
+    expect(before).not.toBeNull();
+    if (!before) {
+      throw new Error("expected registry row");
+    }
+    await writePendingRegistry(adapter, { ...before, updatedAt: Date.now() });
+    const edited = defineIndex({
+      name: "products",
+      mode: "linked",
+      source: { table: "products", primaryKey: { field: "id", type: "string" } },
+      searchable: { name: { weight: 5 }, description: { weight: 1 } },
+      filterable: { status: "text" },
+      normalization: ["arabic-basic"],
+    });
+    await createIndex({ adapter, definition: edited });
+    const after = await readRegistry(adapter, "products");
+    expect(after?.health).toBe("healthy");
+    expect(after?.definitionHash).toBe(hashLogicalDefinition(edited));
+    expect(after?.definitionHash).not.toBe(before.definitionHash);
+    expect(after?.physicalSchemaHash).not.toBe(before.physicalSchemaHash);
   });
 
   test("createIndex heals a failed manual rebuild without dropping docs", async () => {

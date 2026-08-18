@@ -81,7 +81,13 @@ class BunSqliteAdapter implements SqlAdapter {
   }
 }
 
-export function bunSqliteAdapter(database: Database): SqlAdapter {
+export function bunSqliteAdapter(databaseOrOptions: Database | BunSqliteAdapterOptions): SqlAdapter {
+  const database =
+    typeof databaseOrOptions === "object" &&
+    databaseOrOptions !== null &&
+    "database" in databaseOrOptions
+      ? databaseOrOptions.database
+      : databaseOrOptions;
   return new BunSqliteAdapter(database);
 }
 

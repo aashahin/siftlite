@@ -68,6 +68,9 @@ export default {
         return withBookmark({ error: "index is not healthy" }, adapter, 503);
       }
       const tenant = resolveRequestTenant(request, url);
+      if (!tenant) {
+        return withBookmark({ error: "tenant required" }, adapter, 400);
+      }
       const result = await searchFts5Index(
         {
           adapter,
@@ -76,7 +79,7 @@ export default {
           generation: entry.activeGeneration,
         },
         url.searchParams.get("q") ?? "",
-        tenant ? { scope: bindScope({ tenant_id: tenant }) } : {},
+        { scope: bindScope({ tenant_id: tenant }) },
       );
       return withBookmark(result, adapter);
     }

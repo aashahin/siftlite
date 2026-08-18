@@ -1,5 +1,6 @@
 import type { FieldCodec, TimestampUnit } from "./kinds.js";
 import { rejectUnsupportedPublicValue, rejectValue } from "./reject.js";
+import { decodeIntegerStorage } from "./storage.js";
 
 /**
  * Explicit integer timestamp codec. JavaScript `Date` is never accepted.
@@ -27,14 +28,15 @@ export function timestampIntegerCodec(unit: TimestampUnit): FieldCodec<number> {
       return value;
     },
     decode(value) {
-      if (typeof value !== "number" || !Number.isSafeInteger(value)) {
+      const decoded = decodeIntegerStorage(value);
+      if (decoded === undefined) {
         rejectValue(
           `timestamp-integer:${unit}`,
           "storage-mismatch",
           "timestamp-integer codec expected INTEGER storage",
         );
       }
-      return value;
+      return decoded;
     },
   };
 }

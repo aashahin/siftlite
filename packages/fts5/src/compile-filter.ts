@@ -1,6 +1,7 @@
 import {
   assertInListFits,
   encodeFieldValue,
+  hasOwnField,
   quoteIdent,
   reserveBinds,
   SearchError,
@@ -124,7 +125,7 @@ function columnRef(field: string): string {
 }
 
 function assertFilterableField(definition: IndexDefinition, field: string): void {
-  if (!definition.filterable[field]) {
+  if (!hasOwnField(definition.filterable, field)) {
     throw new SearchError({
       code: "SEARCH_FILTER_INVALID",
       message: `field ${field} is not declared filterable`,
@@ -138,6 +139,13 @@ function encodeProjectedValue(
   field: string,
   value: PortableScalar,
 ): string | number {
+  if (!hasOwnField(definition.filterable, field)) {
+    throw new SearchError({
+      code: "SEARCH_FILTER_INVALID",
+      message: `field ${field} is not declared filterable`,
+      details: { reason: "undeclared-field" },
+    });
+  }
   const spec = definition.filterable[field];
   if (!spec) {
     throw new SearchError({
@@ -154,7 +162,11 @@ function encodeScopedValue(
   field: string,
   value: PortableScalar,
 ): string | number {
-  const spec = definition.filterable[field] ?? definition.sortable[field];
+  const spec = hasOwnField(definition.filterable, field)
+    ? definition.filterable[field]
+    : hasOwnField(definition.sortable, field)
+      ? definition.sortable[field]
+      : undefined;
   if (!spec) {
     throw new SearchError({
       code: "SEARCH_QUERY_INVALID",

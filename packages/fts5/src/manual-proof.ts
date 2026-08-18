@@ -230,24 +230,7 @@ async function upsertDocument(
   names: PhysicalNames,
   document: ManualProofDocument,
 ): Promise<void> {
-  const sourceId = assertSourceId(document.id);
-  if (
-    definition.source?.primaryKey.type === "safe-integer" &&
-    sourceIdKind(sourceId) !== "safe-integer"
-  ) {
-    throw new SearchError({
-      code: "SEARCH_VALUE_INVALID",
-      message: "numeric index requires a safe-integer source ID",
-      details: { reason: "source-id-kind" },
-    });
-  }
-  if (definition.source?.primaryKey.type === "string" && sourceIdKind(sourceId) !== "string") {
-    throw new SearchError({
-      code: "SEARCH_VALUE_INVALID",
-      message: "string index requires a string source ID",
-      details: { reason: "source-id-kind" },
-    });
-  }
+  const sourceId = assertManualSourceId(definition, document.id);
 
   const existing = await adapter.query<{ doc_id: number }>(
     sql(
@@ -378,24 +361,7 @@ function prepareManualDocument(
   definition: IndexDefinition,
   document: ManualProofDocument,
 ): PreparedManualDocument {
-  const sourceId = assertSourceId(document.id);
-  if (
-    definition.source?.primaryKey.type === "safe-integer" &&
-    sourceIdKind(sourceId) !== "safe-integer"
-  ) {
-    throw new SearchError({
-      code: "SEARCH_VALUE_INVALID",
-      message: "numeric index requires a safe-integer source ID",
-      details: { reason: "source-id-kind" },
-    });
-  }
-  if (definition.source?.primaryKey.type === "string" && sourceIdKind(sourceId) !== "string") {
-    throw new SearchError({
-      code: "SEARCH_VALUE_INVALID",
-      message: "string index requires a string source ID",
-      details: { reason: "source-id-kind" },
-    });
-  }
+  const sourceId = assertManualSourceId(definition, document.id);
   const projectedFields = unique([...definition.filterableOrder, ...definition.sortableOrder]);
   const searchableValues = definition.searchableOrder.map(
     (field) => document.searchable[field] ?? "",
@@ -506,6 +472,26 @@ function updateFtsStatement(
     `UPDATE ${quoteIdent(names.fts)} SET ${ftsAssignments.join(", ")} WHERE ${quoteIdent("rowid")} = ?`,
     [...document.normalizedSearchable, docId],
   );
+}
+
+function assertManualSourceId(definition: IndexDefinition, id: SourceId): SourceId {
+  const sourceId = assertSourceId(id);
+  const pkType = definition.source?.primaryKey.type ?? "string";
+  if (pkType === "safe-integer" && sourceIdKind(sourceId) !== "safe-integer") {
+    throw new SearchError({
+      code: "SEARCH_VALUE_INVALID",
+      message: "numeric index requires a safe-integer source ID",
+      details: { reason: "source-id-kind" },
+    });
+  }
+  if (pkType === "string" && sourceIdKind(sourceId) !== "string") {
+    throw new SearchError({
+      code: "SEARCH_VALUE_INVALID",
+      message: "string index requires a string source ID",
+      details: { reason: "source-id-kind" },
+    });
+  }
+  return sourceId;
 }
 
 function unique(values: readonly string[]): string[] {

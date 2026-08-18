@@ -32,8 +32,6 @@ export interface LifecycleContext {
   readonly secureDelete?: SecureDeletePolicy;
 }
 
-export { verifyOrThrow };
-
 export async function createIndex(ctx: LifecycleContext): Promise<void> {
   await ensureRegistry(ctx.adapter);
   const existing = await readRegistry(ctx.adapter, ctx.definition.name);
@@ -51,7 +49,10 @@ export async function createIndex(ctx: LifecycleContext): Promise<void> {
     // A failed rebuild leaves gen N pending and may have leftover N+1 objects.
     // Dropping N here would destroy the last searchable generation.
     await dropPhysical(ctx.adapter, ctx.definition, physicalIndexId, generation + 1);
-    if (await generationIsIntact(ctx, physicalIndexId, generation)) {
+    if (
+      (await generationIsIntact(ctx, physicalIndexId, generation)) &&
+      registryMatchesDefinition(existing, ctx, physicalIndexId, generation, secureDelete)
+    ) {
       await writeHealthyRegistry(ctx, physicalIndexId, generation);
       return;
     }
@@ -124,6 +125,7 @@ async function materialize(
     for (const statement of compileLinkedTriggers(ctx.definition, physicalIndexId, generation)) {
       await ctx.adapter.execute(sql(statement));
     }
+    await catchUpLinked(ctx, physicalIndexId, generation);
   }
 }
 
@@ -248,6 +250,70 @@ async function backfillLinked(
   }
 }
 
+async function catchUpLinked(
+  ctx: LifecycleContext,
+  physicalIndexId: string,
+  generation: number,
+): Promise<void> {
+  const definition = ctx.definition;
+  if (!definition.source) {
+    return;
+  }
+  const names = physicalNames(definition, physicalIndexId, generation);
+  const source = quoteIdent(definition.source.table);
+  const pk = quoteIdent(definition.source.primaryKey.field);
+  const docs = quoteIdent(names.docs);
+  const fts = quoteIdent(names.fts);
+  const projected = unique([...definition.filterableOrder, ...definition.sortableOrder]);
+  const docCols = [
+    quoteIdent("source_id"),
+    ...definition.searchableOrder.map((field) => quoteIdent(`${field}_source`)),
+    ...projected.map((field) => quoteIdent(field)),
+  ];
+  const docSelect = [
+    pk,
+    ...definition.searchableOrder.map((field) => quoteIdent(field)),
+    ...projected.map((field) => quoteIdent(field)),
+  ];
+  const ftsCols = [
+    quoteIdent("rowid"),
+    ...definition.searchableOrder.map((field) => quoteIdent(field)),
+  ];
+  const ftsSelect = [
+    quoteIdent("doc_id"),
+    ...definition.searchableOrder.map((field) =>
+      compileSearchableExpression(definition, quoteIdent(`${field}_source`)),
+    ),
+  ];
+  await ctx.adapter.execute(
+    sql(
+      `INSERT INTO ${docs} (${docCols.join(", ")}) SELECT ${docSelect.join(", ")} FROM ${source} WHERE ${pk} NOT IN (SELECT ${quoteIdent("source_id")} FROM ${docs})`,
+    ),
+  );
+  await ctx.adapter.execute(
+    sql(
+      `INSERT INTO ${fts} (${ftsCols.join(", ")}) SELECT ${ftsSelect.join(", ")} FROM ${docs} WHERE ${quoteIdent("doc_id")} NOT IN (SELECT ${quoteIdent("rowid")} FROM ${fts})`,
+    ),
+  );
+}
+
+function registryMatchesDefinition(
+  existing: { readonly definitionHash: string; readonly physicalSchemaHash: string },
+  ctx: LifecycleContext,
+  physicalIndexId: string,
+  generation: number,
+  secureDelete: boolean,
+): boolean {
+  const manifest = compileFts5PhysicalManifest(
+    { definition: ctx.definition, physicalIndexId, generation },
+    { secureDelete },
+  );
+  return (
+    existing.definitionHash === hashLogicalDefinition(ctx.definition) &&
+    existing.physicalSchemaHash === hashPhysicalManifest(manifest)
+  );
+}
+
 async function dropPhysical(
   adapter: SqlAdapter,
   definition: IndexDefinition,
@@ -276,11 +342,10 @@ async function markPending(
     await writePendingRegistry(ctx.adapter, { ...existing, updatedAt: now });
     return;
   }
-  const manifest = compileFts5PhysicalManifest({
-    definition: ctx.definition,
-    physicalIndexId,
-    generation,
-  });
+  const manifest = compileFts5PhysicalManifest(
+    { definition: ctx.definition, physicalIndexId, generation },
+    { secureDelete: await resolveSecureDelete(ctx) },
+  );
   await writePendingRegistry(ctx.adapter, {
     indexName: ctx.definition.name,
     physicalIndexId,
@@ -303,11 +368,10 @@ async function writeHealthyRegistry(
   generation: number,
 ): Promise<void> {
   const now = ctx.now ?? Date.now();
-  const manifest = compileFts5PhysicalManifest({
-    definition: ctx.definition,
-    physicalIndexId,
-    generation,
-  });
+  const manifest = compileFts5PhysicalManifest(
+    { definition: ctx.definition, physicalIndexId, generation },
+    { secureDelete: await resolveSecureDelete(ctx) },
+  );
   const existing = await readRegistry(ctx.adapter, ctx.definition.name);
   await writeRegistry(ctx.adapter, {
     indexName: ctx.definition.name,
@@ -337,11 +401,14 @@ export async function syncRuntimeDefinition(
       details: { reason: "missing-registry" },
     });
   }
-  const nextManifest = compileFts5PhysicalManifest({
-    definition: ctx.definition,
-    physicalIndexId: row.physicalIndexId,
-    generation: row.activeGeneration,
-  });
+  const nextManifest = compileFts5PhysicalManifest(
+    {
+      definition: ctx.definition,
+      physicalIndexId: row.physicalIndexId,
+      generation: row.activeGeneration,
+    },
+    { secureDelete: await resolveSecureDelete(ctx) },
+  );
   // Synonyms/weights stay query-time; physical hash covers normalization, storage kinds, source, triggers.
   if (row.physicalSchemaHash !== hashPhysicalManifest(nextManifest)) {
     return "physical-changed";

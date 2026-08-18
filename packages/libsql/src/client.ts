@@ -15,6 +15,7 @@ export interface LibsqlResultLike {
 }
 
 export interface LibsqlClientLike {
+  readonly url?: string;
   execute(statement: LibsqlStatement | string): Promise<LibsqlResultLike>;
   batch?(
     statements: readonly (LibsqlStatement | string)[],

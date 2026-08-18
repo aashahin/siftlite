@@ -15,6 +15,11 @@ describe("examples/d1-worker helpers", () => {
     expect(resolveRequestTenant(new Request(noneUrl), noneUrl)).toBeUndefined();
   });
 
+  test("search without a tenant is a missing-tenant case", () => {
+    const url = new URL("https://example.test/search?q=sqlite");
+    expect(resolveRequestTenant(new Request(url), url)).toBeUndefined();
+  });
+
   test("treats already-exists SearchError as idempotent migrate success", () => {
     expect(
       isAlreadyExistsError(

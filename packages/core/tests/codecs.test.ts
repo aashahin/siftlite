@@ -30,7 +30,19 @@ describe("canonical codecs", () => {
     expect(booleanIntegerCodec.encode(false)).toBe(0);
     expect(booleanIntegerCodec.decode(1)).toBe(true);
     expect(booleanIntegerCodec.decode(0)).toBe(false);
+    expect(booleanIntegerCodec.decode("1")).toBe(true);
+    expect(booleanIntegerCodec.decode("0")).toBe(false);
     expect(() => booleanIntegerCodec.decode(2)).toThrow(SearchError);
+  });
+
+  test("integer and timestamp codecs accept exact decimal strings from adapters", () => {
+    expect(safeIntegerCodec.decode("42")).toBe(42);
+    expect(safeIntegerCodec.decode(42n as unknown as 42)).toBe(42);
+    expect(timestampIntegerCodec("unix-milliseconds").decode("1700000000000")).toBe(
+      1_700_000_000_000,
+    );
+    expect(finiteRealCodec.decode("10.5")).toBe(10.5);
+    expect(() => safeIntegerCodec.decode("42.0")).toThrow(SearchError);
   });
 
   test("timestamp codec requires an explicit unit and rejects Date", () => {

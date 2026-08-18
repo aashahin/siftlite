@@ -69,6 +69,18 @@ describe("d1 adapter", () => {
     }
   });
 
+  test("treats a driver error string as unsuccessful even when success is omitted", async () => {
+    const adapter = d1Adapter(
+      mockD1({
+        all: async () => ({ results: [], error: "hidden failure" }),
+      }),
+    );
+    await expect(adapter.query(sql("SELECT 1"))).rejects.toMatchObject({
+      code: "SEARCH_ADAPTER_ERROR",
+      details: { reason: "d1-unsuccessful" },
+    });
+  });
+
   test("does not treat empty results as success when success is false", async () => {
     const adapter = d1Adapter(
       mockD1({

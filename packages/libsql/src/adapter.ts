@@ -15,6 +15,7 @@ import { libsqlRuntimeCapabilities } from "./limits.js";
 
 export interface LibsqlAdapterOptions {
   readonly kind: "local" | "remote";
+  readonly transactions?: boolean;
 }
 
 class LibsqlAdapter implements SqlAdapter {
@@ -24,10 +25,18 @@ class LibsqlAdapter implements SqlAdapter {
 
   constructor(
     private readonly client: LibsqlClientLike,
-    kind: "local" | "remote",
+    options: LibsqlAdapterOptions,
   ) {
+    const kind = options.kind;
     this.id = kind === "remote" ? "libsql-remote" : "libsql-local";
-    this.runtimeCapabilities = libsqlRuntimeCapabilities(kind);
+    const base = libsqlRuntimeCapabilities(kind);
+    const memory = looksLikeMemoryClient(client);
+    this.runtimeCapabilities = {
+      ...base,
+      transactions:
+        options.transactions ?? (typeof client.transaction === "function" && !memory),
+      batch: typeof client.batch === "function",
+    };
   }
 
   async query<T>(statement: SqlStatement): Promise<readonly T[]> {
@@ -70,7 +79,7 @@ class LibsqlAdapter implements SqlAdapter {
    * Use a `file:` path for commit/rollback. Query/execute on `:memory:` is fine.
    */
   async transaction<T>(fn: (tx: SqlAdapter) => Promise<T>): Promise<T> {
-    if (!this.client.transaction) {
+    if (!this.runtimeCapabilities.transactions || !this.client.transaction) {
       throw new SearchError({
         code: "SEARCH_CAPABILITY_UNSUPPORTED",
         message: "libSQL client does not expose interactive transactions",
@@ -81,7 +90,10 @@ class LibsqlAdapter implements SqlAdapter {
     try {
       tx = await this.client.transaction("write");
       const result = await fn(
-        new LibsqlAdapter(asClient(tx), this.id === "libsql-remote" ? "remote" : "local"),
+        new LibsqlAdapter(asClient(tx), {
+          kind: this.id === "libsql-remote" ? "remote" : "local",
+          transactions: false,
+        }),
       );
       await tx.commit();
       return result;
@@ -112,7 +124,7 @@ export function libsqlAdapter(client: LibsqlClientLike, options: LibsqlAdapterOp
       details: { reason: "libsql-kind-required" },
     });
   }
-  return new LibsqlAdapter(client, options.kind);
+  return new LibsqlAdapter(client, options);
 }
 
 /**
@@ -136,13 +148,20 @@ export function wrapLibsqlClient(client: object): LibsqlClientLike {
   const batch = typeof official.batch === "function" ? official.batch.bind(official) : undefined;
   const transaction =
     typeof official.transaction === "function" ? official.transaction.bind(official) : undefined;
+  const url = (official as { url?: unknown }).url;
   return {
     execute: (statement) => execute(statement),
     ...(batch ? { batch: (statements, mode) => batch(statements, mode) } : {}),
     ...(transaction
       ? { transaction: (mode) => transaction(mode) as Promise<LibsqlTransactionLike> }
       : {}),
+    ...(typeof url === "string" ? { url } : {}),
   };
+}
+
+function looksLikeMemoryClient(client: LibsqlClientLike): boolean {
+  const url = (client as { url?: unknown }).url;
+  return typeof url === "string" && (url === ":memory:" || url.includes(":memory:"));
 }
 
 function toLibsql(statement: SqlStatement): LibsqlStatement {

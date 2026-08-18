@@ -98,6 +98,7 @@ export type {
   TypoToleranceMode,
 } from "./definition/types.js";
 export { LOGICAL_FORMAT_VERSION } from "./definition/types.js";
+export { hasOwnField } from "./definition/identifiers.js";
 export { defineIndex, table } from "./definition/define-index.js";
 export { canonicalizeIndexDefinition, hashLogicalDefinition } from "./definition/canonicalize.js";
 

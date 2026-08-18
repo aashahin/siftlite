@@ -206,6 +206,24 @@ describe("FTS5 proof on Bun", () => {
     expect((await index.search("gamma")).map((hit) => hit.id)).toEqual(["c"]);
   });
 
+  test("TEXT manual indexes reject numeric source IDs so batched upsert cannot miss keys", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const definition = defineIndex({
+      name: "notes",
+      mode: "manual",
+      searchable: { title: { weight: 1 } },
+    });
+    const index = await createManualFts5Proof({ adapter, definition });
+    await expect(
+      index.upsert([{ id: 123, searchable: { title: "numeric" } }]),
+    ).rejects.toMatchObject({
+      code: "SEARCH_VALUE_INVALID",
+      details: { reason: "source-id-kind" },
+    });
+    await index.upsert([{ id: "123", searchable: { title: "text id" } }]);
+    expect((await index.search("text")).map((hit) => hit.id)).toEqual(["123"]);
+  });
+
   test("proof search rejects typo fallback even on a mutated definition", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     const definition = {

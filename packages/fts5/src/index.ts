@@ -66,4 +66,3 @@ export { isUnsafeFts5Query, unsafeFts5Query } from "./raw.js";
 export type { RawSearchBackend, UnsafeBackendQuery } from "./raw.js";
 export { compileProjectionIndexes } from "./lifecycle/schema.js";
 export { writePendingRegistry } from "./lifecycle/registry-sql.js";
-export type { DoctorOptions } from "./lifecycle/doctor.js";

@@ -1,4 +1,5 @@
-import { SearchError } from "../errors/search-error.js";
+import { assertFieldName } from "../definition/identifiers.js";
+import { isSearchError, SearchError } from "../errors/search-error.js";
 import { assertPortableScalar, type PortableScalar } from "./scalar.js";
 import type { FilterNode } from "./filter.js";
 import { isFilterNode } from "./filter.js";
@@ -30,24 +31,60 @@ export interface ScopedFilter {
   readonly userFilter: FilterNode | undefined;
 }
 
+function isScopePredicate(value: unknown): value is ScopePredicate {
+  if (value === null || typeof value !== "object") {
+    return false;
+  }
+  const predicate = value as { kind?: unknown; field?: unknown; value?: unknown };
+  if (
+    predicate.kind !== "scope-eq" ||
+    typeof predicate.field !== "string" ||
+    !isPortableScopeValue(predicate.value)
+  ) {
+    return false;
+  }
+  try {
+    assertFieldName(predicate.field, "scope");
+  } catch (error) {
+    if (isSearchError(error)) {
+      return false;
+    }
+    throw error;
+  }
+  return true;
+}
+
 export function isBoundScope(value: unknown): value is BoundScope {
   return (
     typeof value === "object" &&
     value !== null &&
     (value as { kind?: unknown }).kind === "bound-scope" &&
-    Array.isArray((value as { predicates?: unknown }).predicates)
+    Array.isArray((value as { predicates?: unknown }).predicates) &&
+    (value as BoundScope).predicates.every(isScopePredicate)
   );
+}
+
+export function assertBoundScope(value: unknown): BoundScope {
+  if (!isBoundScope(value)) {
+    throw new SearchError({
+      code: "SEARCH_SCOPE_INVALID",
+      message: "value is not a bound scope",
+      details: { reason: "missing-scope" },
+    });
+  }
+  if (value.predicates.length === 0) {
+    throw new SearchError({
+      code: "SEARCH_SCOPE_INVALID",
+      message: "scope requires at least one predicate",
+      details: { reason: "empty-scope" },
+    });
+  }
+  return value;
 }
 
 export function bindScope(values: Readonly<Record<string, unknown>>): BoundScope {
   const predicates = Object.entries(values).map(([field, value]) => {
-    if (field.length === 0) {
-      throw new SearchError({
-        code: "SEARCH_SCOPE_INVALID",
-        message: "scope field names must be non-empty",
-        details: { reason: "empty-field" },
-      });
-    }
+    assertScopeField(field);
     return {
       kind: "scope-eq" as const,
       field,
@@ -65,13 +102,7 @@ export function bindScope(values: Readonly<Record<string, unknown>>): BoundScope
 }
 
 export function composeScopedFilter(scope: BoundScope, userFilter?: FilterNode): ScopedFilter {
-  if (!isBoundScope(scope)) {
-    throw new SearchError({
-      code: "SEARCH_SCOPE_INVALID",
-      message: "composeScopedFilter requires a bound scope",
-      details: { reason: "missing-scope" },
-    });
-  }
+  assertBoundScope(scope);
   if (userFilter !== undefined) {
     if (!isFilterNode(userFilter)) {
       throw new SearchError({
@@ -93,7 +124,7 @@ export function composeScopedFilter(scope: BoundScope, userFilter?: FilterNode):
  * Structural guarantee: a user filter tree never contains a bound scope.
  */
 export function assertFilterCannotCarryScope(node: FilterNode): void {
-  const stack: FilterNode[] = [node];
+  const stack: Array<FilterNode | BoundScope> = [node];
   while (stack.length > 0) {
     const current = stack.pop();
     if (!current) {
@@ -107,9 +138,62 @@ export function assertFilterCannotCarryScope(node: FilterNode): void {
       });
     }
     if (current.op === "and" || current.op === "or") {
-      stack.push(...current.children);
+      if (!Array.isArray(current.children)) {
+        throw new SearchError({
+          code: "SEARCH_FILTER_INVALID",
+          message: "boolean filter children must be an array",
+          details: { reason: "invalid-boolean-child" },
+        });
+      }
+      for (const child of current.children) {
+        if (!isFilterNode(child) && !isBoundScope(child)) {
+          throw new SearchError({
+            code: "SEARCH_FILTER_INVALID",
+            message: "boolean filter children must be user filter nodes",
+            details: { reason: "invalid-boolean-child" },
+          });
+        }
+        stack.push(child);
+      }
     } else if (current.op === "not") {
+      if (!isFilterNode(current.child) && !isBoundScope(current.child)) {
+        throw new SearchError({
+          code: "SEARCH_FILTER_INVALID",
+          message: "not() accepts only a user filter node",
+          details: { reason: "invalid-not-child" },
+        });
+      }
       stack.push(current.child);
     }
   }
+}
+
+function assertScopeField(field: string): void {
+  if (field.length === 0) {
+    throw new SearchError({
+      code: "SEARCH_SCOPE_INVALID",
+      message: "scope field names must be non-empty",
+      details: { reason: "empty-field" },
+    });
+  }
+  try {
+    assertFieldName(field, "scope");
+  } catch (error) {
+    if (!isSearchError(error)) {
+      throw error;
+    }
+    throw new SearchError({
+      code: "SEARCH_SCOPE_INVALID",
+      message: "scope field name is not a conservative identifier",
+      details: { reason: "invalid-field" },
+    });
+  }
+}
+
+function isPortableScopeValue(value: unknown): value is PortableScalar {
+  return (
+    typeof value === "string" ||
+    typeof value === "boolean" ||
+    (typeof value === "number" && Number.isFinite(value))
+  );
 }

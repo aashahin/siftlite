@@ -1,5 +1,7 @@
 import {
   assertSourceId,
+  chunkIdsForHydration,
+  createStatementBudget,
   DEFAULT_APPLICATION_LIMITS,
   normalizeIndexText,
   parseIndexTextQuery,
@@ -288,12 +290,14 @@ async function upsertDocumentsBatched(
     prepared.map((item) => item.sourceId),
   );
   let nextDocId = await nextAvailableDocId(adapter, names);
+  const allocated = new Map(existing);
   const statements: SqlStatement[] = [];
   for (const item of prepared) {
-    const existingId = existing.get(item.sourceId);
+    const existingId = allocated.get(item.sourceId);
     if (existingId === undefined) {
       const docId = nextDocId;
       nextDocId += 1;
+      allocated.set(item.sourceId, docId);
       statements.push(insertDocsStatement(definition, names, item, docId));
       statements.push(insertFtsStatement(definition, names, item, docId));
     } else {
@@ -368,15 +372,21 @@ async function loadExistingDocIds(
   if (ids.length === 0) {
     return found;
   }
-  const placeholders = ids.map(() => "?").join(", ");
-  const rows = await adapter.query<{ source_id: unknown; doc_id: number }>(
-    sql(
-      `SELECT ${quoteIdent("source_id")} AS source_id, ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("source_id")} IN (${placeholders})`,
-      [...ids],
-    ),
+  const budget = createStatementBudget(
+    adapter.runtimeCapabilities.limits,
+    DEFAULT_APPLICATION_LIMITS,
   );
-  for (const row of rows) {
-    found.set(restoreSourceId(definition, row.source_id), row.doc_id);
+  for (const chunk of chunkIdsForHydration(ids, budget)) {
+    const placeholders = chunk.map(() => "?").join(", ");
+    const rows = await adapter.query<{ source_id: unknown; doc_id: number }>(
+      sql(
+        `SELECT ${quoteIdent("source_id")} AS source_id, ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("source_id")} IN (${placeholders})`,
+        [...chunk],
+      ),
+    );
+    for (const row of rows) {
+      found.set(restoreSourceId(definition, row.source_id), row.doc_id);
+    }
   }
   return found;
 }

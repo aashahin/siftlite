@@ -1,4 +1,4 @@
-import { quoteIdent, type IndexDefinition } from "@siftlite/core";
+import { quoteIdent, SearchError, type IndexDefinition } from "@siftlite/core";
 import { physicalNames } from "../names.js";
 import { compileSearchableExpression } from "../normalize-sql.js";
 
@@ -16,7 +16,11 @@ export function compileLinkedTriggers(
   generation: number,
 ): readonly string[] {
   if (!definition.source) {
-    throw new Error("linked triggers require a source table");
+    throw new SearchError({
+      code: "SEARCH_CONFIG_INVALID",
+      message: "linked triggers require a source table",
+      details: { reason: "missing-source" },
+    });
   }
   const names = physicalNames(definition, physicalIndexId, generation);
   const triggers = triggerNames(names.docs);

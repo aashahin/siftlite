@@ -6,6 +6,7 @@ import {
   eq,
   parsePlainTextQuery,
   DEFAULT_APPLICATION_LIMITS,
+  type SqlAdapter,
 } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import {
@@ -149,5 +150,59 @@ describe("FTS5 proof on Bun", () => {
       generation: 1,
     });
     expect(backend.classifyPhysicalChange(previous, next).kind).toBe("runtime-only");
+  });
+
+  test("batched upsert last-writes duplicate ids and respects bind budgets", async () => {
+    const inner = bunSqliteAdapter(new Database(":memory:"));
+    const adapter: SqlAdapter = {
+      id: inner.id,
+      dialect: inner.dialect,
+      runtimeCapabilities: {
+        ...inner.runtimeCapabilities,
+        limits: { ...inner.runtimeCapabilities.limits, maxBindParameters: 3 },
+      },
+      query: async (statement) => {
+        expect(statement.params.length).toBeLessThanOrEqual(3);
+        return inner.query(statement);
+      },
+      execute: (statement) => inner.execute(statement),
+      batch: (statements) => {
+        const batch = inner.batch;
+        if (!batch) {
+          throw new Error("expected bun batch");
+        }
+        return batch.call(inner, statements);
+      },
+    };
+    const index = await createManualFts5Proof({
+      adapter,
+      definition: catalogDefinition(),
+    });
+    await index.upsert([
+      {
+        id: "a",
+        searchable: { title: "alpha", body: "one" },
+        filterable: { status: "active", tenantId: "t1", price: 1 },
+      },
+      {
+        id: "a",
+        searchable: { title: "omega", body: "two" },
+        filterable: { status: "active", tenantId: "t1", price: 2 },
+      },
+      {
+        id: "b",
+        searchable: { title: "beta", body: "three" },
+        filterable: { status: "active", tenantId: "t1", price: 3 },
+      },
+      {
+        id: "c",
+        searchable: { title: "gamma", body: "four" },
+        filterable: { status: "active", tenantId: "t1", price: 4 },
+      },
+    ]);
+    expect((await index.search("omega")).map((hit) => hit.id)).toEqual(["a"]);
+    expect((await index.search("alpha")).map((hit) => hit.id)).toEqual([]);
+    expect((await index.search("beta")).map((hit) => hit.id)).toEqual(["b"]);
+    expect((await index.search("gamma")).map((hit) => hit.id)).toEqual(["c"]);
   });
 });

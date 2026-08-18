@@ -20,11 +20,18 @@ export function drizzleSearch<TTable, TRow extends Record<string, unknown>>(
   return {
     async search(query, request = {}) {
       const row = await readRegistry(adapter, index.definition.name);
-      if (!row || row.health !== "healthy") {
+      if (!row) {
         throw new SearchError({
           code: "SEARCH_INDEX_NOT_FOUND",
           message: "Drizzle search index is not registered",
           details: { reason: "missing-registry", index: index.definition.name },
+        });
+      }
+      if (row.health !== "healthy") {
+        throw new SearchError({
+          code: "SEARCH_MAINTENANCE_FAILED",
+          message: "Drizzle search index is not healthy",
+          details: { reason: "registry-pending", index: index.definition.name },
         });
       }
       const hydrator = createDrizzleHydrator({ db, index, adapter });

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   and,
+  assertBoundScope,
   assertFilterCannotCarryScope,
   bindScope,
   composeScopedFilter,
@@ -53,5 +54,20 @@ describe("immutable bound scope", () => {
   test("rejects empty or illegal scope values", () => {
     expect(() => bindScope({})).toThrow(SearchError);
     expect(() => bindScope({ tenantId: 1n })).toThrow(SearchError);
+    expect(() => bindScope({ "tenant id": "t1" })).toThrow(SearchError);
+    expect(() => bindScope({ "": "t1" })).toThrow(SearchError);
+  });
+
+  test("rejects structurally invalid bound scopes", () => {
+    expect(isBoundScope({ kind: "bound-scope", predicates: [{ kind: "scope-eq" }] })).toBe(false);
+    expect(() =>
+      assertBoundScope({ kind: "bound-scope", predicates: [{ kind: "scope-eq" }] }),
+    ).toThrow(SearchError);
+    expect(() =>
+      composeScopedFilter({
+        kind: "bound-scope",
+        predicates: [{ kind: "scope-eq", field: "tenant id", value: "t1" }],
+      } as never),
+    ).toThrow(SearchError);
   });
 });

@@ -16,6 +16,7 @@ class BunSqliteAdapter implements SqlAdapter {
   readonly id = "bun-sqlite";
   readonly dialect = "sqlite" as const;
   readonly runtimeCapabilities = bunRuntimeCapabilities();
+  #inTransaction = false;
 
   constructor(private readonly database: Database) {}
 
@@ -40,17 +41,21 @@ class BunSqliteAdapter implements SqlAdapter {
   }
 
   async batch(statements: readonly SqlStatement[]): Promise<readonly ExecuteResult[]> {
+    if (this.#inTransaction) {
+      return this.executeAll(statements);
+    }
     return this.transaction(async (tx) => {
-      const results: ExecuteResult[] = [];
-      for (const statement of statements) {
-        results.push(await tx.execute(statement));
-      }
-      return results;
+      const nested = tx as BunSqliteAdapter;
+      return nested.executeAll(statements);
     });
   }
 
   async transaction<T>(fn: (tx: SqlAdapter) => Promise<T>): Promise<T> {
+    if (this.#inTransaction) {
+      return fn(this);
+    }
     this.database.exec("BEGIN");
+    this.#inTransaction = true;
     try {
       const result = await fn(this);
       this.database.exec("COMMIT");
@@ -58,7 +63,17 @@ class BunSqliteAdapter implements SqlAdapter {
     } catch (error) {
       this.database.exec("ROLLBACK");
       throw wrap(error);
+    } finally {
+      this.#inTransaction = false;
     }
+  }
+
+  private async executeAll(statements: readonly SqlStatement[]): Promise<readonly ExecuteResult[]> {
+    const results: ExecuteResult[] = [];
+    for (const statement of statements) {
+      results.push(await this.execute(statement));
+    }
+    return results;
   }
 }
 

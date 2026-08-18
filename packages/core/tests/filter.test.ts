@@ -78,4 +78,27 @@ describe("filter AST", () => {
     expect(() => or()).toThrow(SearchError);
     expect(() => and({ kind: "bound-scope", predicates: [] } as never)).toThrow(SearchError);
   });
+
+  test.each([
+    ["non-array boolean children", { op: "and", children: "ab" }],
+    ["null boolean child", { op: "and", children: [eq("status", "active"), null] }],
+    ["eq without a field", { op: "eq" }],
+    ["empty boolean children", { op: "and", children: [] }],
+  ])("validateFilter rejects %s with SearchError", (_name, node) => {
+    expect(() =>
+      validateFilter(node as never, {
+        limits: DEFAULT_APPLICATION_LIMITS,
+        definition,
+      }),
+    ).toThrow(SearchError);
+  });
+
+  test("enforces maxFilterNodes during the walk", () => {
+    expect(() =>
+      validateFilter(and(eq("status", "a"), eq("status", "b"), eq("status", "c")), {
+        limits: { ...DEFAULT_APPLICATION_LIMITS, maxFilterNodes: 2 },
+        definition,
+      }),
+    ).toThrow(SearchError);
+  });
 });

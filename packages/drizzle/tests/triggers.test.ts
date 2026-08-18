@@ -7,7 +7,7 @@ import { eq } from "drizzle-orm";
 import { physicalIndexIdFor } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
 import { libsqlAdapter, wrapLibsqlClient } from "@siftlite/libsql";
-import { createIndex, searchFts5Index } from "@siftlite/fts5";
+import { createIndex, readRegistry, searchFts5Index, writePendingRegistry } from "@siftlite/fts5";
 import { defineDrizzleIndex, drizzleSearch } from "../src/index.ts";
 import { products } from "./schema.ts";
 
@@ -114,6 +114,26 @@ describe("@siftlite/drizzle trigger ownership", () => {
       "direct",
     );
     expect(raw.hits.map((hit) => hit.id)).toEqual(["l2"]);
+  });
+
+  test("search fails closed while the registry is pending", async () => {
+    const sqlite = new Database(":memory:");
+    const adapter = bunSqliteAdapter(sqlite);
+    const db = bunDrizzle(sqlite, { schema: { products } });
+    await createProductsTable((sql) => {
+      sqlite.run(sql);
+    });
+    const index = defineDrizzleIndex(products, definitionInput);
+    await createIndex({ adapter, definition: index.definition });
+    const row = await readRegistry(adapter, index.definition.name);
+    expect(row).not.toBeNull();
+    if (!row) {
+      throw new Error("expected registry row");
+    }
+    await writePendingRegistry(adapter, { ...row, updatedAt: Date.now() });
+    await expect(drizzleSearch(db, index, adapter).search("drizzle")).rejects.toMatchObject({
+      code: "SEARCH_MAINTENANCE_FAILED",
+    });
   });
 
   // D1 + Drizzle trigger ownership is impractical in this bun:test file

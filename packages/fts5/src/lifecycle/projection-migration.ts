@@ -94,6 +94,10 @@ export async function applyProjectionMigration(args: {
     );
   }
 
+  if (args.next.mode === "linked" && args.next.source && plan.addColumns.length > 0) {
+    await replaceLinkedTriggers(args.adapter, args.next, row.physicalIndexId, row.activeGeneration);
+  }
+
   let resumeToken: string | null = null;
   if (args.next.mode === "linked" && args.next.source && plan.addColumns.length > 0) {
     const chunk = args.chunk ?? { afterDocId: 0, limit: 500 };
@@ -110,19 +114,6 @@ export async function applyProjectionMigration(args: {
     row.physicalIndexId,
     row.activeGeneration,
   );
-  if (args.next.mode === "linked" && args.next.source) {
-    const triggers = triggerNames(names.docs);
-    for (const name of [triggers.insert, triggers.update, triggers.delete]) {
-      await args.adapter.execute(sql(`DROP TRIGGER IF EXISTS ${quoteIdent(name)}`));
-    }
-    for (const statement of compileLinkedTriggers(
-      args.next,
-      row.physicalIndexId,
-      row.activeGeneration,
-    )) {
-      await args.adapter.execute(sql(statement));
-    }
-  }
   await verifyOrThrow(
     { adapter: args.adapter, definition: args.next },
     row.physicalIndexId,
@@ -219,6 +210,22 @@ async function createMissingProjectionIndexes(
         `CREATE INDEX ${quoteIdent(indexName)} ON ${quoteIdent(names.docs)} (${quoteIdent(field)})`,
       ),
     );
+  }
+}
+
+async function replaceLinkedTriggers(
+  adapter: SqlAdapter,
+  definition: IndexDefinition,
+  physicalIndexId: string,
+  generation: number,
+): Promise<void> {
+  const names = physicalNames(definition, physicalIndexId, generation);
+  const triggers = triggerNames(names.docs);
+  for (const name of [triggers.insert, triggers.update, triggers.delete]) {
+    await adapter.execute(sql(`DROP TRIGGER IF EXISTS ${quoteIdent(name)}`));
+  }
+  for (const statement of compileLinkedTriggers(definition, physicalIndexId, generation)) {
+    await adapter.execute(sql(statement));
   }
 }
 

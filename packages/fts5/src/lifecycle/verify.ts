@@ -9,8 +9,6 @@ import {
 import { physicalNames, sourceIdColumnType } from "../names.js";
 import { triggerNames } from "./triggers.js";
 
-const VERIFY_SAMPLE = 32;
-
 export async function collectIntegrityFindings(
   adapter: SqlAdapter,
   definition: IndexDefinition,
@@ -40,37 +38,38 @@ export async function collectIntegrityFindings(
     });
   }
 
-  const sample = await adapter.query<{ doc_id: number }>(
-    sql(
-      `SELECT ${quoteIdent("doc_id")} AS doc_id FROM ${quoteIdent(names.docs)} ORDER BY ${quoteIdent("doc_id")} LIMIT ?`,
-      [VERIFY_SAMPLE],
-    ),
+  const missingFts = await countRowsWhere(
+    adapter,
+    `SELECT COUNT(*) AS n FROM ${quoteIdent(names.docs)} AS d WHERE NOT EXISTS (SELECT 1 FROM ${quoteIdent(names.fts)} AS f WHERE f.${quoteIdent("rowid")} = d.${quoteIdent("doc_id")})`,
   );
-  if (sample.length > 0) {
-    const placeholders = sample.map(() => "?").join(", ");
-    const hits = await adapter.query<{ rowid: number }>(
-      sql(
-        `SELECT ${quoteIdent("rowid")} AS rowid FROM ${quoteIdent(names.fts)} WHERE ${quoteIdent("rowid")} IN (${placeholders})`,
-        sample.map((row) => row.doc_id),
-      ),
-    );
-    if (hits.length !== sample.length) {
-      findings.push({
-        severity: "error",
-        code: "orphan-doc",
-        message: "sampled docs.doc_id is missing from fts rowid",
-      });
-    }
+  if (missingFts > 0) {
+    findings.push({
+      severity: "error",
+      code: "orphan-doc",
+      message: "docs.doc_id is missing from fts rowid",
+    });
+  }
+
+  const missingDocs = await countRowsWhere(
+    adapter,
+    `SELECT COUNT(*) AS n FROM ${quoteIdent(names.fts)} AS f WHERE NOT EXISTS (SELECT 1 FROM ${quoteIdent(names.docs)} AS d WHERE d.${quoteIdent("doc_id")} = f.${quoteIdent("rowid")})`,
+  );
+  if (missingDocs > 0) {
+    findings.push({
+      severity: "error",
+      code: "orphan-fts",
+      message: "fts rowid is missing from docs.doc_id",
+    });
   }
 
   const expectedType = sourceIdColumnType(definition) === "INTEGER" ? "integer" : "text";
-  const types = await adapter.query<{ source_id_typeof: string }>(
+  const typeMismatches = await adapter.query<{ n: number }>(
     sql(
-      `SELECT typeof(${quoteIdent("source_id")}) AS source_id_typeof FROM ${quoteIdent(names.docs)} ORDER BY ${quoteIdent("doc_id")} LIMIT ?`,
-      [VERIFY_SAMPLE],
+      `SELECT COUNT(*) AS n FROM ${quoteIdent(names.docs)} WHERE typeof(${quoteIdent("source_id")}) <> ?`,
+      [expectedType],
     ),
   );
-  if (types.some((row) => row.source_id_typeof !== expectedType)) {
+  if ((typeMismatches[0]?.n ?? 0) > 0) {
     findings.push({
       severity: "error",
       code: "source-id-type",
@@ -144,6 +143,11 @@ async function countRows(adapter: SqlAdapter, table: string, column: string): Pr
   const rows = await adapter.query<{ n: number }>(
     sql(`SELECT COUNT(${quoteIdent(column)}) AS n FROM ${quoteIdent(table)}`),
   );
+  return rows[0]?.n ?? 0;
+}
+
+async function countRowsWhere(adapter: SqlAdapter, statementSql: string): Promise<number> {
+  const rows = await adapter.query<{ n: number }>(sql(statementSql));
   return rows[0]?.n ?? 0;
 }
 

@@ -1,4 +1,5 @@
 import {
+  assertBoundScope,
   assertFilterCannotCarryScope,
   attachHydratedDocuments,
   DEFAULT_APPLICATION_LIMITS,
@@ -105,6 +106,9 @@ async function runFts5Search(
   if (request.filter) {
     validateFilter(request.filter, { limits, definition: ctx.definition });
     assertFilterCannotCarryScope(request.filter);
+  }
+  if (request.scope !== undefined) {
+    assertBoundScope(request.scope);
   }
 
   const textQuery: TextQuery =

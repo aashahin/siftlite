@@ -10,14 +10,10 @@ import {
   type SqlAdapter,
 } from "@siftlite/core";
 import { compileFts5PhysicalManifest } from "../manifest.js";
-import { physicalNames } from "../names.js";
+import { adjacentLeftoverGenerations, physicalNames } from "../names.js";
 import { ensureRegistry, readRegistry } from "./registry-sql.js";
 import { triggerNames } from "./triggers.js";
 import { collectIntegrityFindings, triggerExists } from "./verify.js";
-
-export interface DoctorOptions {
-  readonly level?: "fast" | "deep";
-}
 
 export async function checkIndex(
   adapter: SqlAdapter,
@@ -30,7 +26,6 @@ export async function checkIndex(
 export async function doctorIndex(
   adapter: SqlAdapter,
   definition: IndexDefinition,
-  options?: DoctorOptions,
 ): Promise<DoctorReport> {
   await ensureRegistry(adapter);
   const findings: DoctorFinding[] = [];
@@ -115,17 +110,29 @@ export async function doctorIndex(
     }
   }
 
-  if ((options?.level ?? "fast") === "deep") {
-    const integrity = await collectIntegrityFindings(
-      adapter,
-      definition,
-      physicalIndexId,
-      generation,
-    );
-    for (const finding of integrity) {
-      if (!findings.some((existing) => existing.code === finding.code)) {
-        findings.push(finding);
-      }
+  for (const leftover of adjacentLeftoverGenerations(generation)) {
+    const leftoverNames = physicalNames(definition, physicalIndexId, leftover);
+    if (
+      (await tableExists(adapter, leftoverNames.docs)) ||
+      (await tableExists(adapter, leftoverNames.fts))
+    ) {
+      findings.push({
+        severity: "error",
+        code: "leftover-generation",
+        message: `leftover physical objects exist for generation ${leftover}`,
+      });
+    }
+  }
+
+  const integrity = await collectIntegrityFindings(
+    adapter,
+    definition,
+    physicalIndexId,
+    generation,
+  );
+  for (const finding of integrity) {
+    if (!findings.some((existing) => existing.code === finding.code)) {
+      findings.push(finding);
     }
   }
 

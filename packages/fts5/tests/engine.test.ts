@@ -10,7 +10,12 @@ import {
   type SearchHooks,
 } from "@siftlite/core";
 import { bunSqliteAdapter } from "@siftlite/bun";
-import { createFts5Engine, unsafeFts5Query } from "../src/index.ts";
+import {
+  createFts5Engine,
+  unsafeFts5Query,
+  writePendingRegistry,
+  readRegistry,
+} from "../src/index.ts";
 
 function catalogDefinition() {
   return defineIndex({
@@ -41,18 +46,18 @@ async function seededHandle() {
   const engine = createFts5Engine({ adapter });
   const handle = engine.index(catalogDefinition());
   await handle.create();
-  return handle;
+  return { adapter, handle };
 }
 
 describe("createFts5Engine", () => {
   test("creates an index and searches through the handle", async () => {
-    const handle = await seededHandle();
+    const { handle } = await seededHandle();
     const result = await handle.search("sqlite");
     expect(result.hits.map((hit) => hit.id).sort()).toEqual(["p1", "p2"]);
   });
 
   test("handle scope stays applied even when a user filter tries to widen", async () => {
-    const handle = await seededHandle();
+    const { handle } = await seededHandle();
     const scoped = handle.scope({ status: "active" });
     const widened = await scoped.search("sqlite", { filter: eq("status", "archived") });
     expect(widened.hits).toEqual([]);
@@ -62,19 +67,40 @@ describe("createFts5Engine", () => {
   });
 
   test("request.scope cannot drop handle scope", async () => {
-    const handle = await seededHandle();
+    const { handle } = await seededHandle();
     const scoped = handle.scope({ status: "active" });
     const replaced = await scoped.search("sqlite", { scope: bindScope({ status: "archived" }) });
     expect(replaced.hits).toEqual([]);
   });
 
+  test("malformed request scope fails closed as SearchError", async () => {
+    const { handle } = await seededHandle();
+    const scoped = handle.scope({ status: "active" });
+    await expect(
+      scoped.search("sqlite", { scope: { kind: "bound-scope" } as never }),
+    ).rejects.toBeInstanceOf(SearchError);
+  });
+
   test("searchRaw on the handle uses unsafe FTS5 grammar", async () => {
-    const handle = await seededHandle();
+    const { handle } = await seededHandle();
     const raw = await handle.searchRaw(unsafeFts5Query('name:"sqlite"'));
     expect(raw.hits.map((hit) => hit.id).sort()).toEqual(["p1", "p2"]);
 
     const ordinary = await handle.search('name:"sqlite"');
     expect(ordinary.hits.map((hit) => hit.id)).toEqual([]);
+  });
+
+  test("search fails closed while the registry is pending", async () => {
+    const { adapter, handle } = await seededHandle();
+    const row = await readRegistry(adapter, "products");
+    expect(row).not.toBeNull();
+    if (!row) {
+      throw new Error("expected registry row");
+    }
+    await writePendingRegistry(adapter, { ...row, updatedAt: Date.now() });
+    await expect(handle.search("sqlite")).rejects.toMatchObject({
+      code: "SEARCH_MAINTENANCE_FAILED",
+    });
   });
 
   test("search throws SEARCH_INDEX_NOT_FOUND before create", async () => {

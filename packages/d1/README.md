@@ -76,5 +76,5 @@ default markers are markdown `**`.
 import { d1Adapter, d1SessionAdapter, D1_DEFAULT_SEARCH_POLICY } from "@siftlite/d1";
 
 const adapter = d1Adapter(env.DB);
-const session = d1SessionAdapter(env.DB, request.headers.get("x-d1-bookmark") ?? "first-unconstrained");
+const session = d1SessionAdapter(env.DB, request.headers.get("x-d1-bookmark") ?? "first-primary");
 ```

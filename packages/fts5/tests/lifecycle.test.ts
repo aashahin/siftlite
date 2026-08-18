@@ -352,4 +352,97 @@ describe("lifecycle", () => {
     });
     expect((await index.search("canaryterm")).map((hit) => hit.id)).toEqual(["canary"]);
   });
+
+  test("createIndex heals a failed manual rebuild without dropping docs", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const definition = defineIndex({
+      name: "notes",
+      mode: "manual",
+      source: { table: "notes", primaryKey: { field: "id", type: "string" } },
+      searchable: { title: { weight: 1 } },
+    });
+    await createIndex({ adapter, definition });
+    const index = await createManualFts5Proof({
+      adapter,
+      definition,
+      physicalIndexId: physicalIndexIdFor("notes"),
+      existingSchema: true,
+    });
+    await index.upsert([{ id: "n1", searchable: { title: "portable search" } }]);
+
+    const names = physicalNames(definition, physicalIndexIdFor("notes"), 1);
+    await adapter.execute(sql(`DROP TABLE "${names.fts}"`));
+    const before = await readRegistry(adapter, "notes");
+    expect(before).not.toBeNull();
+    if (!before) {
+      throw new Error("expected registry row");
+    }
+    await writePendingRegistry(adapter, { ...before, updatedAt: Date.now() });
+
+    await createIndex({ adapter, definition });
+    expect((await index.search("portable")).map((hit) => hit.id)).toEqual(["n1"]);
+    expect((await readRegistry(adapter, "notes"))?.health).toBe("healthy");
+  });
+
+  test("dropIndex removes leftover rebuild generations", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+        "p1",
+        "sqlite",
+        "database",
+        "active",
+      ]),
+    );
+    const definition = linkedDefinition();
+    await createIndex({ adapter, definition });
+    const row = await readRegistry(adapter, "products");
+    expect(row).not.toBeNull();
+    if (!row) {
+      throw new Error("expected registry row");
+    }
+    const leftover = physicalNames(definition, row.physicalIndexId, row.activeGeneration + 1);
+    await adapter.execute(sql(`CREATE TABLE ${quoteIdent(leftover.docs)} (doc_id INTEGER)`));
+    await adapter.execute(
+      sql(
+        `CREATE TRIGGER ${quoteIdent(`${leftover.docs}_ai`)} AFTER INSERT ON products BEGIN SELECT 1; END`,
+      ),
+    );
+
+    await dropIndex({ adapter, definition });
+    const leftoverDocs = await adapter.query<{ name: string }>(
+      sql(`SELECT name FROM sqlite_master WHERE name = ?`, [leftover.docs]),
+    );
+    const leftoverTrigger = await adapter.query<{ name: string }>(
+      sql(`SELECT name FROM sqlite_master WHERE type = 'trigger' AND name = ?`, [
+        `${leftover.docs}_ai`,
+      ]),
+    );
+    expect(leftoverDocs).toEqual([]);
+    expect(leftoverTrigger).toEqual([]);
+    expect(await readRegistry(adapter, "products")).toBeNull();
+  });
+
+  test("runtime-only sync verifies integrity before clearing pending", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const definition = defineIndex({
+      name: "notes",
+      mode: "manual",
+      searchable: { title: { weight: 1 } },
+    });
+    await createIndex({ adapter, definition });
+    const before = await readRegistry(adapter, "notes");
+    expect(before).not.toBeNull();
+    if (!before) {
+      throw new Error("expected registry row");
+    }
+    const names = physicalNames(definition, before.physicalIndexId, before.activeGeneration);
+    await adapter.execute(sql(`DROP TABLE "${names.fts}"`));
+    await writePendingRegistry(adapter, { ...before, updatedAt: Date.now() });
+    await expect(syncRuntimeDefinition({ adapter, definition })).rejects.toThrow(SearchError);
+    expect((await readRegistry(adapter, "notes"))?.health).toBe("pending");
+  });
 });

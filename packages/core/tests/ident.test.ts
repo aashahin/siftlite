@@ -11,5 +11,6 @@ describe("SQL identifiers", () => {
     expect(() => quoteIdent("status; drop table x")).toThrow(SearchError);
     expect(() => quoteIdent("tenant id")).toThrow(SearchError);
     expect(() => quoteIdent("")).toThrow(SearchError);
+    expect(() => quoteIdent(undefined as never)).toThrow(SearchError);
   });
 });

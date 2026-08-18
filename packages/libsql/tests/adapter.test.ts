@@ -2,7 +2,12 @@ import { describe, expect, test } from "bun:test";
 import { createClient } from "@libsql/client";
 import { SearchError, sql } from "@siftlite/core";
 import { runFts5SearchConformance, runSqlAdapterConformance } from "@siftlite/testing";
-import { libsqlAdapter, libsqlRuntimeCapabilities, wrapLibsqlClient } from "../src/index.ts";
+import {
+  libsqlAdapter,
+  libsqlRuntimeCapabilities,
+  wrapLibsqlClient,
+  type LibsqlAdapterOptions,
+} from "../src/index.ts";
 
 describe("@siftlite/libsql", () => {
   test("local capabilities are proven and remote bind limits stay unproven", () => {
@@ -32,7 +37,9 @@ describe("@siftlite/libsql", () => {
     const official = {
       execute: async () => ({ rows: [], rowsAffected: 0 }),
     };
-    expect(() => libsqlAdapter(wrapLibsqlClient(official))).toThrow(SearchError);
+    expect(() => libsqlAdapter(wrapLibsqlClient(official), {} as LibsqlAdapterOptions)).toThrow(
+      SearchError,
+    );
   });
 
   test("wrapLibsqlClient forwards batch results and does not invent empty success", async () => {

@@ -6,7 +6,9 @@ export function damerauLevenshtein(left: string, right: string): number {
   const target = [...codePoints(right)];
   const rows = source.length + 1;
   const cols = target.length + 1;
-  const distances: number[][] = Array.from({ length: rows }, () => Array.from({ length: cols }, () => 0));
+  const distances: number[][] = Array.from({ length: rows }, () =>
+    Array.from({ length: cols }, () => 0),
+  );
   for (let i = 0; i < rows; i += 1) {
     distances[i]![0] = i;
   }
@@ -20,12 +22,7 @@ export function damerauLevenshtein(left: string, right: string): number {
       const insertion = distances[i]![j - 1]! + 1;
       const substitution = distances[i - 1]![j - 1]! + cost;
       let best = Math.min(deletion, insertion, substitution);
-      if (
-        i > 1 &&
-        j > 1 &&
-        source[i - 1] === target[j - 2] &&
-        source[i - 2] === target[j - 1]
-      ) {
+      if (i > 1 && j > 1 && source[i - 1] === target[j - 2] && source[i - 2] === target[j - 1]) {
         best = Math.min(best, distances[i - 2]![j - 2]! + 1);
       }
       distances[i]![j] = best;

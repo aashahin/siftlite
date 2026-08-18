@@ -126,7 +126,9 @@ async function materialize(
     sql(compileFtsDdl(ctx.definition, physicalIndexId, generation, { secureDelete })),
   );
   if (ctx.definition.typoTolerance.mode === "fallback") {
-    await ctx.adapter.execute(sql(compileFtsTrigramDdl(ctx.definition, physicalIndexId, generation)));
+    await ctx.adapter.execute(
+      sql(compileFtsTrigramDdl(ctx.definition, physicalIndexId, generation)),
+    );
   }
   if (ctx.definition.mode === "linked") {
     await backfillLinked(ctx, physicalIndexId, generation);
@@ -165,7 +167,9 @@ async function rematerializeManualFts(
   );
   if (ctx.definition.typoTolerance.mode === "fallback") {
     await ctx.adapter.execute(sql(`DROP TABLE IF EXISTS ${quoteIdent(names.ftsTrigram)}`));
-    await ctx.adapter.execute(sql(compileFtsTrigramDdl(ctx.definition, physicalIndexId, generation)));
+    await ctx.adapter.execute(
+      sql(compileFtsTrigramDdl(ctx.definition, physicalIndexId, generation)),
+    );
     await ctx.adapter.execute(
       sql(
         `INSERT INTO ${quoteIdent(names.ftsTrigram)} (${ftsCols.join(", ")}) SELECT ${ftsSelect.join(", ")} FROM ${docs}`,

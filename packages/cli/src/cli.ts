@@ -53,7 +53,12 @@ export function runCli(argv: readonly string[]): CliResult {
       message: `${command} requires a host-provided database adapter; refusing to invent a connection`,
     };
   }
-  if (command === "drop" || command === "rebuild" || command === "backfill" || command === "merge") {
+  if (
+    command === "drop" ||
+    command === "rebuild" ||
+    command === "backfill" ||
+    command === "merge"
+  ) {
     if (!acknowledge) {
       return {
         status: "error",

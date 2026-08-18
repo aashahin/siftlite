@@ -49,10 +49,7 @@ export function assertProjectedFieldName(name: string, role: string): string {
   return name;
 }
 
-export function hasOwnField(
-  record: Readonly<Record<string, unknown>>,
-  field: string,
-): boolean {
+export function hasOwnField(record: Readonly<Record<string, unknown>>, field: string): boolean {
   return Object.prototype.hasOwnProperty.call(record, field);
 }
 

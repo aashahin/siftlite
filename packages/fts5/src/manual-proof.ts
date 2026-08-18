@@ -76,9 +76,7 @@ export async function createManualFts5Proof(args: {
   }
   const physicalIndexId = args.physicalIndexId ?? "proof";
   const generation = args.generation ?? 1;
-  const limits = args.limits
-    ? validateApplicationLimits(args.limits)
-    : DEFAULT_APPLICATION_LIMITS;
+  const limits = args.limits ? validateApplicationLimits(args.limits) : DEFAULT_APPLICATION_LIMITS;
   const definition = args.definition;
   const names = physicalNames(definition, physicalIndexId, generation);
   const backend = sqliteFts5();

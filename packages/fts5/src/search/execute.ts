@@ -361,7 +361,10 @@ LIMIT ?`,
     );
     const haystack = ctx.definition.searchableOrder
       .map((field) =>
-        normalizeIndexText(String(stored[0]?.[`${field}_source`] ?? ""), ctx.definition.normalization),
+        normalizeIndexText(
+          String(stored[0]?.[`${field}_source`] ?? ""),
+          ctx.definition.normalization,
+        ),
       )
       .join(" ");
     let best = Number.POSITIVE_INFINITY;

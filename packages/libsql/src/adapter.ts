@@ -33,8 +33,7 @@ class LibsqlAdapter implements SqlAdapter {
     const memory = looksLikeMemoryClient(client);
     this.runtimeCapabilities = {
       ...base,
-      transactions:
-        options.transactions ?? (typeof client.transaction === "function" && !memory),
+      transactions: options.transactions ?? (typeof client.transaction === "function" && !memory),
       batch: typeof client.batch === "function",
     };
   }

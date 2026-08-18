@@ -61,9 +61,7 @@ export function searchExtension(options: SearchExtensionOptions): {
           adapter,
           model: name,
           index,
-          ...(prismaIdFields?.[name] !== undefined
-            ? { prismaIdField: prismaIdFields[name] }
-            : {}),
+          ...(prismaIdFields?.[name] !== undefined ? { prismaIdField: prismaIdFields[name] } : {}),
         }).search(query, request);
       },
     };

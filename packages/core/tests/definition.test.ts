@@ -113,34 +113,13 @@ describe("index definition", () => {
   });
 
   test.each([
-    [
-      "searchable doc_id",
-      { searchable: { doc_id: { weight: 1 } } },
-    ],
-    [
-      "filterable source_id",
-      { filterable: { source_id: "text" as const } },
-    ],
-    [
-      "sortable rowid",
-      { sortable: { rowid: "number" as const } },
-    ],
-    [
-      "filterable rank",
-      { filterable: { rank: "number" as const } },
-    ],
-    [
-      "filterable searchable source column",
-      { filterable: { name_source: "text" as const } },
-    ],
-    [
-      "searchable Rank",
-      { searchable: { Rank: { weight: 1 } } },
-    ],
-    [
-      "searchable AND",
-      { searchable: { AND: { weight: 1 } } },
-    ],
+    ["searchable doc_id", { searchable: { doc_id: { weight: 1 } } }],
+    ["filterable source_id", { filterable: { source_id: "text" as const } }],
+    ["sortable rowid", { sortable: { rowid: "number" as const } }],
+    ["filterable rank", { filterable: { rank: "number" as const } }],
+    ["filterable searchable source column", { filterable: { name_source: "text" as const } }],
+    ["searchable Rank", { searchable: { Rank: { weight: 1 } } }],
+    ["searchable AND", { searchable: { AND: { weight: 1 } } }],
   ] as const)("rejects reserved or colliding field %s", (_label, override) => {
     expect(() => defineIndex({ ...productsInput(), ...override })).toThrow(SearchError);
   });

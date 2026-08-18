@@ -327,7 +327,9 @@ describe("@siftlite/prisma", () => {
       product: {
         async findMany(args: { where: Record<string, { in: readonly string[] }> }) {
           expect(args.where["pid"]?.in).toEqual(["p5"]);
-          return [{ pid: "p5", name: "extension mapped", description: "pid field", status: "active" }];
+          return [
+            { pid: "p5", name: "extension mapped", description: "pid field", status: "active" },
+          ];
         },
       },
     };

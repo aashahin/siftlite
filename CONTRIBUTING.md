@@ -68,8 +68,9 @@ Versioning uses [Changesets](https://github.com/changesets/changesets):
 bun run changeset
 ```
 
-Publishing is owner-gated. Do not publish packages until the package scope and
-branding are finalized.
+Public packages live under `@siftlite/*`. `0.1.0` is on npm. Publishing stays
+owner-gated (`changeset version`, then `changeset publish` or the Release
+workflow). Do not publish `examples/` or `experimental/`.
 
 ## License
 

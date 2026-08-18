@@ -11,13 +11,14 @@ SiftLite is a TypeScript-first application-search layer for SQLite, Cloudflare D
 
 ## Target package ecosystem
 
-The package names below are the intended public shape. Do not publish empty packages merely to reserve names; create each package when its phase begins.
+The package names below are the intended public shape. `@siftlite/{core,fts5,bun,d1,libsql,testing,drizzle,prisma,node,cli}` shipped as `0.1.0`. Do not publish empty packages merely to reserve names; create each package when its phase begins.
 
 ```text
 siftlite                 convenience entrypoint after the core API stabilizes
 @siftlite/core           public types, planner, ASTs, codecs, scopes
 @siftlite/fts5           SQLite FTS5 backend
 @siftlite/bun            bun:sqlite runtime adapter
+@siftlite/node           better-sqlite3 Node adapter
 @siftlite/d1             Cloudflare D1 runtime adapter
 @siftlite/libsql         libSQL runtime adapter
 @siftlite/drizzle        Drizzle integration

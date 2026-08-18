@@ -3,7 +3,8 @@
 Noninteractive SiftLite CLI. Works on Node 20+ and Bun.
 
 ```bash
-siftlite help
+npm i -D @siftlite/cli
+npx siftlite help
 siftlite generate --name products --table products --search title --json
 siftlite check --help
 ```

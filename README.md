@@ -26,9 +26,20 @@ markdown `**` markers.
 
 ## Status
 
-Pre-v1 implementation from the [v1.2 implementation pack](docs/README.md).
-This is not a production-ready 1.0. Bounded typo fallback is implemented
-behind `typoTolerance.mode: "fallback"` and stays disabled on D1 by default.
+`0.1.0` is published on npm under `@siftlite/*`. This is a pre-v1 release from
+the [v1.2 implementation pack](docs/README.md), not a production-ready 1.0.
+Bounded typo fallback is implemented behind `typoTolerance.mode: "fallback"`
+and stays disabled on D1 by default.
+
+## Install
+
+```bash
+npm i @siftlite/core @siftlite/fts5 @siftlite/bun
+```
+
+Other adapters: `@siftlite/d1`, `@siftlite/libsql`, `@siftlite/node`.
+ORM companions: `@siftlite/drizzle`, `@siftlite/prisma`.
+CLI: `npx siftlite` or `npm i -D @siftlite/cli`.
 
 ## Packages
 

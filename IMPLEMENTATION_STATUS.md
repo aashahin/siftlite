@@ -5,14 +5,14 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-Phase 13 CLI and Node adapter are in the publish set. Bounded Phase 12
-typo fallback is implemented (D1 remains off by default). This is not a
-production-ready 1.0.
+Phases 0–13 are implemented and published as `@siftlite/*@0.1.0`. Bounded
+Phase 12 typo fallback is on (`typoTolerance.mode: "fallback"`; D1 remains
+off by default). This is not a production-ready 1.0.
 
 ## Status
 
 PASS for Phases 0–13 except Phase 12 remote D1 cost benchmarks (P12-08–10)
-and Phase 14 RC.
+and Phase 14 RC. First npm publish of the public set is done.
 
 ## Completed tasks
 
@@ -37,7 +37,8 @@ and Phase 14 RC.
 
 0.x publish blockers from the audit (LICENSE in packed files, `prepack`,
 changeset ignore/fixed groups, `tsBuildInfoFile` outside `dist`, export
-checks, example versions, executable examples) are being closed in this pass.
+checks, example versions, executable examples) are closed. `@siftlite/*@0.1.0`
+is on npm.
 
 ## Tests executed
 
@@ -62,10 +63,11 @@ example/workspace tests. Full `bun run verify` was not rerun in this pass.
 
 ## Blockers
 
-None for Phases 0–11. Phase 12 fuzzy/typo fallback does not exist.
+None for Phases 0–13 except the remaining Phase 12 remote cost
+characterization (P12-08–10).
 
 ## Latest verification result
 
-Typecheck, package build, `check-exports`, and Stream G example/workspace
-tests passed after this publish-metadata pass. Phase 12 fuzzy search is
-still not implemented.
+`0.1.0` published and install-checked for
+`@siftlite/{core,fts5,bun,node,testing,d1,libsql,drizzle,prisma,cli}`.
+`siftlite version` reports `0.1.0`.

@@ -4,7 +4,7 @@ import { runCli } from "../src/index.ts";
 describe("@siftlite/cli", () => {
   test("help and version are noninteractive", () => {
     expect(runCli(["node", "siftlite", "help"]).status).toBe("ok");
-    expect(runCli(["node", "siftlite", "version"]).message).toBe("0.0.0");
+    expect(runCli(["node", "siftlite", "version"]).message).toBe("0.1.0");
   });
 
   test("generate emits registry SQL", () => {

@@ -5,7 +5,7 @@ import { SIFTLITE_CORE_PACKAGE } from "@siftlite/core";
 
 export const SIFTLITE_CLI_PACKAGE = {
   name: "@siftlite/cli",
-  version: "0.0.0",
+  version: "0.1.0",
   dependsOn: SIFTLITE_CORE_PACKAGE.name,
 } as const;
 

@@ -1,6 +1,6 @@
 {
   "name": "@siftlite/core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Portable SiftLite types, planner, ASTs, codecs, and scopes.",
   "type": "module",
   "license": "MIT",

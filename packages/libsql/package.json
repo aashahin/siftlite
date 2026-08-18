@@ -1,6 +1,6 @@
 {
   "name": "@siftlite/libsql",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "SiftLite libSQL/Turso Cloud FTS5 runtime adapter.",
   "type": "module",
   "license": "MIT",
@@ -28,11 +28,11 @@
     "typecheck": "tsc -p tsconfig.json --pretty false"
   },
   "dependencies": {
-    "@siftlite/core": "workspace:*"
+    "@siftlite/core": "^0.1.0"
   },
   "devDependencies": {
     "@libsql/client": "0.17.4",
-    "@siftlite/testing": "workspace:*"
+    "@siftlite/testing": "^0.1.0"
   },
   "peerDependencies": {
     "@libsql/client": ">=0.14.0"

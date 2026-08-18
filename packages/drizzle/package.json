@@ -1,6 +1,6 @@
 {
   "name": "@siftlite/drizzle",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "SiftLite Drizzle companion: metadata mapping, typed indexes, and hydration.",
   "type": "module",
   "license": "MIT",
@@ -28,13 +28,13 @@
     "typecheck": "tsc -p tsconfig.json --pretty false"
   },
   "dependencies": {
-    "@siftlite/core": "workspace:*",
-    "@siftlite/fts5": "workspace:*"
+    "@siftlite/core": "^0.1.0",
+    "@siftlite/fts5": "^0.1.0"
   },
   "devDependencies": {
     "@libsql/client": "0.17.4",
-    "@siftlite/bun": "workspace:*",
-    "@siftlite/libsql": "workspace:*",
+    "@siftlite/bun": "^0.1.0",
+    "@siftlite/libsql": "^0.1.0",
     "drizzle-orm": "0.45.2"
   },
   "peerDependencies": {

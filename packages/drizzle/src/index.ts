@@ -8,7 +8,7 @@ import { SIFTLITE_CORE_PACKAGE } from "@siftlite/core";
 
 export const SIFTLITE_DRIZZLE_PACKAGE = {
   name: "@siftlite/drizzle",
-  version: "0.0.0",
+  version: "0.1.0",
   dependsOn: SIFTLITE_CORE_PACKAGE.name,
 } as const;
 

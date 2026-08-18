@@ -1,6 +1,6 @@
 {
   "name": "@siftlite/d1",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "SiftLite Cloudflare D1 runtime adapter.",
   "type": "module",
   "license": "MIT",
@@ -29,12 +29,12 @@
     "test:workers": "vitest run --config workers-tests/vitest.config.ts"
   },
   "dependencies": {
-    "@siftlite/core": "workspace:*"
+    "@siftlite/core": "^0.1.0"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "0.21.3",
-    "@siftlite/fts5": "workspace:*",
-    "@siftlite/testing": "workspace:*",
+    "@siftlite/fts5": "^0.1.0",
+    "@siftlite/testing": "^0.1.0",
     "@vitest/runner": "4.1.10",
     "@vitest/snapshot": "4.1.10",
     "vitest": "4.1.10",

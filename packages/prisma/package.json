@@ -1,6 +1,6 @@
 {
   "name": "@siftlite/prisma",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "SiftLite Prisma companion: search service, companion SQL, and optional Client Extensions.",
   "type": "module",
   "license": "MIT",
@@ -28,13 +28,13 @@
     "typecheck": "tsc -p tsconfig.json --pretty false"
   },
   "dependencies": {
-    "@siftlite/core": "workspace:*",
-    "@siftlite/fts5": "workspace:*"
+    "@siftlite/core": "^0.1.0",
+    "@siftlite/fts5": "^0.1.0"
   },
   "devDependencies": {
     "@libsql/client": "0.17.4",
-    "@siftlite/bun": "workspace:*",
-    "@siftlite/libsql": "workspace:*"
+    "@siftlite/bun": "^0.1.0",
+    "@siftlite/libsql": "^0.1.0"
   },
   "peerDependencies": {
     "@prisma/client": "^6.0.0"

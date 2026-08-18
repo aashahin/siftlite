@@ -42,6 +42,7 @@ describe("query-time synonyms", () => {
   });
 
   test("matches synonym keys case-insensitively after NFC normalization", () => {
+    expect(normalizeSynonymKey("I")).toBe("i");
     expect(normalizeSynonymKey("iPhone")).toBe(normalizeSynonymKey("iphone"));
     const expanded = expandTextQueryWithSynonyms(
       { kind: "term", value: "iPhone" },

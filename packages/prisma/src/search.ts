@@ -33,11 +33,18 @@ export function createPrismaSearch<TRow extends Record<string, unknown>>(options
     model: options.model,
     async search(query, request = {}) {
       const row = await readRegistry(options.adapter, options.index.name);
-      if (!row || row.health !== "healthy") {
+      if (!row) {
         throw new SearchError({
           code: "SEARCH_INDEX_NOT_FOUND",
           message: "Prisma search index is not registered",
           details: { reason: "missing-registry", model: options.model },
+        });
+      }
+      if (row.health !== "healthy") {
+        throw new SearchError({
+          code: "SEARCH_MAINTENANCE_FAILED",
+          message: "Prisma search index is not healthy",
+          details: { reason: "registry-pending", model: options.model },
         });
       }
       return searchFts5Index(

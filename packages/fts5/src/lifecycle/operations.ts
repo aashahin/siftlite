@@ -55,6 +55,15 @@ export async function createIndex(ctx: LifecycleContext): Promise<void> {
       await writeHealthyRegistry(ctx, physicalIndexId, generation);
       return;
     }
+    if (
+      ctx.definition.mode === "manual" &&
+      (await docsTableExists(ctx, physicalIndexId, generation))
+    ) {
+      await rematerializeManualFts(ctx, physicalIndexId, generation, secureDelete);
+      await verifyOrThrow(ctx, physicalIndexId, generation);
+      await writeHealthyRegistry(ctx, physicalIndexId, generation);
+      return;
+    }
     await dropPhysical(ctx.adapter, ctx.definition, physicalIndexId, generation);
   }
   await markPending(ctx, physicalIndexId, generation);
@@ -68,7 +77,9 @@ export async function dropIndex(ctx: LifecycleContext): Promise<void> {
   const row = await readRegistry(ctx.adapter, ctx.definition.name);
   const physicalIndexId = row?.physicalIndexId ?? physicalIndexIdFor(ctx.definition.name);
   const generation = row?.activeGeneration ?? 1;
-  await dropPhysical(ctx.adapter, ctx.definition, physicalIndexId, generation);
+  for (const leftover of leftoverGenerations(generation)) {
+    await dropPhysical(ctx.adapter, ctx.definition, physicalIndexId, leftover);
+  }
   await deleteRegistry(ctx.adapter, ctx.definition.name);
 }
 
@@ -80,26 +91,7 @@ export async function rebuildIndex(ctx: LifecycleContext): Promise<void> {
   const secureDelete = await resolveSecureDelete(ctx);
   await markPending(ctx, physicalIndexId, generation);
   if (ctx.definition.mode === "manual") {
-    const names = physicalNames(ctx.definition, physicalIndexId, generation);
-    await ctx.adapter.execute(sql(`DROP TABLE IF EXISTS ${quoteIdent(names.fts)}`));
-    await ctx.adapter.execute(
-      sql(compileFtsDdl(ctx.definition, physicalIndexId, generation, { secureDelete })),
-    );
-    const docs = quoteIdent(names.docs);
-    const fts = quoteIdent(names.fts);
-    const ftsCols = [
-      quoteIdent("rowid"),
-      ...ctx.definition.searchableOrder.map((field) => quoteIdent(field)),
-    ];
-    const ftsSelect = [
-      quoteIdent("doc_id"),
-      ...ctx.definition.searchableOrder.map((field) =>
-        compileSearchableExpression(ctx.definition, quoteIdent(`${field}_source`)),
-      ),
-    ];
-    await ctx.adapter.execute(
-      sql(`INSERT INTO ${fts} (${ftsCols.join(", ")}) SELECT ${ftsSelect.join(", ")} FROM ${docs}`),
-    );
+    await rematerializeManualFts(ctx, physicalIndexId, generation, secureDelete);
     await verifyOrThrow(ctx, physicalIndexId, generation);
     await writeHealthyRegistry(ctx, physicalIndexId, generation);
     return;
@@ -128,11 +120,39 @@ async function materialize(
     sql(compileFtsDdl(ctx.definition, physicalIndexId, generation, { secureDelete })),
   );
   if (ctx.definition.mode === "linked") {
+    await backfillLinked(ctx, physicalIndexId, generation);
     for (const statement of compileLinkedTriggers(ctx.definition, physicalIndexId, generation)) {
       await ctx.adapter.execute(sql(statement));
     }
-    await backfillLinked(ctx, physicalIndexId, generation);
   }
+}
+
+async function rematerializeManualFts(
+  ctx: LifecycleContext,
+  physicalIndexId: string,
+  generation: number,
+  secureDelete: boolean,
+): Promise<void> {
+  const names = physicalNames(ctx.definition, physicalIndexId, generation);
+  await ctx.adapter.execute(sql(`DROP TABLE IF EXISTS ${quoteIdent(names.fts)}`));
+  await ctx.adapter.execute(
+    sql(compileFtsDdl(ctx.definition, physicalIndexId, generation, { secureDelete })),
+  );
+  const docs = quoteIdent(names.docs);
+  const fts = quoteIdent(names.fts);
+  const ftsCols = [
+    quoteIdent("rowid"),
+    ...ctx.definition.searchableOrder.map((field) => quoteIdent(field)),
+  ];
+  const ftsSelect = [
+    quoteIdent("doc_id"),
+    ...ctx.definition.searchableOrder.map((field) =>
+      compileSearchableExpression(ctx.definition, quoteIdent(`${field}_source`)),
+    ),
+  ];
+  await ctx.adapter.execute(
+    sql(`INSERT INTO ${fts} (${ftsCols.join(", ")}) SELECT ${ftsSelect.join(", ")} FROM ${docs}`),
+  );
 }
 
 async function backfillLinked(
@@ -325,8 +345,32 @@ export async function syncRuntimeDefinition(
   if (row.physicalSchemaHash !== hashPhysicalManifest(nextManifest)) {
     return "physical-changed";
   }
+  await dropPhysical(ctx.adapter, ctx.definition, row.physicalIndexId, row.activeGeneration + 1);
+  await verifyOrThrow(ctx, row.physicalIndexId, row.activeGeneration);
   await writeHealthyRegistry(ctx, row.physicalIndexId, row.activeGeneration);
   return "runtime-only";
+}
+
+async function docsTableExists(
+  ctx: LifecycleContext,
+  physicalIndexId: string,
+  generation: number,
+): Promise<boolean> {
+  const names = physicalNames(ctx.definition, physicalIndexId, generation);
+  const rows = await ctx.adapter.query<{ name: string }>(
+    sql(`SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name = ?`, [
+      names.docs,
+    ]),
+  );
+  return rows.length > 0;
+}
+
+function leftoverGenerations(generation: number): readonly number[] {
+  const leftovers = new Set([generation, generation + 1]);
+  if (generation > 1) {
+    leftovers.add(generation - 1);
+  }
+  return [...leftovers];
 }
 
 async function generationIsIntact(

@@ -1,5 +1,6 @@
 import {
   classifyPhysicalChange,
+  quoteIdent,
   resolveEffectiveCapabilities,
   type CapabilityResolutionContext,
   type IndexCompileContext,
@@ -24,7 +25,7 @@ export function tursoNativeBackend(): SearchBackend {
     classifyPhysicalChange,
     compileSearch(ctx: SearchCompileContext) {
       const match = emitTursoMatch(ctx.textQuery);
-      const table = ctx.definition.source?.table ?? ctx.definition.name;
+      const table = quoteIdent(ctx.definition.source?.table ?? ctx.definition.name);
       const statement: SqlStatement = match
         ? {
             sql: `SELECT source_id, fts_score() AS rank FROM ${table} WHERE fts_match(?) LIMIT ? OFFSET ?`,

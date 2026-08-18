@@ -53,7 +53,7 @@ export function expandTextQueryWithSynonyms(
 }
 
 export function normalizeSynonymKey(value: string): string {
-  return value.normalize("NFC").toLocaleLowerCase();
+  return value.normalize("NFC").toLowerCase();
 }
 
 export function buildSynonymMap(

@@ -78,4 +78,39 @@ describe("filter AST", () => {
     expect(() => or()).toThrow(SearchError);
     expect(() => and({ kind: "bound-scope", predicates: [] } as never)).toThrow(SearchError);
   });
+
+  test("validateFilter rejects malformed trees with SearchError", () => {
+    expect(() =>
+      validateFilter({ op: "and", children: "ab" } as never, {
+        limits: DEFAULT_APPLICATION_LIMITS,
+        definition,
+      }),
+    ).toThrow(SearchError);
+    expect(() =>
+      validateFilter({ op: "and", children: [eq("status", "active"), null] } as never, {
+        limits: DEFAULT_APPLICATION_LIMITS,
+        definition,
+      }),
+    ).toThrow(SearchError);
+    expect(() =>
+      validateFilter({ op: "eq" } as never, {
+        limits: DEFAULT_APPLICATION_LIMITS,
+        definition,
+      }),
+    ).toThrow(SearchError);
+    expect(() =>
+      validateFilter({ op: "and", children: [] } as never, {
+        limits: DEFAULT_APPLICATION_LIMITS,
+      }),
+    ).toThrow(SearchError);
+  });
+
+  test("enforces maxFilterNodes during the walk", () => {
+    expect(() =>
+      validateFilter(and(eq("status", "a"), eq("status", "b"), eq("status", "c")), {
+        limits: { ...DEFAULT_APPLICATION_LIMITS, maxFilterNodes: 2 },
+        definition,
+      }),
+    ).toThrow(SearchError);
+  });
 });

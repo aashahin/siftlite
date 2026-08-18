@@ -38,6 +38,12 @@ export function classifyPhysicalChange(
     return { kind: "unsupported", reasons: ["backend-changed"] };
   }
   const reasons: string[] = [];
+  if (previous.version !== next.version) {
+    reasons.push("physical-version");
+  }
+  if (previous.weightsQueryTime !== next.weightsQueryTime) {
+    reasons.push("weights-query-time");
+  }
   if (previous.tokenizer !== next.tokenizer) {
     reasons.push("tokenizer");
   }
@@ -50,10 +56,14 @@ export function classifyPhysicalChange(
   if (JSON.stringify(previous.physicalConfig ?? {}) !== JSON.stringify(next.physicalConfig ?? {})) {
     reasons.push("physical-config");
   }
+  const projectedChanged = JSON.stringify(previous.projected) !== JSON.stringify(next.projected);
+  if (JSON.stringify(previous.objects) !== JSON.stringify(next.objects) && !projectedChanged) {
+    reasons.push("physical-objects");
+  }
   if (reasons.length > 0) {
     return { kind: "rebuild-required", reasons };
   }
-  if (JSON.stringify(previous.projected) !== JSON.stringify(next.projected)) {
+  if (projectedChanged) {
     return { kind: "migration-only", reasons: ["projected-fields"] };
   }
   return { kind: "runtime-only", reasons: [] };

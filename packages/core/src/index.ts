@@ -74,10 +74,12 @@ export type { TextQuery } from "./ast/text-query.js";
 export { collectTextTerms, isTextQuery, walkTextQuery } from "./ast/text-query.js";
 export type { BoundScope, ScopePredicate, ScopedFilter } from "./ast/scope.js";
 export {
+  assertBoundScope,
   assertFilterCannotCarryScope,
   bindScope,
   composeScopedFilter,
   isBoundScope,
+  isScopePredicate,
 } from "./ast/scope.js";
 
 export type { MatchingStrategy } from "./definition/types.js";

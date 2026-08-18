@@ -8,9 +8,10 @@ import {
   textCodec,
 } from "../codecs/codecs.js";
 import { timestampIntegerCodec } from "../codecs/timestamp.js";
+import { assertFieldName } from "../definition/identifiers.js";
 import type { FilterNode } from "./filter.js";
 import { isFilterNode } from "./filter.js";
-import type { PortableScalar } from "./scalar.js";
+import { assertPortableScalar, type PortableScalar } from "./scalar.js";
 
 export interface FilterValidationOptions {
   readonly limits: ApplicationLimits;
@@ -27,13 +28,6 @@ export function validateFilter(node: FilterNode, options: FilterValidationOption
   }
   const stats = { nodes: 0, depth: 0 };
   walk(node, options, 1, stats);
-  if (stats.nodes > options.limits.maxFilterNodes) {
-    throw new SearchError({
-      code: "SEARCH_QUERY_LIMIT_EXCEEDED",
-      message: "filter exceeds maxFilterNodes",
-      details: { reason: "max-filter-nodes", nodes: stats.nodes },
-    });
-  }
 }
 
 function walk(
@@ -42,8 +36,22 @@ function walk(
   depth: number,
   stats: { nodes: number; depth: number },
 ): void {
+  if (!isFilterNode(node)) {
+    throw new SearchError({
+      code: "SEARCH_FILTER_INVALID",
+      message: "value is not a user filter node",
+      details: { reason: "not-filter-node" },
+    });
+  }
   stats.nodes += 1;
   stats.depth = Math.max(stats.depth, depth);
+  if (stats.nodes > options.limits.maxFilterNodes) {
+    throw new SearchError({
+      code: "SEARCH_QUERY_LIMIT_EXCEEDED",
+      message: "filter exceeds maxFilterNodes",
+      details: { reason: "max-filter-nodes", nodes: stats.nodes },
+    });
+  }
   if (depth > options.limits.maxFilterDepth) {
     throw new SearchError({
       code: "SEARCH_QUERY_LIMIT_EXCEEDED",
@@ -55,6 +63,13 @@ function walk(
   switch (node.op) {
     case "and":
     case "or":
+      if (!Array.isArray(node.children) || node.children.length === 0) {
+        throw new SearchError({
+          code: "SEARCH_FILTER_INVALID",
+          message: `${node.op} requires a non-empty child filter list`,
+          details: { reason: "empty-boolean" },
+        });
+      }
       for (const child of node.children) {
         walk(child, options, depth + 1, stats);
       }
@@ -64,10 +79,19 @@ function walk(
       return;
     case "isNull":
     case "isNotNull":
+      assertFilterField(node.field);
       assertDeclaredField(node.field, options.definition);
       return;
     case "in":
     case "notIn":
+      assertFilterField(node.field);
+      if (!Array.isArray(node.values) || node.values.length === 0) {
+        throw new SearchError({
+          code: "SEARCH_FILTER_INVALID",
+          message: `${node.field} rejects empty IN/NOT IN lists`,
+          details: { reason: "empty-in" },
+        });
+      }
       if (node.values.length > options.limits.maxInValues) {
         throw new SearchError({
           code: "SEARCH_QUERY_LIMIT_EXCEEDED",
@@ -80,7 +104,27 @@ function walk(
       }
       return;
     default:
+      assertFilterField(node.field);
       assertFieldValue(node.field, node.value, options.definition);
+  }
+}
+
+function assertFilterField(field: unknown): asserts field is string {
+  if (typeof field !== "string") {
+    throw new SearchError({
+      code: "SEARCH_FILTER_INVALID",
+      message: "filter field names must be strings",
+      details: { reason: "invalid-field" },
+    });
+  }
+  try {
+    assertFieldName(field, "filter");
+  } catch {
+    throw new SearchError({
+      code: "SEARCH_FILTER_INVALID",
+      message: "filter field name is not a conservative identifier",
+      details: { reason: "invalid-field" },
+    });
   }
 }
 
@@ -103,6 +147,7 @@ function assertFieldValue(
   definition: IndexDefinition | undefined,
 ): void {
   if (!definition) {
+    assertPortableScalar(value, field);
     return;
   }
   const spec = definition.filterable[field];

@@ -225,5 +225,12 @@ async function resolvePhysical(
       details: { reason: "missing-registry" },
     });
   }
+  if (row.health !== "healthy") {
+    throw new SearchError({
+      code: "SEARCH_MAINTENANCE_FAILED",
+      message: "index is not healthy",
+      details: { reason: row.health === "pending" ? "registry-pending" : "registry-unhealthy" },
+    });
+  }
   return { physicalIndexId: row.physicalIndexId, generation: row.activeGeneration };
 }

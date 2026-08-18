@@ -30,7 +30,7 @@ export async function checkIndex(
 export async function doctorIndex(
   adapter: SqlAdapter,
   definition: IndexDefinition,
-  options?: DoctorOptions,
+  _options?: DoctorOptions,
 ): Promise<DoctorReport> {
   await ensureRegistry(adapter);
   const findings: DoctorFinding[] = [];
@@ -115,22 +115,42 @@ export async function doctorIndex(
     }
   }
 
-  if ((options?.level ?? "fast") === "deep") {
-    const integrity = await collectIntegrityFindings(
-      adapter,
-      definition,
-      physicalIndexId,
-      generation,
-    );
-    for (const finding of integrity) {
-      if (!findings.some((existing) => existing.code === finding.code)) {
-        findings.push(finding);
-      }
+  for (const leftover of leftoverGenerations(generation)) {
+    const leftoverNames = physicalNames(definition, physicalIndexId, leftover);
+    if (
+      (await tableExists(adapter, leftoverNames.docs)) ||
+      (await tableExists(adapter, leftoverNames.fts))
+    ) {
+      findings.push({
+        severity: "error",
+        code: "leftover-generation",
+        message: `leftover physical objects exist for generation ${leftover}`,
+      });
+    }
+  }
+
+  const integrity = await collectIntegrityFindings(
+    adapter,
+    definition,
+    physicalIndexId,
+    generation,
+  );
+  for (const finding of integrity) {
+    if (!findings.some((existing) => existing.code === finding.code)) {
+      findings.push(finding);
     }
   }
 
   const healthy = findings.every((finding) => finding.severity !== "error");
   return { healthy, findings, registry };
+}
+
+function leftoverGenerations(activeGeneration: number): readonly number[] {
+  const leftovers: number[] = [activeGeneration + 1];
+  if (activeGeneration > 1) {
+    leftovers.push(activeGeneration - 1);
+  }
+  return leftovers;
 }
 
 async function tableExists(adapter: SqlAdapter, name: string): Promise<boolean> {

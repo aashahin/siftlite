@@ -25,6 +25,10 @@ export interface LibsqlClientLike {
 
 export interface LibsqlTransactionLike {
   execute(statement: LibsqlStatement | string): Promise<LibsqlResultLike>;
+  batch?(
+    statements: readonly (LibsqlStatement | string)[],
+    mode?: "write" | "read" | "deferred",
+  ): Promise<readonly LibsqlResultLike[]>;
   commit(): Promise<void>;
   rollback(): Promise<void>;
   close(): void;

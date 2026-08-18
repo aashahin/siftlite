@@ -45,7 +45,7 @@ describe("doctor", () => {
     expect(check.ok).toBe(false);
   });
 
-  test("deep doctor reports count mismatch that fast mode skips", async () => {
+  test("doctor reports count mismatch and leftover generations", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     await adapter.execute(
       sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, status TEXT)"),
@@ -64,11 +64,20 @@ describe("doctor", () => {
     await adapter.execute(
       sql(`DELETE FROM ${quoteIdent(names.fts)} WHERE ${quoteIdent("rowid")} = 1`),
     );
-    const fast = await doctorIndex(adapter, definition);
-    expect(fast.healthy).toBe(true);
-    const deep = await doctorIndex(adapter, definition, { level: "deep" });
-    expect(deep.healthy).toBe(false);
-    expect(deep.findings.some((finding) => finding.code === "count-mismatch")).toBe(true);
+    const report = await doctorIndex(adapter, definition);
+    expect(report.healthy).toBe(false);
+    expect(report.findings.some((finding) => finding.code === "count-mismatch")).toBe(true);
+
+    const leftover = physicalNames(
+      definition,
+      row?.physicalIndexId ?? physicalIndexIdFor("products"),
+      (row?.activeGeneration ?? 1) + 1,
+    );
+    await adapter.execute(sql(`CREATE TABLE ${quoteIdent(leftover.docs)} (doc_id INTEGER)`));
+    const leftoverReport = await doctorIndex(adapter, definition);
+    expect(leftoverReport.findings.some((finding) => finding.code === "leftover-generation")).toBe(
+      true,
+    );
   });
 
   test("ensureRegistry rejects drifted registry columns", async () => {

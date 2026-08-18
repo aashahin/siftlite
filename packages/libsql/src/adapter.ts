@@ -14,7 +14,7 @@ import type {
 import { libsqlRuntimeCapabilities } from "./limits.js";
 
 export interface LibsqlAdapterOptions {
-  readonly kind?: "local" | "remote";
+  readonly kind: "local" | "remote";
 }
 
 class LibsqlAdapter implements SqlAdapter {
@@ -33,7 +33,7 @@ class LibsqlAdapter implements SqlAdapter {
   async query<T>(statement: SqlStatement): Promise<readonly T[]> {
     try {
       const result = await this.client.execute(toLibsql(statement));
-      return result.rows as T[];
+      return normalizeLibsqlRows<T>(result.rows);
     } catch (error) {
       throw wrap(error);
     }
@@ -95,11 +95,15 @@ class LibsqlAdapter implements SqlAdapter {
   }
 }
 
-export function libsqlAdapter(
-  client: LibsqlClientLike,
-  options: LibsqlAdapterOptions = {},
-): SqlAdapter {
-  return new LibsqlAdapter(client, options.kind ?? "local");
+export function libsqlAdapter(client: LibsqlClientLike, options: LibsqlAdapterOptions): SqlAdapter {
+  if (options.kind !== "local" && options.kind !== "remote") {
+    throw new SearchError({
+      code: "SEARCH_CONFIG_INVALID",
+      message: 'libsqlAdapter requires an explicit kind: "local" or "remote"',
+      details: { reason: "libsql-kind-required" },
+    });
+  }
+  return new LibsqlAdapter(client, options.kind);
 }
 
 /**
@@ -140,9 +144,54 @@ function toLibsql(statement: SqlStatement): LibsqlStatement {
 }
 
 function asClient(tx: LibsqlTransactionLike): LibsqlClientLike {
+  const batch: NonNullable<LibsqlClientLike["batch"]> =
+    typeof tx.batch === "function"
+      ? (statements, mode) => {
+          const run = tx.batch;
+          if (!run) {
+            throw new SearchError({
+              code: "SEARCH_CAPABILITY_UNSUPPORTED",
+              message: "libSQL transaction does not expose batch()",
+              details: { reason: "libsql-batch" },
+            });
+          }
+          return run(statements, mode);
+        }
+      : async (statements) => {
+          const results: LibsqlResultLike[] = [];
+          for (const statement of statements) {
+            results.push(await tx.execute(statement));
+          }
+          return results;
+        };
   return {
     execute: (statement) => tx.execute(statement),
+    batch,
   };
+}
+
+function normalizeLibsqlRows<T>(rows: readonly Record<string, unknown>[]): T[] {
+  return rows.map((row) => {
+    const normalized: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(row)) {
+      normalized[key] = normalizeLibsqlValue(value);
+    }
+    return normalized as T;
+  });
+}
+
+function normalizeLibsqlValue(value: unknown): unknown {
+  if (typeof value !== "bigint") {
+    return value;
+  }
+  if (value < BigInt(Number.MIN_SAFE_INTEGER) || value > BigInt(Number.MAX_SAFE_INTEGER)) {
+    throw new SearchError({
+      code: "SEARCH_VALUE_INVALID",
+      message: "libSQL row value exceeds the portable safe-integer range",
+      details: { reason: "bigint-range" },
+    });
+  }
+  return Number(value);
 }
 
 function wrap(error: unknown): SearchError {

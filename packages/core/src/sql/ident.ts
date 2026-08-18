@@ -3,7 +3,7 @@ import { SearchError } from "../errors/search-error.js";
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 
 export function assertSqlIdentifier(name: string): string {
-  if (name.length === 0 || name.length > 96 || !IDENT.test(name)) {
+  if (typeof name !== "string" || name.length === 0 || name.length > 96 || !IDENT.test(name)) {
     throw new SearchError({
       code: "SEARCH_CONFIG_INVALID",
       message: "SQL identifier failed conservative validation",

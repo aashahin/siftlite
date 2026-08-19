@@ -12,6 +12,7 @@ import {
   compileBackfillSql,
   compileDocsDdl,
   compileFtsDdl,
+  compileFtsTrigramDdl,
   compileProjectionIndexes,
 } from "./schema.js";
 import { compileLinkedTriggers } from "./triggers.js";
@@ -28,6 +29,9 @@ export function compileIndexLifecycleSql(
     compileDocsDdl(definition, physicalIndexId, generation),
     ...compileProjectionIndexes(definition, physicalIndexId, generation),
     compileFtsDdl(definition, physicalIndexId, generation, options),
+    ...(definition.typoTolerance.mode === "fallback"
+      ? [compileFtsTrigramDdl(definition, physicalIndexId, generation)]
+      : []),
     ...(definition.mode === "linked"
       ? [
           ...compileLinkedTriggers(definition, physicalIndexId, generation),

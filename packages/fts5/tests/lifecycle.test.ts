@@ -603,6 +603,47 @@ describe("lifecycle", () => {
     expect(await readRegistry(adapter, "products")).toBeNull();
   });
 
+  test("companion SQL emits trigram DDL only for fallback typo tolerance", () => {
+    const fallback = defineIndex({
+      name: "notes",
+      mode: "manual",
+      searchable: { title: { weight: 1 } },
+      typoTolerance: { mode: "fallback" },
+    });
+    const off = defineIndex({
+      name: "notes",
+      mode: "manual",
+      searchable: { title: { weight: 1 } },
+    });
+    const physicalIndexId = "abcd1234";
+    const fallbackSql = compileIndexLifecycleSql(fallback, physicalIndexId, 1);
+    const offSql = compileIndexLifecycleSql(off, physicalIndexId, 1);
+    const fallbackNames = physicalNames(fallback, physicalIndexId, 1);
+    const offNames = physicalNames(off, physicalIndexId, 1);
+    expect(fallbackSql.join("\n")).toContain("tokenize='trigram'");
+    expect(fallbackSql.some((statement) => statement.includes(fallbackNames.ftsTrigram))).toBe(
+      true,
+    );
+    expect(offSql.join("\n")).not.toContain("tokenize='trigram'");
+    expect(offSql.join("\n")).not.toContain(offNames.ftsTrigram);
+  });
+
+  test("integrity fails when trigram dropped for a fallback index", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    const definition = defineIndex({
+      name: "notes",
+      mode: "manual",
+      searchable: { title: { weight: 1 } },
+      typoTolerance: { mode: "fallback" },
+    });
+    await createIndex({ adapter, definition });
+    const names = physicalNames(definition, physicalIndexIdFor("notes"), 1);
+    await adapter.execute(sql(`DROP TABLE "${names.ftsTrigram}"`));
+    const report = await doctorIndex(adapter, definition);
+    expect(report.healthy).toBe(false);
+    expect(report.findings.some((finding) => finding.code === "missing-trigram")).toBe(true);
+  });
+
   test("runtime-only sync verifies integrity before clearing pending", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     const definition = defineIndex({

@@ -39,8 +39,10 @@ let verdict_schema = #{
     },
 };
 
+let GROK_MODEL = "cursor-grok-4.6-xhigh-fast";
+
 let root = if args == () || args.root == () {
-    "/home/shahin/Documents/projects/personal/packages/siftlite"
+    "/workspace"
 } else {
     args.root
 };
@@ -75,9 +77,9 @@ c_dead += "Use git diff HEAD and grep for unused symbols you find. Confirm a sym
 c_dead += "Check packages/core/src/index.ts and packages/fts5/src/index.ts new exports have callers or are intended public API.\n";
 
 let critic_jobs = [
-    #{ prompt: c_logic, label: "critic:logic-core-fts5", capability_mode: "read-only", output_schema: findings_schema },
-    #{ prompt: c_adp, label: "critic:logic-adapters", capability_mode: "read-only", output_schema: findings_schema },
-    #{ prompt: c_dead, label: "critic:dead-code", capability_mode: "read-only", output_schema: findings_schema },
+    #{ prompt: c_logic, label: "critic:logic-core-fts5", model: GROK_MODEL, capability_mode: "read-only", output_schema: findings_schema },
+    #{ prompt: c_adp, label: "critic:logic-adapters", model: GROK_MODEL, capability_mode: "read-only", output_schema: findings_schema },
+    #{ prompt: c_dead, label: "critic:dead-code", model: GROK_MODEL, capability_mode: "read-only", output_schema: findings_schema },
 ];
 let critic_results = parallel(critic_jobs);
 
@@ -124,6 +126,7 @@ while vi < findings.len() {
     vjobs.push(#{
         prompt: vp,
         label: "verify:" + vi.to_string(),
+        model: GROK_MODEL,
         capability_mode: "read-only",
         output_schema: verdict_schema,
     });

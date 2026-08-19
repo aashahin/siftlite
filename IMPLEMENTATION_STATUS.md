@@ -76,7 +76,7 @@ not be treated as current evidence.
 
 ## Latest verification result
 
-On 2026-08-19 (this branch): `bun run typecheck` passed; targeted suites
-`packages/fts5/tests/{fuzzy,lifecycle,phase6}.test.ts`, `packages/core`, and
-`packages/cli` passed 153 tests with 0 failures. Full `bun run verify` should
-be re-run before merge/release.
+On 2026-08-19 (branch `cursor/grok-4-6-subagents-workflows-e3a2`):
+`bun run typecheck` and `bun run build` passed; `bun run check-exports` passed
+for all ten packages; `bun test` passed 288 tests; `bun run test:d1` passed
+7 Workers tests. Format check passed after biome format on new fuzzy tests.

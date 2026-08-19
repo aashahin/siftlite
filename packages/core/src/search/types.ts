@@ -30,7 +30,8 @@ export interface SearchRequest<
 > {
   readonly filter?: FilterNode<TFilterable>;
   readonly sort?: readonly SearchSort<TSortable>[];
-  readonly facets?: readonly TFilterable[];
+  /** Declared facet fields may be filterable or sortable-only. */
+  readonly facets?: readonly (TFilterable | TSortable)[];
   readonly highlight?: readonly TSearchable[];
   readonly highlightMarkers?: HighlightMarkers;
   readonly limit?: number;

@@ -71,11 +71,9 @@ If maintenance was interrupted or objects are incomplete, recovery can
 rematerialize them. Calling it again after the row is healthy throws
 `SEARCH_CONFIG_INVALID` / `already-exists`.
 
-<Aside type="caution" title="Typo fallback and companion SQL">
-In `0.1.0`, `compileIndexLifecycleSql` does not emit the trigram table required
-by `typoTolerance.mode: "fallback"`, and integrity checks do not detect that
-omission. Use the runtime path for fallback-enabled definitions.
-</Aside>
+When `typoTolerance.mode: "fallback"`, `compileIndexLifecycleSql` emits the
+trigram companion table and integrity checks require it. Prefer runtime
+`createIndex` to materialize and finalize the registry after migrations.
 
 ## Secure delete
 

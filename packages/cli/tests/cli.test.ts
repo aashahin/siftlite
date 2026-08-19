@@ -155,13 +155,17 @@ describe("@siftlite/cli", () => {
   }),
 }`,
     );
-    const missingName = await runCli(["node", "siftlite", "check", "--config", configPath], { cwd });
+    const missingName = await runCli(["node", "siftlite", "check", "--config", configPath], {
+      cwd,
+    });
     expect(missingName.status).toBe("error");
     expect(missingName.message).toContain("multiple indexes");
 
     const config = await importSiftLiteConfig(configPath);
     const { definition } = resolveIndexDefinition(config.indexes, "notes");
-    await createFts5Engine({ adapter: await config.createAdapter() }).index(definition).create();
+    await createFts5Engine({ adapter: await config.createAdapter() })
+      .index(definition)
+      .create();
 
     const checked = await runCli(
       ["node", "siftlite", "check", "--config", configPath, "--name", "notes"],

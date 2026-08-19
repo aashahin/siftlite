@@ -62,7 +62,7 @@ command, use `npx --package=@siftlite/cli siftlite help`.
 | `@siftlite/drizzle` | Optional Drizzle companion |
 | `@siftlite/prisma` | Optional Prisma companion |
 | `@siftlite/node` | `better-sqlite3` Node adapter |
-| `@siftlite/cli` | SQL generation CLI; operational commands currently fail closed |
+| `@siftlite/cli` | Noninteractive CLI: generate, check/doctor, and lifecycle ops via host config |
 
 Experimental Turso-native FTS lives under `experimental/` and is not a
 stable backend.

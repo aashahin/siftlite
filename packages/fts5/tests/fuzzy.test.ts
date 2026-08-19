@@ -108,10 +108,10 @@ describe("Phase 12 fuzzy request-equivalent search", () => {
     ]);
     const names = physicalNames(ctx.definition, ctx.physicalIndexId, ctx.generation);
     await ctx.adapter.execute(
-      sql(`UPDATE ${quoteIdent(names.docs)} SET ${quoteIdent("title_source")} = ? WHERE ${quoteIdent("source_id")} = ?`, [
-        "zzzzzzzzzz",
-        "mutated",
-      ]),
+      sql(
+        `UPDATE ${quoteIdent(names.docs)} SET ${quoteIdent("title_source")} = ? WHERE ${quoteIdent("source_id")} = ?`,
+        ["zzzzzzzzzz", "mutated"],
+      ),
     );
 
     const result = await searchFts5Index(ctx, "iphoen", { diagnostics: true });
@@ -174,9 +174,9 @@ describe("Phase 12 fuzzy request-equivalent search", () => {
     );
     expect(sourceInQueries.length).toBe(3);
     expect(sourceInQueries.some((statement) => /IN \(\?(?:, \?){2,}/.test(statement))).toBe(false);
-    expect(queries.filter((statement) => /_source/.test(statement) && /=\s*\?/.test(statement)).length).toBe(
-      0,
-    );
+    expect(
+      queries.filter((statement) => /_source/.test(statement) && /=\s*\?/.test(statement)).length,
+    ).toBe(0);
   });
 
   test("fuzzy paging, includeTotal, and facets use survivor IDs", async () => {

@@ -2,9 +2,11 @@ import {
   assertBoundScope,
   assertFilterCannotCarryScope,
   attachHydratedDocuments,
+  chunkIdsForHydration,
   collectTextTerms,
   codePointLength,
   codePointTrigrams,
+  createStatementBudget,
   damerauLevenshtein,
   DEFAULT_APPLICATION_LIMITS,
   DEFAULT_FUZZY_POLICY,
@@ -29,12 +31,14 @@ import {
   type SearchRequest,
   type SearchResponse,
   type SearchWarning,
+  type SourceId,
   type SqlAdapter,
   type TextQuery,
   type UnsafeBackendQuery,
   isUnsafeFts5Query,
 } from "@siftlite/core";
 import { FTS5_BASE_CAPABILITIES, sqliteFts5 } from "../backend.js";
+import { compileFilter, compileScope } from "../compile-filter.js";
 import { compileFts5PhysicalManifest } from "../manifest.js";
 import { physicalNames } from "../names.js";
 import { probeFts5Capabilities } from "../probes.js";
@@ -181,7 +185,7 @@ async function runFts5Search(
 
   throwIfAborted(request.signal);
   const rows = await ctx.adapter.query<HitRow>(compiled.statement);
-  const hasMore = rows.length > page.limit;
+  let hasMore = rows.length > page.limit;
   const pageRows = hasMore ? rows.slice(0, page.limit) : rows;
   const ids = pageRows.map((row) => restoreSourceId(ctx.definition, row.source_id));
 
@@ -203,6 +207,7 @@ async function runFts5Search(
   const hydrated = documents ? attachHydratedDocuments(ids, documents) : undefined;
 
   let fuzzyUsed = false;
+  let fuzzySurvivorIds: readonly SourceId[] = [];
   let hits: SearchHit<Record<string, unknown>>[] = pageRows.map((row, index) => {
     const formatted = formattedFromRow(row, highlight);
     const document = hydrated?.[index];
@@ -221,32 +226,54 @@ async function runFts5Search(
     ctx.definition.typoTolerance.mode === "fallback" &&
     capabilities.features.typoFallback
   ) {
-    hits = await searchFuzzyFallback(ctx, prepared.textQuery, page, request);
-    fuzzyUsed = hits.length > 0;
+    const fuzzy = await searchFuzzyFallback(ctx, prepared.textQuery, page, request);
+    hits = fuzzy.hits;
+    fuzzySurvivorIds = fuzzy.survivorIds;
+    fuzzyUsed = fuzzy.survivorIds.length > 0;
+    if (fuzzyUsed) {
+      hasMore = fuzzy.hasMore;
+      if (highlightRequested) {
+        warnings.push({
+          code: "highlight-unavailable-fuzzy",
+          message: "highlight is not available for fuzzy fallback hits",
+        });
+      }
+    }
   }
 
   let totalHits: number | undefined;
   if (request.includeTotal === true) {
     throwIfAborted(request.signal);
-    const countRows = await ctx.adapter.query<{ total: number }>(
-      sql(
-        `SELECT COUNT(*) AS total ${compiled.fromSql} WHERE ${compiled.whereSql}`,
-        compiled.whereParams,
-      ),
-    );
-    totalHits = Number(countRows[0]?.total ?? 0);
+    if (fuzzyUsed) {
+      totalHits = fuzzySurvivorIds.length;
+    } else {
+      const countRows = await ctx.adapter.query<{ total: number }>(
+        sql(
+          `SELECT COUNT(*) AS total ${compiled.fromSql} WHERE ${compiled.whereSql}`,
+          compiled.whereParams,
+        ),
+      );
+      totalHits = Number(countRows[0]?.total ?? 0);
+    }
   }
 
   const facetFields = request.facets ?? [];
   if (facetFields.length > 0) {
     throwIfAborted(request.signal);
   }
+  const facetCompiled =
+    fuzzyUsed && facetFields.length > 0
+      ? compiledSearchForSourceIds(
+          physicalNames(ctx.definition, ctx.physicalIndexId, ctx.generation).docs,
+          fuzzySurvivorIds,
+        )
+      : compiled;
   const facetResult =
     facetFields.length > 0
       ? await executeFacets({
           adapter: ctx.adapter,
           definition: ctx.definition,
-          compiled,
+          compiled: facetCompiled,
           fields: facetFields,
           limits,
         })
@@ -320,13 +347,22 @@ async function resolveSearchCapabilities(ctx: Fts5SearchContext): Promise<Effect
   });
 }
 
+interface FuzzyFallbackResult {
+  readonly hits: SearchHit<Record<string, unknown>>[];
+  readonly hasMore: boolean;
+  readonly survivorIds: readonly SourceId[];
+}
+
 async function searchFuzzyFallback(
   ctx: Fts5SearchContext,
   textQuery: TextQuery,
   page: { readonly limit: number; readonly offset: number },
   request: SearchRequest,
-): Promise<SearchHit<Record<string, unknown>>[]> {
+): Promise<FuzzyFallbackResult> {
+  const empty: FuzzyFallbackResult = { hits: [], hasMore: false, survivorIds: [] };
   const policy = DEFAULT_FUZZY_POLICY;
+  const limits = ctx.limits ?? DEFAULT_APPLICATION_LIMITS;
+  const candidateLimit = Math.min(policy.maxCandidates, limits.maxFuzzyCandidates);
   const terms = collectTextTerms(textQuery)
     .map((term) => normalizeIndexText(term, ctx.definition.normalization))
     .filter((term) => codePointLength(term) >= policy.minTokenCodepoints)
@@ -336,37 +372,38 @@ async function searchFuzzyFallback(
     policy.maxTrigramsPerToken * Math.max(terms.length, 1),
   );
   if (grams.length === 0) {
-    return [];
+    return empty;
   }
+  const queryGramSet = new Set(grams);
   const names = physicalNames(ctx.definition, ctx.physicalIndexId, ctx.generation);
   const match = grams.map((gram) => `"${gram.replaceAll('"', '""')}"`).join(" OR ");
+  const scope = compileScope(request.scope, ctx.definition);
+  const filter = compileFilter(request.filter, ctx.definition);
   const rows = await ctx.adapter.query<{ source_id: unknown; rank: number | null }>(
     sql(
       `SELECT d.${quoteIdent("source_id")} AS source_id, NULL AS rank
 FROM ${quoteIdent(names.ftsTrigram)} AS t
 JOIN ${quoteIdent(names.docs)} AS d ON d.${quoteIdent("doc_id")} = t.${quoteIdent("rowid")}
 WHERE ${quoteIdent(names.ftsTrigram)} MATCH ?
+AND (${scope.sql})
+AND (${filter.sql})
 LIMIT ?`,
-      [match, policy.maxCandidates],
+      [match, ...scope.params, ...filter.params, candidateLimit],
     ),
   );
-  const scored: Array<{ id: ReturnType<typeof restoreSourceId>; distance: number }> = [];
-  for (const row of rows) {
-    const id = restoreSourceId(ctx.definition, row.source_id);
-    const stored = await ctx.adapter.query<Record<string, unknown>>(
-      sql(
-        `SELECT ${ctx.definition.searchableOrder.map((field) => quoteIdent(`${field}_source`)).join(", ")} FROM ${quoteIdent(names.docs)} WHERE ${quoteIdent("source_id")} = ?`,
-        [id],
-      ),
-    );
+  const candidateIds = rows.map((row) => restoreSourceId(ctx.definition, row.source_id));
+  const storedById = await loadSearchableSources(ctx, names.docs, candidateIds);
+  const scored: Array<{ id: SourceId; distance: number }> = [];
+  for (const id of candidateIds) {
+    const stored = storedById.get(id);
     const haystack = ctx.definition.searchableOrder
       .map((field) =>
-        normalizeIndexText(
-          String(stored[0]?.[`${field}_source`] ?? ""),
-          ctx.definition.normalization,
-        ),
+        normalizeIndexText(String(stored?.[`${field}_source`] ?? ""), ctx.definition.normalization),
       )
       .join(" ");
+    if (sharedTrigramCount(haystack, queryGramSet) < policy.minGramOverlap) {
+      continue;
+    }
     let best = Number.POSITIVE_INFINITY;
     for (const term of terms) {
       for (const token of haystack.split(/\s+/).filter(Boolean)) {
@@ -382,9 +419,15 @@ LIMIT ?`,
     }
   }
   scored.sort((left, right) => left.distance - right.distance);
+  const survivorIds = scored.map((hit) => hit.id);
   const pageHits = scored.slice(page.offset, page.offset + page.limit);
+  const hasMore = scored.length > page.offset + page.limit;
   if (request.hydrate !== true) {
-    return pageHits.map((hit) => ({ id: hit.id, score: null }));
+    return {
+      hits: pageHits.map((hit) => ({ id: hit.id, score: null })),
+      hasMore,
+      survivorIds,
+    };
   }
   const hydrator =
     ctx.hydrator ??
@@ -393,7 +436,7 @@ LIMIT ?`,
       definition: ctx.definition,
       physicalIndexId: ctx.physicalIndexId,
       generation: ctx.generation,
-      limits: ctx.limits ?? DEFAULT_APPLICATION_LIMITS,
+      limits,
       runtimeLimits: ctx.adapter.runtimeCapabilities.limits,
     });
   const documents = await hydrator.hydrate(pageHits.map((hit) => hit.id));
@@ -401,11 +444,81 @@ LIMIT ?`,
     pageHits.map((hit) => hit.id),
     documents,
   );
-  return pageHits.map((hit, index) => ({
-    id: hit.id,
-    score: null,
-    ...(hydrated[index] !== undefined ? { document: hydrated[index] } : {}),
-  }));
+  return {
+    hits: pageHits.map((hit, index) => ({
+      id: hit.id,
+      score: null,
+      ...(hydrated[index] !== undefined ? { document: hydrated[index] } : {}),
+    })),
+    hasMore,
+    survivorIds,
+  };
+}
+
+function sharedTrigramCount(haystack: string, queryGrams: ReadonlySet<string>): number {
+  let overlap = 0;
+  for (const gram of codePointTrigrams(haystack)) {
+    if (queryGrams.has(gram)) {
+      overlap += 1;
+    }
+  }
+  return overlap;
+}
+
+async function loadSearchableSources(
+  ctx: Fts5SearchContext,
+  docsTable: string,
+  ids: readonly SourceId[],
+): Promise<Map<SourceId, Record<string, unknown>>> {
+  const storedById = new Map<SourceId, Record<string, unknown>>();
+  if (ids.length === 0) {
+    return storedById;
+  }
+  const columns = [
+    quoteIdent("source_id"),
+    ...ctx.definition.searchableOrder.map((field) => quoteIdent(`${field}_source`)),
+  ];
+  const budget = createStatementBudget(
+    ctx.adapter.runtimeCapabilities.limits,
+    ctx.limits ?? DEFAULT_APPLICATION_LIMITS,
+  );
+  for (const chunk of chunkIdsForHydration(ids, budget)) {
+    const placeholders = chunk.map(() => "?").join(", ");
+    const stored = await ctx.adapter.query<Record<string, unknown>>(
+      sql(
+        `SELECT ${columns.join(", ")} FROM ${quoteIdent(docsTable)} WHERE ${quoteIdent("source_id")} IN (${placeholders})`,
+        [...chunk],
+      ),
+    );
+    for (const row of stored) {
+      storedById.set(restoreSourceId(ctx.definition, row["source_id"]), row);
+    }
+  }
+  return storedById;
+}
+
+function compiledSearchForSourceIds(docsTable: string, ids: readonly SourceId[]): CompiledSearch {
+  if (ids.length === 0) {
+    return {
+      statement: sql("SELECT 1 WHERE 0", []),
+      emptyQuery: true,
+      fromSql: `FROM ${quoteIdent(docsTable)} AS d`,
+      whereSql: "0 = 1",
+      whereParams: [],
+      bindParameterCount: 0,
+    };
+  }
+  const placeholders = ids.map(() => "?").join(", ");
+  const whereSql = `d.${quoteIdent("source_id")} IN (${placeholders})`;
+  const fromSql = `FROM ${quoteIdent(docsTable)} AS d`;
+  return {
+    statement: sql(`SELECT 1 ${fromSql} WHERE ${whereSql}`, [...ids]),
+    emptyQuery: true,
+    fromSql,
+    whereSql,
+    whereParams: [...ids],
+    bindParameterCount: ids.length,
+  };
 }
 
 interface HitRow {

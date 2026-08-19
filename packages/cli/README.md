@@ -6,6 +6,8 @@ Noninteractive SiftLite CLI. Works on Node 20+ and Bun.
 npm i -D @siftlite/cli
 npx siftlite help
 npx siftlite version
+npx siftlite init
+npx siftlite check --config ./siftlite.config.mjs
 npx siftlite generate --name products --table products --search title --json
 ```
 
@@ -15,13 +17,31 @@ For a one-off command without a local install:
 npx --package=@siftlite/cli siftlite help
 ```
 
-In `0.1.0`, `help`, `version`, and `generate` are the functional commands.
-`generate` prints companion SQL and seeds the registry as `pending`; the host
-must later finalize it with `createIndex` using the same definition.
+## Config
 
-`check` and `doctor` currently return an error directing callers to the engine
-methods because the CLI has no database-adapter loading mechanism yet.
-`backfill`, `rebuild`, `merge`, and `drop` are also non-operational placeholders;
-they require `--acknowledge` before returning the adapter-required error. Flags
-after a subcommand are not subcommand help, so `siftlite check --help` still
-runs `check` and exits with an error.
+`check` and `doctor` load `./siftlite.config.mjs` or `./siftlite.config.js`, or
+the path passed as `--config`. The file is imported dynamically
+(`pathToFileURL` + `import()`), so the CLI never opens SQLite itself.
+
+Export:
+
+- `createAdapter()` — returns `SqlAdapter | Promise<SqlAdapter>` from
+  `@siftlite/node` (better-sqlite3) or `@siftlite/bun` (`bun:sqlite`)
+- `indexes` — one `defineIndex()` result, an array of definitions, or a
+  name-to-definition record
+
+Use `--name` when the config exports more than one index. `--json` prints a
+machine-readable `CliResult`. Error findings (`status: "error"`) exit
+non-zero.
+
+`init` writes a documented `siftlite.config.mjs` and refuses to overwrite
+without `--force`.
+
+`generate` stays flag-based: it prints companion SQL and seeds the registry as
+`pending`; the host must later finalize it with `createIndex` using the same
+definition.
+
+`backfill`, `rebuild`, `merge`, and `drop` load the same config, require
+`--acknowledge` (or `--dry-run`), and call the mutating command handlers.
+`--dry-run` prints a plan without writing. Flags after a subcommand are not
+subcommand help, so `siftlite check --help` still runs `check`.

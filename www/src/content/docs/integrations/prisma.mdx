@@ -1,0 +1,67 @@
+---
+title: Prisma
+description: Search beside Prisma models without FTS in schema.prisma.
+sidebar:
+  order: 2
+---
+
+<PackageManagers pkg="@siftlite/prisma" />
+
+This package does **not** model FTS5 in `schema.prisma` and does **not**
+use Prisma query hooks to synchronize indexes. `@prisma/client` is an
+optional peer and is never required to compile the package. Supported
+client family: Prisma 6 (`@prisma/client` ^6).
+
+```ts
+import { createPrismaSearch } from "@siftlite/prisma";
+
+const productSearch = createPrismaSearch({
+  prisma,
+  adapter,
+  model: "product",
+  index: productsIndex,
+});
+
+const result = await productSearch.search("iphone", { hydrate: true });
+```
+
+When the Prisma field name differs from the SQL primary-key column (for
+example `pid` mapped to `"id"`), pass `prismaIdField`. Hydration
+`findMany` and `row[id]` use that field. Triggers and companion SQL still
+use `index.source.primaryKey.field`.
+
+## Companion SQL
+
+```ts
+import { generatePrismaSearchSql } from "@siftlite/prisma";
+
+const migration = generatePrismaSearchSql(productsIndex);
+```
+
+The fragment is a deterministic **subsequent** Prisma migration. It never
+rewrites previously applied migrations. Applying it is not enough: after
+the source table exists, call `createIndex` and then
+`createPrismaSearch`. Do not apply the fragment and then `createIndex` on
+the same database — `createIndex` rematerializes the same physical objects.
+
+## Client Extension
+
+Ergonomic only. Close over the real Prisma client; `$extends` model
+methods do not receive `{ client }` as `this`.
+
+```ts
+import { searchExtension } from "@siftlite/prisma";
+
+const base = new PrismaClient();
+const prisma = base.$extends(
+  searchExtension({
+    prisma: base,
+    adapter,
+    models: { product: productsIndex },
+    prismaIdFields: { product: "pid" },
+  }),
+);
+```
+
+Portable source IDs remain `string | safe-integer`. BigInt and composite
+IDs are rejected by core.

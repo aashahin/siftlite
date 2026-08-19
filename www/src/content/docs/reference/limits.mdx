@@ -1,0 +1,39 @@
+---
+title: Limits
+description: Application limits and adapter-owned SQL budgets.
+sidebar:
+  order: 5
+---
+
+Two layers: application limits (query shape) and runtime SQL limits
+(statement budget).
+
+## `DEFAULT_APPLICATION_LIMITS`
+
+| Key | Default |
+| --- | --- |
+| `maxQueryLength` | 512 |
+| `maxTerms` | 32 |
+| `maxLimit` | 100 |
+| `defaultLimit` | 20 |
+| `maxOffset` | 10_000 |
+| `maxFacets` | 10 |
+| `maxFacetValues` | 100 |
+| `maxFilterDepth` | 8 |
+| `maxFilterNodes` | 64 |
+| `maxInValues` | 100 |
+| `maxSynonymExpansion` | 64 |
+| `maxFuzzyCandidates` | 200 |
+
+Override via `createFts5Engine({ limits })`. `defaultLimit` must be ≥ 1
+and ≤ `maxLimit`.
+
+## D1 SQL limits
+
+See [Cloudflare D1](/adapters/d1). Values are adapter-owned
+(`D1_SQL_LIMITS`) and were revalidated 2026-08-16.
+
+## Fuzzy policy
+
+See [typo tolerance](/guides/typo-tolerance). `minTokenCodepoints` must be
+at least 3.

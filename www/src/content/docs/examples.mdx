@@ -1,0 +1,35 @@
+---
+title: Examples
+description: Runnable workspaces in the siftlite repository.
+sidebar:
+  order: 8
+---
+
+Clone [aashahin/siftlite](https://github.com/aashahin/siftlite). From the
+repo root:
+
+```bash
+bun install
+bun run --filter @siftlite/example-bun-basic start
+```
+
+| Path | What it shows |
+| --- | --- |
+| `examples/bun-basic` | Linked index, in-memory `bun:sqlite`, `createFts5Engine` |
+| `examples/d1-worker` | Worker + D1 migration route, tenant header, session bookmarks |
+| `examples/drizzle-bun` | `defineDrizzleIndex` + `drizzleSearch` + `hydrate: true` |
+| `examples/libsql-basic` | Manual index, `wrapLibsqlClient`, `kind: "local"` |
+
+The D1 worker:
+
+```bash
+cd examples/d1-worker
+bunx wrangler d1 migrations apply siftlite-example --local
+bunx wrangler dev
+```
+
+- `GET /migrate` — demo-only idempotent `createIndex`. Do not expose
+  unauthenticated DDL in production.
+- `GET /search?q=sqlite` — requires `x-tenant-id` or `?tenant=`.
+- Writes and searches default to `first-primary` and return
+  `x-d1-bookmark`.

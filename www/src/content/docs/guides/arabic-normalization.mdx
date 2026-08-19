@@ -1,0 +1,54 @@
+---
+title: Arabic normalization
+description: Index-level portable profiles applied to queries and indexed text.
+sidebar:
+  order: 4
+---
+
+Normalization is declared on the index, not per request. Query text and
+indexed text use the same portable profile.
+
+```ts
+const products = defineIndex({
+  name: "products",
+  mode: "linked",
+  source: { table: "products", primaryKey: { field: "id", type: "string" } },
+  normalization: ["arabic-basic"],
+  searchable: { title: { weight: 1 } },
+});
+```
+
+Unknown or duplicate profile IDs throw `SEARCH_CONFIG_INVALID`.
+
+## `arabic-basic`
+
+Conservative replacements, available in linked and manual mode:
+
+- tatweel removal (U+0640)
+- common harakat / tanween / shadda / sukun (U+064B–U+0652)
+- superscript alef (U+0670)
+- selected precomposed alef variants → bare alef
+- alef maqsura → yeh
+
+Explicitly **unchanged**:
+
+- teh marbuta → heh (`ة` → `ه`)
+- waw with hamza → waw
+- yeh with hamza → yeh
+- Arabic-Indic digit folding
+- presentation / compatibility forms
+- generic NFC/NFKC
+- Quranic annotation marks (U+06D6–U+06ED)
+- combining hamza above/below (U+0654/U+0655)
+
+## `numeric-arabic`
+
+Maps Arabic-Indic digits U+0660–U+0669 to ASCII `0`–`9`. Extended
+Persian/Urdu digits (U+06F0–U+06F9) are unchanged. Also available in
+linked mode. Combine with `arabic-basic` when both are needed:
+
+```ts
+normalization: ["arabic-basic", "numeric-arabic"],
+```
+
+Order is significant: profiles run in declaration order.

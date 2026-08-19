@@ -1,0 +1,31 @@
+---
+title: Tenant scope
+description: Immutable predicates that user filters cannot remove.
+sidebar:
+  order: 4
+---
+
+Shared-database SaaS can bind an index handle to a mandatory scope:
+
+```ts
+const tenantProducts = engine.index(products).scope({ tenant_id: tenantId });
+const result = await tenantProducts.search("iphone");
+```
+
+`scope()` values must use **filterable** field names. The handle compiles
+them as compiler-owned equality predicates (`kind: "scope-eq"`). They are
+always ANDed with the request filter and **cannot** be removed, negated, or
+overridden by `filter`, `not()`, or another `scope` on the request object.
+
+Scope applies to hits, facets, fuzzy candidate retrieval, hydration, and
+any document-reading diagnostic that claims scoped behavior.
+
+You can also isolate tenants with one database per tenant. Do not mix those
+models: SiftLite will not treat a missing scope as "all tenants".
+
+The D1 example requires a tenant (`x-tenant-id` or `?tenant=`) and returns
+400 if it is omitted. That is not authentication — it is an isolation
+boundary.
+
+`bindScope({ tenant_id: tenant })` is the same primitive used internally by
+`index.scope()`. An empty object throws `SEARCH_SCOPE_INVALID`.

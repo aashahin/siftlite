@@ -1,0 +1,37 @@
+---
+title: Adapters
+description: Runtime SQL adapters — search semantics stay in @siftlite/fts5.
+sidebar:
+  order: 5
+  group:
+    label: Adapters
+---
+
+An adapter implements `SqlAdapter` (`query`, `execute`, `batch`,
+`transaction`) plus `runtimeCapabilities`. Core never imports Bun, Node, D1,
+or libSQL APIs.
+
+| Package | Factory | Runtime |
+| --- | --- | --- |
+| `@siftlite/bun` | `bunSqliteAdapter(db)` | `bun:sqlite` |
+| `@siftlite/node` | `nodeSqliteAdapter(db)` | `better-sqlite3` |
+| `@siftlite/d1` | `d1Adapter` / `d1SessionAdapter` | Cloudflare D1 |
+| `@siftlite/libsql` | `libsqlAdapter(wrapLibsqlClient(client), { kind })` | libSQL / Turso Cloud FTS5 |
+
+Experimental Turso-native FTS lives under `experimental/` in the repo and is
+**not** a stable backend. `@siftlite/libsql` is FTS5, not Tantivy.
+
+<CardGrid>
+<Card title="Bun" icon="ph:terminal">
+[bun:sqlite](/adapters/bun)
+</Card>
+<Card title="D1" icon="ph:cloud">
+[Cloudflare Workers + D1](/adapters/d1)
+</Card>
+<Card title="libSQL" icon="ph:database">
+[libSQL / Turso Cloud](/adapters/libsql)
+</Card>
+<Card title="Node" icon="ph:cpu">
+[better-sqlite3](/adapters/node)
+</Card>
+</CardGrid>

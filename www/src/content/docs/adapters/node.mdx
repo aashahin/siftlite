@@ -1,0 +1,24 @@
+---
+title: Node
+description: better-sqlite3 adapter for Node.js 20+.
+sidebar:
+  order: 4
+---
+
+<PackageManagers pkg="@siftlite/core @siftlite/fts5 @siftlite/node" />
+
+`better-sqlite3` is an optional peer. The adapter accepts a minimal
+database surface (`prepare`, `exec`) so tests and wrappers do not import
+the native module into `@siftlite/core`.
+
+```ts
+import Database from "better-sqlite3";
+import { nodeSqliteAdapter } from "@siftlite/node";
+import { createFts5Engine } from "@siftlite/fts5";
+
+const sqlite = new Database("app.db");
+const engine = createFts5Engine({ adapter: nodeSqliteAdapter(sqlite) });
+```
+
+`nodeSqliteAdapter` accepts the database or `{ database }`. Adapter `id` is
+`"node-better-sqlite3"`.

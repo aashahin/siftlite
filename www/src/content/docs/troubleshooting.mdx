@@ -1,0 +1,80 @@
+---
+title: Troubleshooting
+description: Verbatim failures and the code that produces them.
+sidebar:
+  order: 9
+---
+
+Branch on `SearchError.code` and `details.reason`. Message text is not a
+stable API.
+
+## `index already exists`
+
+**Cause:** `create()` / `createIndex` found a healthy registry row.
+**Fix:** Call `search` instead, or `rebuild()` if you intend to replace
+physical objects. The D1 example treats `details.reason === "already-exists"`
+as success.
+
+## `linked indexes write through source-table triggers`
+
+**Cause:** `upsert` or `delete` on a linked handle.
+**Fix:** Write the source table (SQL or ORM). Switch to `mode: "manual"`
+only when documents are not a single table's columns.
+
+## `index is not registered` / `SEARCH_INDEX_NOT_FOUND`
+
+**Cause:** No `__sift_registry` row. Companion SQL was applied without
+`createIndex`, or `create` never ran.
+**Fix:** `await index.create()` after the source table exists.
+
+## `Drizzle/Prisma search index is not healthy`
+
+**Cause:** Registry `health !== "healthy"` (usually `pending` after
+interrupted maintenance).
+**Fix:** `doctor()` then `rebuild()` or finish the pending `create`.
+
+## Empty hits for an Arabic query
+
+**Cause:** Index has no `normalization`, or query and indexed text used
+different profiles.
+**Fix:** Set `normalization: ["arabic-basic"]` (and `numeric-arabic` if
+you index Arabic-Indic digits). Normalization is index-level.
+
+## Typo fallback never runs on D1
+
+**Cause:** Default policy
+`typoFallback: "disabled-on-cost-sensitive-runtimes"` plus
+`costSensitive: true`, and/or missing trigram probe, and/or
+`typoTolerance.mode` still `"off"`.
+**Fix:** See [typo tolerance](/guides/typo-tolerance). Enabling it on D1
+is a cost decision.
+
+## D1 search does not see a write I just made
+
+**Cause:** Plain `d1Adapter(env.DB)` is replica-eligible and not
+session-aware.
+**Fix:** `d1SessionAdapter(env.DB, bookmark ?? "first-primary")` and
+propagate `getBookmark()` on the response.
+
+## `D1 Sessions API is not available`
+
+**Cause:** Execution target has no `withSession`.
+**Fix:** Use `d1Adapter` on that target, or a runtime that implements
+Sessions.
+
+## libSQL `:memory:` looks empty after a transaction
+
+**Cause:** Interactive transactions detach the memory connection.
+**Fix:** Use a `file:` URL for commit/rollback. Query/execute on
+`:memory:` without `transaction()` is fine.
+
+## Highlight HTML looks broken / XSS
+
+**Cause:** `formatted` strings assigned to `innerHTML`.
+**Fix:** <Render file="highlight-xss" />
+
+## CLI `check` / `doctor` / `drop` fails immediately
+
+**Cause:** The CLI does not invent a database connection. Destructive
+commands also require `--acknowledge`.
+**Fix:** Call the engine methods from the host application.

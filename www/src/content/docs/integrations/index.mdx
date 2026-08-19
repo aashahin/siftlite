@@ -1,0 +1,16 @@
+---
+title: Integrations
+description: Optional Drizzle and Prisma companions. Triggers still own linked writes.
+sidebar:
+  order: 6
+  group:
+    label: Integrations
+---
+
+ORM packages map table metadata into a canonical `IndexDefinition`. They do
+**not** synchronize FTS through ORM hooks. Linked indexes stay correct when
+writes go through the ORM **or** raw SQL because database triggers maintain
+FTS state.
+
+- [Drizzle](/integrations/drizzle) — `defineDrizzleIndex`, `drizzleSearch`
+- [Prisma](/integrations/prisma) — `createPrismaSearch`, optional Client Extension

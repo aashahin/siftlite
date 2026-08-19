@@ -1,0 +1,34 @@
+---
+title: Highlighting
+description: Snippets are markdown-marked text, not trusted HTML.
+sidebar:
+  order: 7
+---
+
+Highlighting is **off** until you pass `highlight` with one or more
+searchable field names.
+
+```ts
+const result = await index.search("sqlite", { highlight: ["title"] });
+result.hits[0]?.formatted?.title;
+```
+
+Default markers (`HighlightMarkers`):
+
+```ts
+{ start: "**", end: "**", ellipsis: "…" }
+```
+
+Override per request:
+
+```ts
+await index.search("sqlite", {
+  highlight: ["title"],
+  highlightMarkers: { start: "[", end: "]", ellipsis: "..." },
+});
+```
+
+Marker strings are capped at 16 code points. Unknown highlight fields are
+rejected at compile time (`SEARCH_QUERY_INVALID` / similar config errors).
+
+<Render file="highlight-xss" />

@@ -1,0 +1,60 @@
+---
+title: Typo tolerance
+description: Bounded trigram fallback, off until you opt in.
+sidebar:
+  order: 5
+---
+
+Typo fallback is **opt-in on the definition** and still **capability-gated**
+at search time.
+
+```ts
+typoTolerance: { mode: "fallback" }
+```
+
+Default is `{ mode: "off" }`. The only other accepted mode is `"fallback"`.
+
+## What "fallback" means
+
+1. The exact FTS5 query runs first.
+2. If it returns no hits, SiftLite may retrieve trigram candidates and
+   score them with Damerau-Levenshtein, within a bounded policy.
+
+It is not always-on fuzzy matching and it does not rewrite the user's
+query into FTS5 `OR` fuzz.
+
+## Requirements that all have to hold
+
+- Definition `typoTolerance.mode === "fallback"`.
+- Runtime probe `trigramTokenizer === true`.
+- Search policy does not disable it.
+
+Default search policy is
+`typoFallback: "disabled-on-cost-sensitive-runtimes"`. D1 adapters set
+`costSensitive: true`, so fallback stays **off on D1** unless you pass an
+explicit policy that enables it **and** accept the cost.
+
+```ts
+createFts5Engine({
+  adapter: d1Adapter(env.DB),
+  policy: { typoFallback: "enabled", costSensitive: true },
+});
+```
+
+That combination is a deliberate policy decision. `D1_DEFAULT_SEARCH_POLICY`
+keeps fallback disabled.
+
+## Bounds
+
+`DEFAULT_FUZZY_POLICY`:
+
+| Limit | Value |
+| --- | --- |
+| `minTokenCodepoints` | 3 |
+| `maxQueryTokens` | 4 |
+| `maxTrigramsPerToken` | 24 |
+| `maxCandidates` | 200 |
+| `maxEditDistance` | 2 |
+
+`maxEditsForToken` further caps edits by token length. When fallback runs
+and you pass `diagnostics: true`, `response.meta.fuzzyUsed` is `true`.

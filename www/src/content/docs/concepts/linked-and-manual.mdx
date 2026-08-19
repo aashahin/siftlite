@@ -1,0 +1,64 @@
+---
+title: Linked and manual
+description: Triggers maintain linked indexes; callers ingest manual documents.
+sidebar:
+  order: 1
+---
+
+`defineIndex` requires `mode: "linked"` or `mode: "manual"`. SiftLite does
+not silently downgrade linked mode into manual mode.
+
+## Linked
+
+Use linked mode when searchable fields are columns of **one** source table
+and every configured normalizer has a portable SQL form.
+
+- Database triggers maintain the internal search projection.
+- Direct SQL writes stay synchronized. ORM hooks are not required.
+- `index.upsert()` and `index.delete()` throw
+  `SEARCH_CAPABILITY_UNSUPPORTED` with `reason: "linked-writes"`.
+- Linked indexes require `source.table` and `source.primaryKey`.
+
+```ts
+const products = defineIndex({
+  name: "products",
+  mode: "linked",
+  source: { table: "products", primaryKey: { field: "id", type: "string" } },
+  searchable: { title: { weight: 1 } },
+});
+```
+
+`create()` / `rebuild()` are maintenance operations in this release.
+
+## Manual
+
+Use manual mode when documents include joins, nested objects, external data,
+or transforms that cannot be expressed as portable SQL.
+
+- Call `index.upsert(documents)` and `index.delete(id)` yourself.
+- A normal internal document table is authoritative. FTS/trigram objects are
+  derived and may be dropped and rebuilt from that table.
+- The search API is the same after ingestion.
+- `source` is optional.
+
+```ts
+const articles = defineIndex({
+  name: "articles",
+  mode: "manual",
+  searchable: { title: { weight: 1 } },
+  filterable: { status: "text" },
+});
+
+await index.upsert([
+  { id: "a1", searchable: { title: "libsql search" }, filterable: { status: "active" } },
+]);
+```
+
+Each upsert document is a `ManualProofDocument`: `id`, `searchable` string
+map, optional `filterable` map.
+
+## Physical objects
+
+Internal names are derived (`__sift_*`). Do not treat FTS virtual tables as
+the only backup copy of linked data — the source table is authoritative.
+Manual document tables are ordinary tables and must be included in backups.

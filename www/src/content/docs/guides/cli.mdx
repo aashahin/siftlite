@@ -1,0 +1,39 @@
+---
+title: CLI
+description: Noninteractive generate, check, and doctor — fail closed without a database.
+sidebar:
+  order: 8
+---
+
+`@siftlite/cli` works on Node 20+ and Bun.
+
+<PackageManagers pkg="@siftlite/cli" dev />
+
+```bash
+npx siftlite help
+npx siftlite version
+npx siftlite generate --name products --table products --search title --json
+```
+
+Commands: `help`, `generate`, `check`, `doctor`, `backfill`, `rebuild`,
+`merge`, `drop`. Flags: `--json`, `--dry-run`, `--acknowledge`.
+
+## `generate`
+
+Prints companion SQL for a linked index with one searchable column.
+Defaults: `--name products`, `--table` equals name, `--search title`.
+
+This SQL is a starting fragment. Search still needs a healthy registry row
+via `createIndex` / `index.create()`.
+
+## `check` and `doctor`
+
+These require a host-provided database adapter. The CLI **refuses to invent
+a connection** and exits with an error. Call `index.check()` /
+`index.doctor()` from application code instead.
+
+## Destructive commands
+
+`drop`, `rebuild`, `backfill`, and `merge` require `--acknowledge`. Without
+it they fail closed. Even with `--acknowledge`, they still require a
+host-provided adapter and will not run against an implied database.

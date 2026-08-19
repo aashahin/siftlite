@@ -1,0 +1,31 @@
+---
+title: Concepts
+description: The contracts SiftLite will not silently weaken.
+sidebar:
+  order: 3
+  group:
+    label: Concepts
+---
+
+SiftLite is a TypeScript search layer for SQLite-family databases. It is not a
+thin FTS5 wrapper. These pages name the contracts that keep the public API
+honest across Bun, Node, D1, and libSQL.
+
+<CardGrid>
+<Card title="Linked and manual" icon="ph:tree-structure">
+When triggers own writes versus when you call `upsert`.
+[Read](/concepts/linked-and-manual)
+</Card>
+<Card title="Capabilities" icon="ph:sliders-horizontal">
+Effective behavior is backend ∩ runtime ∩ probes ∩ policy.
+[Read](/concepts/capabilities)
+</Card>
+<Card title="Identity and codecs" icon="ph:hash">
+Portable source IDs and canonical field storage kinds.
+[Read](/concepts/identity-and-codecs)
+</Card>
+<Card title="Tenant scope" icon="ph:lock-simple">
+Immutable predicates user filters cannot remove.
+[Read](/concepts/tenant-scope)
+</Card>
+</CardGrid>

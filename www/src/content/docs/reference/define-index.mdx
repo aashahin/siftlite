@@ -1,0 +1,40 @@
+---
+title: defineIndex
+description: IndexDefinitionInput fields and defaults.
+sidebar:
+  order: 2
+---
+
+```ts
+import { defineIndex, table } from "@siftlite/core";
+```
+
+`LOGICAL_FORMAT_VERSION` is `1`.
+
+## Input
+
+| Field | Required | Default |
+| --- | --- | --- |
+| `name` | yes | — |
+| `mode` | yes | `"linked"` or `"manual"` only |
+| `source` | linked: yes | optional in manual |
+| `searchable` | yes, ≥1 field | — |
+| `filterable` | no | `{}` |
+| `sortable` | no | `{}` |
+| `facets` | no | `[]` |
+| `prefix` | no | `[]` (lengths 1–8) |
+| `normalization` | no | `[]` |
+| `typoTolerance` | no | `{ mode: "off" }` |
+| `synonyms` | no | `{}` |
+| `matchingStrategy` | no | `"all"` |
+
+`searchable[field].weight` must be a positive finite number.
+
+Facet names must already be filterable or sortable.
+
+Searchable source columns occupy internal `{field}_source` names; a
+filterable/sortable field with that name is rejected
+(`searchable-source-collision`).
+
+`table(name, { primaryKey })` returns `{ table, primaryKey }` and maps
+primary key `"integer"` to `"safe-integer"`.

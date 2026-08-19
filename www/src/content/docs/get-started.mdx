@@ -1,0 +1,78 @@
+---
+title: Get started
+description: Install SiftLite, define an index, and run one search.
+sidebar:
+  order: 1
+---
+
+Pick an adapter for the database you already run. Search semantics live in
+`@siftlite/fts5`; adapters only execute SQL.
+
+<PackageManagers pkg="@siftlite/core @siftlite/fts5 @siftlite/bun" />
+
+Other adapters: `@siftlite/d1`, `@siftlite/libsql`, `@siftlite/node`.
+ORM companions: `@siftlite/drizzle`, `@siftlite/prisma`. CLI:
+`@siftlite/cli`.
+
+<Steps>
+<Step title="Define an index">
+
+Linked mode indexes columns of one source table. Database triggers keep FTS
+state in sync — ORM write hooks are not required.
+
+```ts title="index.ts"
+import { defineIndex } from "@siftlite/core";
+
+const products = defineIndex({
+  name: "products",
+  mode: "linked",
+  source: { table: "products", primaryKey: { field: "id", type: "string" } },
+  searchable: { title: { weight: 1 } },
+  filterable: { status: "text" },
+});
+```
+
+</Step>
+<Step title="Attach a runtime adapter">
+
+```ts title="engine.ts"
+import { Database } from "bun:sqlite";
+import { bunSqliteAdapter } from "@siftlite/bun";
+import { createFts5Engine } from "@siftlite/fts5";
+
+const sqlite = new Database("app.db");
+const engine = createFts5Engine({ adapter: bunSqliteAdapter(sqlite) });
+const index = engine.index(products);
+await index.create();
+```
+
+`create()` is a maintenance call. It fails with
+`SEARCH_CONFIG_INVALID` / `already-exists` if a healthy index is already
+registered.
+
+</Step>
+<Step title="Search">
+
+Ordinary query text is parsed into a backend-neutral AST. Do not pass FTS5
+`MATCH` grammar as the query string.
+
+```ts
+const result = await index.search("sqlite");
+console.log(result.hits.map((hit) => hit.id));
+```
+
+Default page size is 20 (`DEFAULT_APPLICATION_LIMITS.defaultLimit`). The
+response includes `page.hasMore` instead of an exact total unless you pass
+`includeTotal: true`.
+
+</Step>
+</Steps>
+
+<Aside type="caution" title="Pre-v1">
+`0.1.0` is published on npm. This is not a production-ready 1.0. Bounded typo
+fallback is implemented behind `typoTolerance.mode: "fallback"` and stays
+disabled on D1 by default.
+</Aside>
+
+**Next step:** run the [quickstart](/quickstart) against an in-memory
+`bun:sqlite` database, or jump to the [D1 adapter](/adapters/d1) for Workers.

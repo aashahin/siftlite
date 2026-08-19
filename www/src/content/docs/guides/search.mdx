@@ -1,0 +1,79 @@
+---
+title: Search
+description: Query text, pagination, sort, facets, hydration, and totals.
+sidebar:
+  order: 2
+---
+
+```ts
+const response = await index.search("ايفون برو", {
+  filter: and(eq("status", "active"), lte("price", 50_000)),
+  sort: [relevance(), asc("price")],
+  facets: ["status"],
+  highlight: ["name"],
+  limit: 20,
+  offset: 0,
+});
+```
+
+Ordinary `query` text is parsed by `parsePlainTextQuery` /
+`parseIndexTextQuery`. It is **not** FTS5 grammar. `AND`, `OR`, `NOT`,
+`NEAR`, and `MATCH` as lookalike tokens are not backend operators.
+
+Quoted phrases are supported. Empty queries are valid field-only browsing
+and return `score: null` when no relevance is computed.
+
+## Response
+
+```ts
+{
+  hits: Array<{ id: string | number; score: number | null; document?: unknown; formatted?: Record<string, string> }>,
+  page: { limit: number; offset: number; hasMore: boolean },
+  totalHits?: number,
+  facets?: Record<string, Array<{ value: unknown; count: number }>>,
+  query: string,
+  backend: string,
+  warnings?: Array<{ code: string; message: string }>,
+}
+```
+
+Public scores are backend-local and **not comparable** across backends or
+index configurations.
+
+## Pagination
+
+Default `limit` is 20; max is 100 (`DEFAULT_APPLICATION_LIMITS`). Offset
+max is 10_000. Out-of-range values throw `SEARCH_QUERY_LIMIT_EXCEEDED`.
+
+The default response does **not** run an exact count. Pass
+`includeTotal: true` when you need `totalHits`.
+
+## Sort
+
+`relevance()`, `asc(field)`, `desc(field)` from `@siftlite/core`. Field
+sorts require a declared sortable field. Relevance is unavailable for
+empty-query browsing.
+
+## Hydration
+
+`hydrate: true` attaches source documents on `hit.document`. Linked mode
+reads the source table; ORM companions can supply their own hydrator.
+
+## Highlight
+
+Pass `highlight: ["name"]` to fill `hit.formatted`. Optional
+`highlightMarkers: { start, end, ellipsis }`.
+
+<Render file="highlight-xss" />
+
+## Diagnostics
+
+`diagnostics: true` adds a non-production payload. Production diagnostics
+must not include SQL, bound values, or raw user content.
+
+## Raw FTS5
+
+`index.searchRaw(unsafeFts5Query(match), request)` is an explicit escape
+hatch. Wrap the string with `unsafeFts5Query` from `@siftlite/core` or
+`@siftlite/fts5`. Empty strings and NUL bytes are rejected. This is not
+the ordinary search path.

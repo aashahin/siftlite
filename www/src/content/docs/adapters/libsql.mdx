@@ -1,0 +1,38 @@
+---
+title: libSQL
+description: Turso Cloud / libSQL FTS5 adapter — not the Tantivy backend.
+sidebar:
+  order: 3
+---
+
+<PackageManagers pkg="@siftlite/core @siftlite/fts5 @siftlite/libsql" />
+
+This package is **FTS5 over libSQL**. It is not `@siftlite/turso` and does
+not use Turso-native Tantivy FTS.
+
+```ts
+import { createClient } from "@libsql/client";
+import { libsqlAdapter, wrapLibsqlClient } from "@siftlite/libsql";
+import { createFts5Engine } from "@siftlite/fts5";
+
+const client = createClient({ url: "file:local.db" });
+const adapter = libsqlAdapter(wrapLibsqlClient(client), { kind: "local" });
+const engine = createFts5Engine({ adapter });
+```
+
+`kind` is required. Remote clients must pass `{ kind: "remote" }` so bind
+and function limits stay unproven until probed, consistency stays
+fail-closed, and `costSensitive` is true. Do not omit `kind` for a Turso
+URL.
+
+`wrapLibsqlClient` keeps `@libsql/client` types out of `@siftlite/core`.
+
+## Transactions on `:memory:`
+
+Interactive transactions are unsupported on libSQL `:memory:` URLs: the
+client detaches the connection and later queries see an empty database.
+Use a `file:` path for commit/rollback. `query` / `execute` on `:memory:`
+is fine.
+
+If the client has no `batch()`, `adapter.batch()` throws
+`SEARCH_CAPABILITY_UNSUPPORTED`.

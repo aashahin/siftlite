@@ -1,0 +1,48 @@
+---
+title: Identity and codecs
+description: Portable source IDs and canonical field storage kinds.
+sidebar:
+  order: 3
+---
+
+## Source IDs
+
+Public source IDs are `string | number` where the number is a finite
+`Number.isSafeInteger()` value.
+
+- String IDs are stored as `TEXT` and keep exact text, including leading zeroes.
+- Safe integers are stored as `INTEGER`.
+- `bigint`, BLOB IDs, and composite linked keys are not in the portable v1 contract.
+- Internal FTS identity uses a separate surrogate integer `doc_id`.
+
+Linked `source.primaryKey.type` is `"string"` or `"safe-integer"`.
+`table()` also accepts `"integer"` and canonicalizes it to `"safe-integer"`.
+
+This restriction exists because D1's JavaScript binding cannot round-trip
+arbitrary integers.
+
+## Field storage kinds
+
+Filterable, sortable, and facetable fields resolve to a canonical storage
+kind — not an unconstrained `unknown`.
+
+| Shorthand | Storage kind | SQLite |
+| --- | --- | --- |
+| `"text"` | `text` | `TEXT` |
+| `"integer"` / `"safe-integer"` | `safe-integer` | `INTEGER` |
+| `"number"` / `"finite-real"` | `finite-real` | `REAL` |
+| `"boolean"` / `"boolean-integer"` | `boolean-integer` | `INTEGER` `0`/`1` |
+| `{ kind: "timestamp-integer", unit }` | `timestamp-integer` | `INTEGER` |
+
+Timestamp unit is `"unix-seconds"` or `"unix-milliseconds"`. Dates are
+never inferred from a JavaScript `Date`. Passing `"timestamp-integer"` as a
+bare shorthand is rejected; the unit must be explicit.
+
+`NaN`, `Infinity`, `bigint`, blobs, and arbitrary JSON objects are not
+portable scalars. Encoding them fails with `SEARCH_VALUE_INVALID`.
+
+## Facets
+
+Every facet name must already be declared `filterable` or `sortable`.
+Otherwise `defineIndex` throws `SEARCH_CONFIG_INVALID` /
+`undeclared-facet`.

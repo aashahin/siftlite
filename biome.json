@@ -13,6 +13,7 @@
       "!**/coverage",
       "!**/*.tsbuildinfo",
       "!**/docs",
+      "!**/www",
       "!**/bun.lock"
     ]
   },

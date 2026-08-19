@@ -1,0 +1,73 @@
+---
+title: Quickstart
+description: Search one in-memory bun:sqlite table end to end.
+sidebar:
+  order: 2
+---
+
+This path uses `@siftlite/bun` and an in-memory database. It matches
+`examples/bun-basic`.
+
+<Steps>
+<Step title="Install">
+
+<PackageManagers pkg="@siftlite/core @siftlite/fts5 @siftlite/bun" />
+
+Requires Bun `>=1.2.0`.
+
+</Step>
+<Step title="Create a table and one row">
+
+```ts title="main.ts"
+import { Database } from "bun:sqlite";
+import { bunSqliteAdapter } from "@siftlite/bun";
+import { defineIndex } from "@siftlite/core";
+import { createFts5Engine } from "@siftlite/fts5";
+
+const products = defineIndex({
+  name: "products",
+  mode: "linked",
+  source: { table: "products", primaryKey: { field: "id", type: "string" } },
+  searchable: { title: { weight: 1 } },
+  filterable: { status: "text" },
+});
+
+const sqlite = new Database(":memory:");
+sqlite.run(
+  "CREATE TABLE products (id TEXT PRIMARY KEY, title TEXT NOT NULL, status TEXT NOT NULL)",
+);
+sqlite.run("INSERT INTO products (id, title, status) VALUES (?, ?, ?)", [
+  "p1",
+  "sqlite search",
+  "active",
+]);
+```
+
+</Step>
+<Step title="Create the index and search">
+
+```ts
+const engine = createFts5Engine({ adapter: bunSqliteAdapter(sqlite) });
+const index = engine.index(products);
+await index.create();
+const result = await index.search("sqlite");
+console.log(JSON.stringify({ hits: result.hits.map((hit) => hit.id) }));
+```
+
+</Step>
+</Steps>
+
+## You should see
+
+```json
+{"hits":["p1"]}
+```
+
+Linked mode copied `title` into the FTS projection through generated
+triggers. A later `INSERT`/`UPDATE`/`DELETE` on `products` stays searchable
+without calling `upsert`.
+
+## Next step
+
+Read [linked vs manual](/concepts/linked-and-manual) before adding filters
+or a second runtime.

@@ -1,0 +1,28 @@
+---
+title: Bun
+description: bun:sqlite adapter for local and embedded indexes.
+sidebar:
+  order: 1
+---
+
+<PackageManagers pkg="@siftlite/core @siftlite/fts5 @siftlite/bun" />
+
+Requires Bun `>=1.2.0`.
+
+```ts
+import { Database } from "bun:sqlite";
+import { bunSqliteAdapter } from "@siftlite/bun";
+import { createFts5Engine } from "@siftlite/fts5";
+
+const sqlite = new Database("app.db");
+const engine = createFts5Engine({ adapter: bunSqliteAdapter(sqlite) });
+```
+
+`bunSqliteAdapter` accepts a `bun:sqlite` `Database` or
+`{ database }`. Integer binds outside the safe-integer range throw
+`SEARCH_VALUE_INVALID`. Driver errors are wrapped as
+`SEARCH_ADAPTER_ERROR` with message `"bun:sqlite adapter error"`; the
+original error is on `cause`, not copied into `message`.
+
+`id` is `"bun-sqlite"`. Transactions use `BEGIN` / `COMMIT` / `ROLLBACK`.
+See `examples/bun-basic`.

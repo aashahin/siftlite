@@ -1,0 +1,56 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Header from "../components/Header.astro";
+import { config } from "virtual:nimbus/config";
+---
+
+<BaseLayout title={config.title} description={config.description}>
+  <div class="flex flex-col min-h-screen">
+    <Header showSidebar={false} />
+    <main class="flex-1 mx-auto max-w-2xl w-full px-6 py-24">
+      <p class="text-sm font-medium text-muted-foreground">@siftlite/* · 0.1.0</p>
+      <h1
+        class="mt-3 text-foreground leading-tight"
+        style="font-size: var(--nb-h1-size); font-weight: var(--nb-h1-weight); letter-spacing: var(--nb-h1-tracking);"
+      >
+        {config.title}
+      </h1>
+      <p class="mt-3 text-[1.0625rem] text-muted-foreground leading-relaxed">
+        Typed application search for SQLite, Cloudflare D1, and libSQL/Turso.
+        One API for retrieval, filters, facets, Arabic normalization, and
+        index lifecycle — without writing FTS5 <code>MATCH</code>.
+      </p>
+
+      <pre class="mt-8 overflow-x-auto rounded-lg border border-border bg-card p-4 text-[0.8125rem] leading-relaxed font-mono"><code
+        >{`const result = await products.search("ايفون برو", {
+  filter: and(eq("status", "active"), lte("price", 50_000)),
+  facets: ["brand", "category"],
+  limit: 20,
+});`}</code></pre>
+
+      <div class="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <a
+          href="/get-started"
+          class="block rounded-lg border border-border p-4 transition-colors hover:border-border-strong no-underline"
+        >
+          <div class="font-medium text-foreground">Get started</div>
+          <div class="mt-0.5 text-sm text-muted-foreground">Install an adapter and create an index</div>
+        </a>
+        <a
+          href="/quickstart"
+          class="block rounded-lg border border-border p-4 transition-colors hover:border-border-strong no-underline"
+        >
+          <div class="font-medium text-foreground">Quickstart</div>
+          <div class="mt-0.5 text-sm text-muted-foreground">Search in-memory with bun:sqlite</div>
+        </a>
+        <a
+          href="/adapters/d1"
+          class="block rounded-lg border border-border p-4 transition-colors hover:border-border-strong no-underline"
+        >
+          <div class="font-medium text-foreground">Cloudflare D1</div>
+          <div class="mt-0.5 text-sm text-muted-foreground">Sessions, bookmarks, and Workers</div>
+        </a>
+      </div>
+    </main>
+  </div>
+</BaseLayout>

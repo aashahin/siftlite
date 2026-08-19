@@ -22,6 +22,9 @@
     "clean": "rm -rf packages/*/dist packages/*/*.tsbuildinfo",
     "check-exports": "bun run scripts/check-exports.ts",
     "verify": "bun run format:check && bun run lint && bun run typecheck && bun run build && bun run test && bun run test:d1 && bun run check-exports",
+    "docs:dev": "bun run --cwd www dev",
+    "docs:build": "bun run --cwd www build",
+    "docs:deploy": "bun run --cwd www deploy",
     "changeset": "changeset",
     "version-packages": "changeset version"
   },

@@ -42,5 +42,7 @@ tmp
 .turbo
 .wrangler
 .mf
+.astro
+.nimbus
 *.db
 *.db-journal

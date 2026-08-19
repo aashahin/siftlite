@@ -59,6 +59,18 @@ CLI: `npx siftlite` or `npm i -D @siftlite/cli`.
 Experimental Turso-native FTS lives under `experimental/` and is not a
 stable backend.
 
+## Docs
+
+Public documentation lives in `www/` (Nimbus/Astro) and deploys as a
+Cloudflare Worker: <https://siftlite-docs.abshahin.workers.dev>.
+
+```bash
+bun run docs:dev
+```
+
+The markdown under `docs/` is the internal implementation pack, not the
+public site.
+
 ## Development
 
 ```bash

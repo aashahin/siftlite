@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "siftlite-docs",
+  "account_id": "53fb41ede04e54b276ce3fd9bfd270b6",
+  "compatibility_date": "2026-08-19",
+  "assets": {
+    "directory": "./dist",
+    "not_found_handling": "404-page"
+  },
+  "observability": {
+    "enabled": true,
+    "head_sampling_rate": 1
+  }
+}

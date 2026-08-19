@@ -1,0 +1,76 @@
+---
+title: Define an index
+description: Index names, searchable weights, filters, prefixes, and synonyms.
+sidebar:
+  order: 1
+---
+
+`defineIndex` is the ORM-independent definition. It lives in
+`@siftlite/core` and is Web/edge-safe.
+
+```ts
+import { defineIndex, table } from "@siftlite/core";
+
+const products = defineIndex({
+  name: "products",
+  mode: "linked",
+  source: table("products", { primaryKey: { field: "id", type: "string" } }),
+  normalization: ["arabic-basic"],
+  searchable: {
+    name: { weight: 5 },
+    description: { weight: 1 },
+  },
+  filterable: {
+    status: "text",
+    price: "number",
+  },
+  sortable: {
+    price: "number",
+    createdAt: { kind: "timestamp-integer", unit: "unix-milliseconds" },
+  },
+  facets: ["status"],
+  prefix: [2, 3],
+  matchingStrategy: "all",
+  typoTolerance: { mode: "off" },
+  synonyms: { phone: ["iphone", "هاتف"] },
+});
+```
+
+`source` may also be written as
+`{ table: "products", primaryKey: { field: "id", type: "string" } }`.
+
+## Required fields
+
+- `name` — index name; used as the registry key.
+- `mode` — `"linked"` or `"manual"`.
+- `searchable` — at least one field with a positive finite `weight`.
+
+Linked indexes also require `source`.
+
+## Prefix
+
+`prefix` is an array of lengths. Each length must be a safe integer from
+**1 through 8**. Prefix matching is capability-gated; FTS5 supports it.
+
+## Matching strategy
+
+`matchingStrategy` is `"all"` (default), `"any"`, or `"last-prefix"`.
+
+- `all` — terms are ANDed.
+- `any` — terms are ORed.
+- `last-prefix` — the last token is treated as a prefix.
+
+A request may override this per search via `matchingStrategy` on
+`SearchRequest`.
+
+## Normalization
+
+v1 normalization is **index-level** so query text and indexed text share
+one portable profile. Linked-mode IDs today: `arabic-basic`,
+`numeric-arabic`. See [Arabic normalization](/guides/arabic-normalization).
+
+## Synonyms
+
+Keys and values must be non-empty. The catalog is normalized with the same
+index-level profile before it is stored on the definition. Expansion happens
+at query planning time, not as FTS5 synonym tables.

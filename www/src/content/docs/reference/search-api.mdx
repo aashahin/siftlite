@@ -1,0 +1,58 @@
+---
+title: Search API
+description: Fts5IndexHandle, SearchRequest, and SearchResponse.
+sidebar:
+  order: 3
+---
+
+```ts
+import { createFts5Engine } from "@siftlite/fts5";
+
+const engine = createFts5Engine({ adapter });
+const index = engine.index(definition);
+```
+
+Optional engine fields: `policy`, `limits`, `hooks`, `secureDelete`.
+
+## `Fts5IndexHandle`
+
+| Method | Notes |
+| --- | --- |
+| `search(query, request?)` | Parsed plain-text query |
+| `searchRaw(raw, request?)` | `unsafeFts5Query(value)` only |
+| `scope(values)` | Immutable AND of filterable equalities |
+| `upsert(documents)` | Manual mode only |
+| `delete(id)` | Manual mode only |
+| `create()` `rebuild()` `drop()` | Lifecycle |
+| `check()` `doctor()` | Registry / integrity |
+
+`definition` is readable on the handle.
+
+## `SearchRequest`
+
+| Field | Type |
+| --- | --- |
+| `filter` | `FilterNode` |
+| `sort` | `relevance()` / `asc` / `desc` |
+| `facets` | filterable field names |
+| `highlight` | searchable field names |
+| `highlightMarkers` | `{ start, end, ellipsis }` |
+| `limit` `offset` | pagination |
+| `includeTotal` | opt-in exact count |
+| `hydrate` | attach `hit.document` |
+| `diagnostics` | fill `response.meta` |
+| `matchingStrategy` | override index default |
+| `scope` | extra bound scope (still cannot strip handle scope) |
+| `signal` | `{ aborted: boolean }` |
+
+## `SearchResponse`
+
+`hits`, `page { limit, offset, hasMore }`, `query`, `backend`. Optional:
+`totalHits`, `estimatedTotalHits`, `facets`, `facetStats`,
+`processingTimeMs`, `warnings`, `meta`.
+
+`hit.score` is `number | null`. Empty-query browsing returns `null` when
+no relevance is computed.
+
+Low-level equivalent: `searchFts5Index(ctx, query, request)` from
+`@siftlite/fts5` after `readRegistry`.

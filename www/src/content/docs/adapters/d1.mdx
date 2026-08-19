@@ -1,0 +1,87 @@
+---
+title: Cloudflare D1
+description: D1 adapter, Sessions bookmarks, and FTS export limits.
+sidebar:
+  order: 2
+---
+
+<PackageManagers pkg="@siftlite/core @siftlite/fts5 @siftlite/d1" />
+
+```ts
+import { d1Adapter, d1SessionAdapter, D1_DEFAULT_SEARCH_POLICY } from "@siftlite/d1";
+import { createFts5Engine } from "@siftlite/fts5";
+
+const adapter = d1Adapter(env.DB);
+const engine = createFts5Engine({
+  adapter,
+  policy: D1_DEFAULT_SEARCH_POLICY,
+});
+```
+
+## Sessions and bookmarks
+
+A plain `D1Database` binding is **not** session-aware. Reads may be
+replica-eligible and do **not** automatically provide read-your-writes.
+
+Use `d1SessionAdapter(db, bookmark)` to wrap D1 `withSession()`:
+
+- `"first-unconstrained"` — first query may use any instance (the
+  function default)
+- `"first-primary"` — first query goes to primary
+- a previous session bookmark — sequential consistency from at least that
+  version
+
+If `withSession` is missing, `d1SessionAdapter` throws
+`SEARCH_CAPABILITY_UNSUPPORTED` / `d1-session-unavailable`.
+
+`getBookmark()` returns the latest session bookmark, or `null` before any
+query. The D1 example sends it back as `x-d1-bookmark`.
+
+D1 `batch()` is an atomic sequential transaction. Interactive
+`BEGIN`/`COMMIT` callbacks are not part of the Worker API, so
+`transactions` is `false`.
+
+## Limits
+
+Documented D1 per-query limits, revalidated 2026-08-16 from
+[D1 platform limits](https://developers.cloudflare.com/d1/platform/limits/):
+
+| Limit | Value |
+| --- | --- |
+| Bound parameters | 100 |
+| SQL function arguments | 32 |
+| Statement size | 100,000 bytes |
+| LIKE/GLOB pattern | 50 bytes |
+| Query duration | 30 seconds |
+| Columns per table | 100 |
+
+These are `D1_SQL_LIMITS` on the adapter, not core constants.
+
+## Typo tolerance
+
+`D1_DEFAULT_SEARCH_POLICY.typoFallback` is
+`disabled-on-cost-sensitive-runtimes`. Fuzzy search stays off unless an
+explicit policy enables it. See [typo tolerance](/guides/typo-tolerance).
+
+## Export / backup
+
+Current D1 export **does not support databases containing virtual tables**,
+including FTS5
+([known limitations](https://developers.cloudflare.com/d1/best-practices/import-export-data/#known-limitations)).
+
+Workaround:
+
+1. Drop derived FTS virtual tables (`__sift_*_fts`).
+2. Export the authoritative database (source tables and/or manual document tables).
+3. Recreate/rebuild search structures after import.
+
+Provider Time Travel, replicas, and backups are outside SiftLite's
+search-visibility deletion guarantee.
+
+## Worker notes
+
+`/migrate` in `examples/d1-worker` is demo-only. Do not expose
+unauthenticated DDL in production. Require a tenant; omitting it must not
+browse every tenant.
+
+<Render file="highlight-xss" />

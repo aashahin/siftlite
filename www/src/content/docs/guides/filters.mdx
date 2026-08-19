@@ -1,0 +1,45 @@
+---
+title: Filters
+description: Portable filter AST builders — never raw SQL fragments.
+sidebar:
+  order: 3
+---
+
+Import builders from `@siftlite/core`. Field names are typed from the
+index definition's `filterable` keys.
+
+```ts
+import { and, between, eq, inList, isNotNull, lte, not, or } from "@siftlite/core";
+
+const filter = and(
+  eq("status", "active"),
+  lte("price", 50_000),
+  not(inList("brand", ["acme"])),
+);
+```
+
+## Operators
+
+| Builder | Node |
+| --- | --- |
+| `eq` `neq` `gt` `gte` `lt` `lte` | comparison |
+| `inList` `notIn` | membership |
+| `isNull` `isNotNull` | null tests |
+| `and` `or` | boolean (one or more children) |
+| `not` | negation of a **user** filter node |
+| `between(field, min, max)` | `and(gte, lte)` |
+
+`inList` / `notIn` reject empty value arrays (`SEARCH_FILTER_INVALID`).
+Application limits cap `maxInValues` (default 100) and
+`maxFilterDepth` / `maxFilterNodes` (8 / 64).
+
+Values must be portable scalars: string, safe integer, finite number, or
+boolean. They are encoded with the field's codec before SQL is generated.
+
+## What filters are not
+
+- Not SQL fragments.
+- Not FTS5 `MATCH` expressions.
+- Not a place to put tenant isolation. Use [`index.scope()`](/concepts/tenant-scope).
+  `not()` rejects scope predicates; passing a bound scope as a child throws
+  `SEARCH_FILTER_INVALID`.

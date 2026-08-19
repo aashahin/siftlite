@@ -1,0 +1,46 @@
+---
+title: Errors
+description: SearchError codes. Branch on code, not message text.
+sidebar:
+  order: 4
+---
+
+```ts
+import { isSearchError, SearchError, SEARCH_ERROR_CODES } from "@siftlite/core";
+
+try {
+  await index.search(query);
+} catch (error) {
+  if (isSearchError(error) && error.code === "SEARCH_INDEX_NOT_FOUND") {
+    await index.create();
+  } else {
+    throw error;
+  }
+}
+```
+
+`SearchError.details` is a small map of strings, numbers, booleans, or
+`null`. Details must not include secrets, raw query text, or bound filter
+values. Adapter wrappers keep driver text on `cause`.
+
+## Codes
+
+| Code | Typical cause |
+| --- | --- |
+| `SEARCH_CONFIG_INVALID` | Bad definition, already-exists, invalid mode |
+| `SEARCH_CAPABILITY_UNSUPPORTED` | Linked upsert, missing D1 session, missing batch |
+| `SEARCH_QUERY_INVALID` | NUL in query, aborted signal, bad raw query |
+| `SEARCH_QUERY_LIMIT_EXCEEDED` | Query length, terms, limit/offset, merge budget |
+| `SEARCH_FILTER_INVALID` | Empty `inList`, invalid `not()` child |
+| `SEARCH_VALUE_INVALID` | Non-portable scalar or unsafe integer bind |
+| `SEARCH_RUNTIME_LIMIT_EXCEEDED` | Adapter SQL budget |
+| `SEARCH_SCOPE_INVALID` | Empty scope |
+| `SEARCH_INDEX_NOT_FOUND` | Missing registry row |
+| `SEARCH_INDEX_DRIFT` | Definition / physical mismatch |
+| `SEARCH_MIGRATION_REQUIRED` | Physical schema change |
+| `SEARCH_BACKEND_ERROR` | Backend execution |
+| `SEARCH_ADAPTER_ERROR` | Driver wrapped by an adapter |
+| `SEARCH_MAINTENANCE_FAILED` | Unhealthy / pending registry |
+
+The D1 example treats `details.reason === "already-exists"` as idempotent
+create.

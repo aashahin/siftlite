@@ -1,0 +1,27 @@
+---
+title: Packages
+description: Published @siftlite/* packages at 0.1.0.
+sidebar:
+  order: 1
+---
+
+All of these shipped as `0.1.0` on npm. Homepage:
+[github.com/aashahin/siftlite](https://github.com/aashahin/siftlite).
+
+| Package | Role | Engines |
+| --- | --- | --- |
+| `@siftlite/core` | Portable types, planner, ASTs, codecs, scopes | Node >=20, Web/edge-safe |
+| `@siftlite/fts5` | SQLite FTS5 backend | Node >=20 |
+| `@siftlite/bun` | `bun:sqlite` adapter | Bun >=1.2 |
+| `@siftlite/d1` | Cloudflare D1 adapter | Node >=20 / Workers |
+| `@siftlite/libsql` | libSQL / Turso Cloud FTS5 adapter | Node >=20 |
+| `@siftlite/node` | `better-sqlite3` adapter | Node >=20 |
+| `@siftlite/testing` | Conformance / testkit utilities | — |
+| `@siftlite/drizzle` | Optional Drizzle companion | drizzle-orm ^0.45.0 |
+| `@siftlite/prisma` | Optional Prisma companion | @prisma/client ^6 |
+| `@siftlite/cli` | `siftlite` CLI | Node >=20 |
+
+`@siftlite/core` must not import Node, Bun, D1, libSQL, Drizzle, or Prisma
+APIs. Experimental Turso-native FTS is not a published stable package.
+
+There is no convenience `siftlite` umbrella package in `0.1.0`.

@@ -25,12 +25,13 @@ costSensitive?: boolean
 
 When `policy` is omitted, search uses
 `{ typoFallback: "disabled-on-cost-sensitive-runtimes" }`. Combined with a
-cost-sensitive adapter (D1, remote libSQL), typo fallback stays off even if
-the index definition sets `typoTolerance.mode: "fallback"`.
+cost-sensitive adapter (D1, remote libSQL), a definition with
+`typoTolerance.mode: "fallback"` is unsupported: search throws rather than
+silently falling back to exact-only behavior.
 
-Typo fallback also requires a proven trigram tokenizer probe. If the probe
-is not `true`, the feature is off and a `trigram-unproven` warning is
-recorded.
+Typo fallback also requires a proven trigram tokenizer probe. If the effective
+capability is false for either policy or probe reasons, search throws
+`SEARCH_CAPABILITY_UNSUPPORTED` / `typo-fallback-unsupported`.
 
 ## Runtime limits
 
@@ -46,6 +47,7 @@ database.
 ## Consistency
 
 Read-your-writes is an adapter fact, not a search-API promise. A plain D1
-binding is replica-eligible and **not** session-aware. Use
-`d1SessionAdapter` when you need sequential session consistency. See
-[Cloudflare D1](/adapters/d1).
+binding is **not** session-aware. Cloudflare currently documents read
+replication through Sessions; SiftLite does not infer cross-request continuity
+from a plain binding. Use `d1SessionAdapter` when you need sequential session
+consistency. See [Cloudflare D1](/adapters/d1).

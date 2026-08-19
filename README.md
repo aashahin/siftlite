@@ -3,14 +3,18 @@
 Typed application search for SQLite-family databases.
 
 SiftLite is a TypeScript search layer for SQLite, Cloudflare D1, and
-libSQL/Turso. It is not a thin FTS5 wrapper. The product contract is a stable,
-typed API for full-text retrieval, filters, sorting, facets, Arabic
-normalization, optional bounded typo fallback, ORM integration, and managed
-index lifecycle. Typo fallback requires the trigram tokenizer and stays off
-on cost-sensitive runtimes such as D1 unless policy enables it.
+libSQL/Turso. It provides a typed API for full-text retrieval, filters,
+sorting, facets, Arabic normalization, ORM integration, and managed index
+lifecycle. An experimental typo fallback is available behind explicit index
+and runtime policy; read its [current limitations](https://siftlite-docs.abshahin.workers.dev/guides/typo-tolerance)
+before enabling it.
+
+After creating an index handle:
 
 ```ts
-const result = await products.search("ايفون برو", {
+import { and, eq, lte } from "@siftlite/core";
+
+const result = await index.search("ايفون برو", {
   filter: and(eq("status", "active"), lte("price", 50_000)),
   facets: ["brand", "category"],
   limit: 20,
@@ -28,8 +32,11 @@ markdown `**` markers.
 
 `0.1.0` is published on npm under `@siftlite/*`. This is a pre-v1 release from
 the [v1.2 implementation pack](docs/README.md), not a production-ready 1.0.
-Bounded typo fallback is implemented behind `typoTolerance.mode: "fallback"`
-and stays disabled on D1 by default.
+Typo fallback is experimental. A definition that requests it fails with
+`SEARCH_CAPABILITY_UNSUPPORTED` when runtime probes or policy disable it;
+D1's default policy does disable it. See the
+[code/docs audit](docs/15-CODE-DOCS-AUDIT.md) for unresolved implementation
+gaps.
 
 ## Install
 
@@ -39,7 +46,8 @@ npm i @siftlite/core @siftlite/fts5 @siftlite/bun
 
 Other adapters: `@siftlite/d1`, `@siftlite/libsql`, `@siftlite/node`.
 ORM companions: `@siftlite/drizzle`, `@siftlite/prisma`.
-CLI: `npx siftlite` or `npm i -D @siftlite/cli`.
+CLI: install `@siftlite/cli`, then run its `siftlite` binary. For a one-off
+command, use `npx --package=@siftlite/cli siftlite help`.
 
 ## Packages
 
@@ -54,7 +62,7 @@ CLI: `npx siftlite` or `npm i -D @siftlite/cli`.
 | `@siftlite/drizzle` | Optional Drizzle companion |
 | `@siftlite/prisma` | Optional Prisma companion |
 | `@siftlite/node` | `better-sqlite3` Node adapter |
-| `@siftlite/cli` | check / doctor / generate CLI |
+| `@siftlite/cli` | SQL generation CLI; operational commands currently fail closed |
 
 Experimental Turso-native FTS lives under `experimental/` and is not a
 stable backend.

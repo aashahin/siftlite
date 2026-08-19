@@ -7,9 +7,9 @@ sidebar:
     label: Adapters
 ---
 
-An adapter implements `SqlAdapter` (`query`, `execute`, `batch`,
-`transaction`) plus `runtimeCapabilities`. Core never imports Bun, Node, D1,
-or libSQL APIs.
+An adapter implements `SqlAdapter`: `query`, `execute`, and
+`runtimeCapabilities`, with optional `batch` and `transaction` methods. Core
+never imports Bun, Node, D1, or libSQL APIs.
 
 | Package | Factory | Runtime |
 | --- | --- | --- |

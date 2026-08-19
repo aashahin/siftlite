@@ -30,10 +30,14 @@ and return `score: null` when no relevance is computed.
   hits: Array<{ id: string | number; score: number | null; document?: unknown; formatted?: Record<string, string> }>,
   page: { limit: number; offset: number; hasMore: boolean },
   totalHits?: number,
-  facets?: Record<string, Array<{ value: unknown; count: number }>>,
+  estimatedTotalHits?: number,
+  facets?: Record<string, Array<{ value: string | number | boolean; count: number }>>,
+  facetStats?: Record<string, { min: number; max: number }>,
   query: string,
   backend: string,
+  processingTimeMs?: number,
   warnings?: Array<{ code: string; message: string }>,
+  meta?: { backend: string; runtime: string; fuzzyUsed: boolean },
 }
 ```
 
@@ -56,8 +60,11 @@ empty-query browsing.
 
 ## Hydration
 
-`hydrate: true` attaches source documents on `hit.document`. Linked mode
-reads the source table; ORM companions can supply their own hydrator.
+`hydrate: true` on the generic engine attaches a **projected** document from
+SiftLite's internal docs table: the source ID plus declared searchable,
+filterable, and sortable fields. It does not run `SELECT *` on the linked
+source table. Drizzle and Prisma companions supply their own hydrators and
+return ORM rows instead.
 
 ## Highlight
 
@@ -70,6 +77,14 @@ Pass `highlight: ["name"]` to fill `hit.formatted`. Optional
 
 `diagnostics: true` adds a non-production payload. Production diagnostics
 must not include SQL, bound values, or raw user content.
+
+## Typo fallback caveat
+
+The `0.1.0` fallback path is not request-equivalent to exact search. Its
+candidate query does not apply `filter`, `scope`, or requested field sorting,
+and fuzzy hits do not contribute to totals, facets, highlighting, or the
+exact-query `page.hasMore` value. Do not enable it for authorization-filtered
+or tenant-scoped searches. See [typo tolerance](/guides/typo-tolerance).
 
 ## Raw FTS5
 

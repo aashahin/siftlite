@@ -9,4 +9,5 @@ bun run start
 ```
 
 Prints JSON hits for a `sqlite` query. Highlighted strings are not HTML-safe.
-Typo / fuzzy fallback is not implemented.
+This example keeps typo fallback off. The package has an experimental fallback
+mode, but it is not needed for the exact `sqlite` query shown here.

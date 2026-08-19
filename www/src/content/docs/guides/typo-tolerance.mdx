@@ -31,8 +31,11 @@ query into FTS5 `OR` fuzz.
 
 Default search policy is
 `typoFallback: "disabled-on-cost-sensitive-runtimes"`. D1 adapters set
-`costSensitive: true`, so fallback stays **off on D1** unless you pass an
-explicit policy that enables it **and** accept the cost.
+`costSensitive: true`. If the definition requests fallback under that policy,
+search throws `SEARCH_CAPABILITY_UNSUPPORTED` /
+`typo-fallback-unsupported`; it does not run exact-only search. Keep the
+definition mode `"off"` unless you pass an explicit policy that enables it
+**and** accept the cost.
 
 ```ts
 createFts5Engine({
@@ -42,19 +45,35 @@ createFts5Engine({
 ```
 
 That combination is a deliberate policy decision. `D1_DEFAULT_SEARCH_POLICY`
-keeps fallback disabled.
+rejects fallback-enabled definitions by default.
+
+<Aside type="danger" title="0.1.0 correctness limitation">
+The fallback candidate query currently does not apply the request `filter`,
+bound `scope`, or field sort. Fuzzy hits also do not feed `totalHits`, facets,
+highlighting, or the exact-query `page.hasMore` value. Do not enable fallback
+for tenant isolation, authorization filters, or any query where those response
+fields must describe the fuzzy result set. Keep `mode: "off"` until the
+fallback pipeline preserves the same request semantics.
+</Aside>
 
 ## Bounds
 
-`DEFAULT_FUZZY_POLICY`:
+Declared `DEFAULT_FUZZY_POLICY` values:
 
 | Limit | Value |
 | --- | --- |
 | `minTokenCodepoints` | 3 |
 | `maxQueryTokens` | 4 |
 | `maxTrigramsPerToken` | 24 |
+| `minGramOverlap` | 1 |
 | `maxCandidates` | 200 |
 | `maxEditDistance` | 2 |
 
 `maxEditsForToken` further caps edits by token length. When fallback runs
 and you pass `diagnostics: true`, `response.meta.fuzzyUsed` is `true`.
+
+The current search path enforces the token, trigram, candidate, and edit
+distance caps, but it does **not** use `minGramOverlap`; candidate retrieval is
+an OR across generated grams. `ApplicationLimits.maxFuzzyCandidates` is also
+not wired into this path in `0.1.0`; the effective candidate cap is the fixed
+`DEFAULT_FUZZY_POLICY.maxCandidates` value.

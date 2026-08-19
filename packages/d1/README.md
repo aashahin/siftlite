@@ -24,8 +24,10 @@ budget before D1 receives an invalid statement.
 
 ## Consistency
 
-A plain `D1Database` binding is **not** session-aware. Reads may be replica-eligible
-and do **not** automatically provide read-your-writes.
+A plain `D1Database` binding is **not** session-aware. Cloudflare currently
+documents non-session queries as primary-only and requires Sessions to use read
+replication. SiftLite still models a plain binding conservatively: it does not
+promise post-commit read-your-writes or cross-request session continuity.
 
 Use `d1SessionAdapter(db, bookmark)` to wrap
 [`withSession()`](https://developers.cloudflare.com/d1/worker-api/d1-database/#withsession):
@@ -42,8 +44,11 @@ callbacks are not part of the Worker API, so `transactions` is `false`.
 ## Typo tolerance
 
 D1 is cost-sensitive. `D1_DEFAULT_SEARCH_POLICY.typoFallback` is
-`disabled-on-cost-sensitive-runtimes`. Fuzzy search stays off unless an explicit
-policy/benchmark decision enables it.
+`disabled-on-cost-sensitive-runtimes`. If an index definition requests
+`typoTolerance.mode: "fallback"` under that policy, search fails with
+`SEARCH_CAPABILITY_UNSUPPORTED` / `typo-fallback-unsupported`; it does not
+silently continue as exact-only search. Keep the definition mode `"off"` or
+make an explicit enablement and cost decision.
 
 ## Export / backup of FTS5 indexes
 

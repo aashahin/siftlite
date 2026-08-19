@@ -39,10 +39,16 @@ const migration = generatePrismaSearchSql(productsIndex);
 ```
 
 The fragment is a deterministic **subsequent** Prisma migration. It never
-rewrites previously applied migrations. Applying it is not enough: after
-the source table exists, call `createIndex` and then
-`createPrismaSearch`. Do not apply the fragment and then `createIndex` on
-the same database — `createIndex` rematerializes the same physical objects.
+rewrites previously applied migrations. The fragment creates physical objects
+and a `pending` registry row. After applying it, run `createIndex` once with
+the same definition to verify the objects and mark the row `healthy`, then
+call `createPrismaSearch`. An intact pending generation is reused; incomplete
+objects may be rematerialized during recovery. A later call against a healthy
+row throws `SEARCH_CONFIG_INVALID` / `already-exists`.
+
+In `0.1.0`, companion SQL does not emit the trigram table required by
+`typoTolerance.mode: "fallback"`. Use runtime `createIndex` without applying
+the fragment for those definitions.
 
 ## Client Extension
 

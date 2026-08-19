@@ -34,12 +34,12 @@ Optional engine fields: `policy`, `limits`, `hooks`, `secureDelete`.
 | --- | --- |
 | `filter` | `FilterNode` |
 | `sort` | `relevance()` / `asc` / `desc` |
-| `facets` | filterable field names |
+| `facets` | configured facet names; typed handles currently narrow this to filterable keys |
 | `highlight` | searchable field names |
 | `highlightMarkers` | `{ start, end, ellipsis }` |
 | `limit` `offset` | pagination |
 | `includeTotal` | opt-in exact count |
-| `hydrate` | attach `hit.document` |
+| `hydrate` | attach a projected document; ORM companions attach ORM rows |
 | `diagnostics` | fill `response.meta` |
 | `matchingStrategy` | override index default |
 | `scope` | extra bound scope (still cannot strip handle scope) |
@@ -54,5 +54,12 @@ Optional engine fields: `policy`, `limits`, `hooks`, `secureDelete`.
 `hit.score` is `number | null`. Empty-query browsing returns `null` when
 no relevance is computed.
 
-Low-level equivalent: `searchFts5Index(ctx, query, request)` from
-`@siftlite/fts5` after `readRegistry`.
+The generic engine's projected document contains the source ID plus declared
+searchable, filterable, and sortable fields. It does not read every column
+from a linked source table. Drizzle and Prisma search handles install their
+own rank-preserving hydrators.
+
+The low-level `searchFts5Index(ctx, query, request)` export requires a complete
+`Fts5SearchContext`: adapter, definition, physical index ID, and generation.
+Callers that resolve those values from `readRegistry` must also reject missing
+or non-healthy rows before searching, as the engine and ORM companions do.

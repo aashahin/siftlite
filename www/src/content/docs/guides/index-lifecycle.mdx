@@ -57,15 +57,31 @@ equivalent requires `--acknowledge`.
 ## Registry
 
 `REGISTRY_TABLE` is `__sift_registry`. Search refuses to run unless the
-row exists and `health === "healthy"`. Applying companion SQL from Drizzle
-or Prisma is **not** enough by itself — call `create()` (or `createIndex`)
-after the source table exists. Do not apply companion SQL and then
-`createIndex` on the same database if that would rematerialize the same
-physical objects twice; pick one path.
+row exists and `health === "healthy"`.
+
+There are two initial materialization paths:
+
+1. Runtime path: call `create()` / `createIndex` after the source table exists.
+2. Migration path: apply Drizzle/Prisma companion SQL, which creates objects
+   and seeds a `pending` row, then call `createIndex` once with the same
+   definition to verify and mark it `healthy`.
+
+For an intact pending generation, `createIndex` reuses the migrated objects.
+If maintenance was interrupted or objects are incomplete, recovery can
+rematerialize them. Calling it again after the row is healthy throws
+`SEARCH_CONFIG_INVALID` / `already-exists`.
+
+<Aside type="caution" title="Typo fallback and companion SQL">
+In `0.1.0`, `compileIndexLifecycleSql` does not emit the trigram table required
+by `typoTolerance.mode: "fallback"`, and integrity checks do not detect that
+omission. Use the runtime path for fallback-enabled definitions.
+</Aside>
 
 ## Secure delete
 
 `createFts5Engine({ adapter, secureDelete })` accepts `"off"` (default)
-or `"required-if-supported"`. FTS5 secure
-delete is a SQLite compile option, not a SiftLite promise. Provider Time
-Travel, replicas, and backups are outside search-visibility deletion.
+or `"required-if-supported"`. FTS5
+[`secure-delete`](https://www.sqlite.org/fts5.html#the_secure_delete_configuration_option)
+is a persistent table configuration introduced in SQLite 3.42.0, so SiftLite
+probes and version-gates it at runtime. Provider Time Travel, replicas, and
+backups are outside search-visibility deletion.

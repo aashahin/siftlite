@@ -22,7 +22,7 @@ import { config } from "virtual:nimbus/config";
       </p>
 
       <pre class="mt-8 overflow-x-auto rounded-lg border border-border bg-card p-4 text-[0.8125rem] leading-relaxed font-mono"><code
-        >{`const result = await products.search("ايفون برو", {
+        >{`const result = await index.search("ايفون برو", {
   filter: and(eq("status", "active"), lte("price", 50_000)),
   facets: ["brand", "category"],
   limit: 20,

@@ -1,9 +1,18 @@
 # SiftLite — Implementation Pack
 
-Status: **Approved architecture for implementation after v1.2 hardening**  
-Revision: **v1.2**  
-Review date: **2026-08-16**  
+Status: **Historical v1.2 architecture pack; implementation has shipped at 0.1.0**
+
+Revision: **v1.2**
+
+Code/docs reconciliation: **2026-08-19**
+
 Project name: **SiftLite** (`siftlite`)
+
+> The documents in this directory record intended contracts and implementation
+> history. They are not an API reference. The TypeScript source and tests are
+> authoritative for shipped `0.1.0` behavior. Use the
+> [public documentation](../www/) for product guidance and the
+> [code/docs audit](15-CODE-DOCS-AUDIT.md) for known implementation gaps.
 
 > **SiftLite — typed application search for SQLite-family databases.**
 
@@ -25,7 +34,7 @@ siftlite                 convenience entrypoint after the core API stabilizes
 @siftlite/prisma         Prisma integration
 @siftlite/cli            portable CLI
 @siftlite/testing        conformance/testkit package
-@siftlite/turso          experimental until its graduation gate passes
+@siftlite/turso-native-experimental  private pressure-test package under experimental/
 ```
 
 ## v1.2 hardening changes
@@ -78,10 +87,12 @@ v1.2 closes the final architecture gaps identified before implementation:
 13. `12-ADRS.md` — accepted architecture decisions.
 14. `13-RESEARCH-SOURCES.md` — primary upstream references and version-sensitive facts.
 15. `14-IMPLEMENTATION-TASKS.md` — executable task backlog with IDs and phase gates.
-16. `AGENT-START-PROMPT.md` — handoff prompt for the implementing agent.
+16. `15-CODE-DOCS-AUDIT.md` — shipped behavior versus intended contracts.
+17. `AGENT-START-PROMPT.md` — historical handoff prompt for the implementing agent.
 
-## Release recommendation
+## Current recommendation
 
-**Proceed with implementation.**
-
-The public/core contracts are now sufficiently explicit to start Phase 0 without knowingly deferring a structural API problem. The roadmap deliberately front-loads the second-backend pressure test, runtime-limit modeling, scalar codecs, physical identities, and real D1 tests so later phases do not need to retrofit them.
+Use [implementation status](../IMPLEMENTATION_STATUS.md) for phase status and
+the [code/docs audit](15-CODE-DOCS-AUDIT.md) for unresolved contract gaps. Do
+not infer shipped behavior from a checked task or accepted ADR without
+verifying the source and tests.

@@ -46,11 +46,16 @@ const migration = generateDrizzleSearchSql(productsSearch);
 ```
 
 `generateDrizzleSearchSql` forwards `compileIndexLifecycleSql`, so the
-fragment includes `__sift_registry` DDL when that compiler emits it. Search
-still requires a healthy registry row. After the source table exists, call
-`createIndex` and then `drizzleSearch`. Applying companion SQL alone is not
-enough, and applying it then calling `createIndex` rematerializes the same
-physical objects.
+fragment creates the physical objects and seeds a `pending` registry row.
+Applying the fragment alone is not enough: run `createIndex` once with the
+same definition to verify the objects and mark that row `healthy`. An intact
+pending generation is reused; incomplete objects may be rematerialized during
+recovery. A later call against an already-healthy row fails with
+`SEARCH_CONFIG_INVALID` / `already-exists`.
+
+The `0.1.0` companion-SQL generator does not emit the trigram table required by
+`typoTolerance.mode: "fallback"`. Use runtime `createIndex` instead of the
+companion-SQL path for those definitions.
 
 Canonical escape hatch:
 

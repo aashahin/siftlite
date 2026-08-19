@@ -182,25 +182,25 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 - [x] **P12-01** Implement Unicode code-point length/trigram generator.
 - [x] **P12-02** Define `FuzzyCandidatePolicy` defaults/validation.
-- [x] **P12-03** Compile bounded trigram OR/overlap retrieval.
-- [x] **P12-04** Enforce minimum gram overlap and candidate cap before large payloads.
+- [ ] **P12-03** Complete bounded trigram overlap retrieval. (Current code emits a bounded OR query but no overlap threshold.)
+- [ ] **P12-04** Enforce minimum gram overlap, request scope/filter, configurable candidate cap, and bounded payload reads.
 - [x] **P12-05** Implement/test Damerau-Levenshtein scorer.
-- [x] **P12-06** Merge fuzzy results behind exact/prefix groups.
+- [ ] **P12-06** Merge fuzzy results behind exact/prefix groups. (Current code only falls back after zero exact hits.)
 - [x] **P12-07** Test <3-code-point exclusion and Unicode edge cases.
 - [ ] **P12-08** Add 100k corpus recall/latency benchmark.
 - [ ] **P12-09** Add local 1m characterization.
 - [ ] **P12-10** Measure D1 remote cost/rows/read/time when credentials allow.
-- [ ] **P12-11** Keep D1 fuzzy off by default unless an explicit policy/benchmark decision changes it.
+- [x] **P12-11** Keep D1 fuzzy off by default unless an explicit policy/benchmark decision changes it.
 
 **Gate:** bounded recall improvement with no accidental broad scans or exact-hit displacement.
 
 ## Phase 13 — CLI
 
-- [x] **P13-01** Implement portable CLI bootstrap and config loading.
+- [ ] **P13-01** Implement portable CLI bootstrap and config/adapter loading. (Bootstrap exists; loading does not.)
 - [ ] **P13-02** `init`.
 - [x] **P13-03** `generate`.
-- [x] **P13-04** `check` (fails closed without a host adapter).
-- [x] **P13-05** `doctor` (fails closed without a host adapter).
+- [ ] **P13-04** Implement operational `check`. (Current command always returns the adapter-required error.)
+- [ ] **P13-05** Implement operational `doctor`. (Current command always returns the adapter-required error.)
 - [ ] **P13-06** `backfill`.
 - [ ] **P13-07** `rebuild`.
 - [ ] **P13-08** `merge`/incremental `optimize`.

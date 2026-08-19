@@ -213,7 +213,9 @@ A caller may also choose per-tenant databases, in which case the database itself
 ## Search request model
 
 ```ts
-const response = await products.search("ايفون برو", {
+const index = engine.index(productsIndex);
+
+const response = await index.search("ايفون برو", {
   filter: and(
     eq("status", "active"),
     lte("price", 50_000),
@@ -267,7 +269,7 @@ page: {
 Exact totals are opt-in:
 
 ```ts
-await products.search(query, { includeTotal: true });
+await index.search(query, { includeTotal: true });
 ```
 
 A backend must not populate `estimatedTotalHits` unless its estimate semantics are documented and conformance-tested.

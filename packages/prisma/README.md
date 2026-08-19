@@ -39,12 +39,16 @@ const migration = generatePrismaSearchSql(productsIndex);
 ```
 
 `generatePrismaSearchSql` forwards `compileIndexLifecycleSql`, so the
-fragment includes `__sift_registry` DDL when that compiler emits it. Search
-still requires a **healthy** registry row. Applying companion SQL is not
-enough: after the source table exists, call `createIndex` and then
-`createPrismaSearch` / `.search()`. Do not apply the fragment and then
-`createIndex` on the same database — `createIndex` rematerializes the same
-physical objects.
+fragment creates the physical objects and seeds a **pending** registry row.
+Applying it is not enough: run `createIndex` once with the same definition to
+verify the objects and mark the row `healthy`, then call `createPrismaSearch`.
+An intact pending generation is reused; incomplete objects may be
+rematerialized during recovery. A later call against an already-healthy row
+fails with `SEARCH_CONFIG_INVALID` / `already-exists`.
+
+The `0.1.0` companion-SQL generator does not emit the trigram table required by
+`typoTolerance.mode: "fallback"`. Use runtime `createIndex` instead of the
+companion-SQL path for those definitions.
 
 Optional Client Extension (ergonomic only):
 

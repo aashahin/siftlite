@@ -10,30 +10,45 @@ sidebar:
 <PackageManagers pkg="@siftlite/cli" dev />
 
 ```bash
-npx siftlite help
-npx siftlite version
-npx siftlite generate --name products --table products --search title --json
+npx --package=@siftlite/cli siftlite help
+npx --package=@siftlite/cli siftlite version
+npx --package=@siftlite/cli siftlite generate --name products --table products --search title --json
 ```
 
-Commands: `help`, `generate`, `check`, `doctor`, `backfill`, `rebuild`,
-`merge`, `drop`. Flags: `--json`, `--dry-run`, `--acknowledge`.
+After a local dev install, the shorter `npx siftlite ...` form uses the same
+binary.
+
+## Command status
+
+| Command | `0.1.0` behavior |
+| --- | --- |
+| `help`, `version` | Prints help or `0.1.0` |
+| `generate` | Emits companion SQL |
+| `check`, `doctor` | Fails closed; use the engine methods |
+| `backfill`, `rebuild`, `merge`, `drop` | Placeholder; requires `--acknowledge`, then fails because no adapter loader exists |
+
+Global flags parsed by the current CLI are `--json`, `--dry-run`, and
+`--acknowledge`. There is no subcommand-help parser: `siftlite check --help`
+runs `check` and returns its adapter-required error.
 
 ## `generate`
 
 Prints companion SQL for a linked index with one searchable column.
 Defaults: `--name products`, `--table` equals name, `--search title`.
 
-This SQL is a starting fragment. Search still needs a healthy registry row
-via `createIndex` / `index.create()`.
+The generated SQL creates physical objects and a `pending` registry row. Run
+`createIndex` once with the same definition to verify the objects and mark the
+row `healthy`. The generated definition keeps typo fallback off, so it does
+not require a trigram companion table.
 
 ## `check` and `doctor`
 
-These require a host-provided database adapter. The CLI **refuses to invent
-a connection** and exits with an error. Call `index.check()` /
-`index.doctor()` from application code instead.
+The CLI has no adapter-loading mechanism in `0.1.0`, so these commands always
+exit with an error. Call `index.check()` / `index.doctor()` from application
+code instead.
 
 ## Destructive commands
 
-`drop`, `rebuild`, `backfill`, and `merge` require `--acknowledge`. Without
-it they fail closed. Even with `--acknowledge`, they still require a
-host-provided adapter and will not run against an implied database.
+`drop`, `rebuild`, `backfill`, and `merge` require `--acknowledge`. Without it
+they fail closed. Even with acknowledgement, `0.1.0` returns an adapter-required
+error and performs no database work.

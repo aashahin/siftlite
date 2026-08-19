@@ -20,8 +20,10 @@ const engine = createFts5Engine({
 
 ## Sessions and bookmarks
 
-A plain `D1Database` binding is **not** session-aware. Reads may be
-replica-eligible and do **not** automatically provide read-your-writes.
+A plain `D1Database` binding is **not** session-aware. Cloudflare currently
+documents non-session queries as primary-only and requires Sessions for read
+replication. SiftLite still models the plain binding conservatively: it does
+not promise post-commit read-your-writes or cross-request continuity.
 
 Use `d1SessionAdapter(db, bookmark)` to wrap D1 `withSession()`:
 
@@ -60,8 +62,11 @@ These are `D1_SQL_LIMITS` on the adapter, not core constants.
 ## Typo tolerance
 
 `D1_DEFAULT_SEARCH_POLICY.typoFallback` is
-`disabled-on-cost-sensitive-runtimes`. Fuzzy search stays off unless an
-explicit policy enables it. See [typo tolerance](/guides/typo-tolerance).
+`disabled-on-cost-sensitive-runtimes`. If the definition requests fallback
+under that policy, search throws `SEARCH_CAPABILITY_UNSUPPORTED` /
+`typo-fallback-unsupported`; it does not silently continue as exact-only
+search. Keep `typoTolerance.mode: "off"` or make an explicit policy and cost
+decision. See [typo tolerance](/guides/typo-tolerance).
 
 ## Export / backup
 

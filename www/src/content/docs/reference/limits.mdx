@@ -28,6 +28,10 @@ Two layers: application limits (query shape) and runtime SQL limits
 Override via `createFts5Engine({ limits })`. `defaultLimit` must be ≥ 1
 and ≤ `maxLimit`.
 
+`maxFuzzyCandidates` is validated as part of `ApplicationLimits` but is not
+wired into the `0.1.0` fallback query. That path currently uses
+`DEFAULT_FUZZY_POLICY.maxCandidates` (`200`) directly.
+
 ## D1 SQL limits
 
 See [Cloudflare D1](/adapters/d1). Values are adapter-owned
@@ -36,4 +40,5 @@ See [Cloudflare D1](/adapters/d1). Values are adapter-owned
 ## Fuzzy policy
 
 See [typo tolerance](/guides/typo-tolerance). `minTokenCodepoints` must be
-at least 3.
+at least 3. `minGramOverlap` exists in the declared policy but is not enforced
+by the current fallback query.

@@ -19,7 +19,7 @@ Then:
 
 `/migrate` is demo-only. Do not expose unauthenticated DDL in production.
 
-Use `d1SessionAdapter` and the `x-d1-bookmark` header when read replication is
-enabled. Writes and searches default to `first-primary` and return
-`x-d1-bookmark` so the next request can continue the same session. Do not
-assume a plain D1 binding provides read-your-writes on replicas.
+Use `d1SessionAdapter` and the `x-d1-bookmark` header when read replication or
+cross-request sequential consistency matters. Writes and searches default to
+`first-primary` and return `x-d1-bookmark` so the next request can continue
+from at least the same database version.

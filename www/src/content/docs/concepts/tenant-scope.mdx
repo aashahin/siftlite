@@ -17,8 +17,15 @@ them as compiler-owned equality predicates (`kind: "scope-eq"`). They are
 always ANDed with the request filter and **cannot** be removed, negated, or
 overridden by `filter`, `not()`, or another `scope` on the request object.
 
-Scope applies to hits, facets, fuzzy candidate retrieval, hydration, and
-any document-reading diagnostic that claims scoped behavior.
+For ordinary parsed, raw, and empty-query search, scope applies to hits,
+facets, exact totals, and projection/ORM hydration.
+
+<Aside type="danger" title="Do not combine scope with typo fallback in 0.1.0">
+The current fuzzy candidate query does not compile the bound scope and can
+return out-of-scope IDs or documents after exact search returns no hits. Keep
+`typoTolerance.mode: "off"` on shared-database or authorization-scoped indexes.
+See [typo tolerance](/guides/typo-tolerance).
+</Aside>
 
 You can also isolate tenants with one database per tenant. Do not mix those
 models: SiftLite will not treat a missing scope as "all tenants".

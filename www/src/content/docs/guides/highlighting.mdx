@@ -28,7 +28,10 @@ await index.search("sqlite", {
 });
 ```
 
-Marker strings are capped at 16 code points. Unknown highlight fields are
-rejected at compile time (`SEARCH_QUERY_INVALID` / similar config errors).
+Marker strings are capped at 16 code points. At runtime, an unknown highlight
+field throws `SEARCH_QUERY_INVALID` with
+`details.reason === "undeclared-highlight-field"`. A marker containing NUL
+throws `SEARCH_QUERY_INVALID`; a marker over the length cap throws
+`SEARCH_QUERY_LIMIT_EXCEEDED`.
 
 <Render file="highlight-xss" />

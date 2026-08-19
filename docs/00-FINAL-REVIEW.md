@@ -1,5 +1,9 @@
 # Final Review and Go/No-Go Decision
 
+> Historical decision record (2026-08-16). Implementation has since shipped at
+> `0.1.0`. This file preserves intended contracts; it is not evidence that every
+> contract is implemented. See `15-CODE-DOCS-AUDIT.md`.
+
 ## Decision
 
 **GO — SiftLite v1.2 is approved for implementation.**
@@ -21,10 +25,11 @@ The v1.2 pack closes the pre-implementation gaps that could otherwise force a co
 
 > **SiftLite provides typed application search where SQLite-family application data already lives.**
 
-A consumer should be able to write a portable request such as:
+A consumer with an index handle should be able to write a portable request
+such as:
 
 ```ts
-const result = await products.search("ايفون برو", {
+const result = await index.search("ايفون برو", {
   filter: and(eq("status", "active"), lte("price", 50_000)),
   facets: ["brand", "category"],
   limit: 20,

@@ -5,15 +5,18 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-The ten public packages are published as `@siftlite/*@0.1.0`. Phases 0–11
-are substantially implemented. Phase 12 typo fallback and Phase 13 CLI are
-partial; Phase 14 RC work has not started. This is not a production-ready 1.0.
+The ten public packages are published as `@siftlite/*@0.1.0`. Phases 0–11 are
+implemented. Phase 12 request-equivalent fuzzy semantics (P12-03/P12-04),
+companion trigram SQL/integrity, facet typing, and Phase 13 operational CLI
+are implemented on this branch. Remote cost characterization (P12-08–10),
+P12-06 always-merge ranking, and Phase 14 RC work remain open. This is not a
+production-ready 1.0.
 
 ## Status
 
-PASS for the published package/build/test baseline. Do not treat Phase 12 or
-Phase 13 as complete: the code/docs reconciliation in
-`docs/15-CODE-DOCS-AUDIT.md` records correctness and coverage gaps.
+PASS for the Phase 12/13 completion work on this branch (targeted suites and
+typecheck). Treat published npm `0.1.0` as the previous baseline until the
+next owner-gated release.
 
 ## Completed tasks
 
@@ -29,25 +32,16 @@ Phase 13 as complete: the code/docs reconciliation in
 - P9-01 through P9-08
 - P10-01 through P10-07
 - P11-01 through P11-06
-- P12-01, P12-02, P12-05, P12-07, P12-11
-- P13-03
+- P12-01 through P12-05, P12-07, P12-11 (P12-03/P12-04 closed on this branch)
+- P13-01 through P13-12
 
 ## Remaining
 
-- Phase 12 request-equivalent fuzzy semantics: scope, filters, sorting,
-  pagination metadata, facets/totals/highlighting, overlap threshold, and
-  configurable candidate limit
 - Phase 12 remote 100k/1m/D1 cost characterization (P12-08–10)
-- Companion-SQL trigram DDL and integrity coverage for fallback definitions
-- Typed sortable-only facet support, or a narrower definition contract
-- Phase 13 operational CLI and adapter/config loading
+- P12-06 merge fuzzy behind exact/prefix groups (mode remains empty-exact
+  fallback; deferred by design)
 - Phase 14 — v1.0 RC hardening
 - Conditional Phase 15
-
-0.x publish blockers from the audit (LICENSE in packed files, `prepack`,
-changeset ignore/fixed groups, `tsBuildInfoFile` outside `dist`, export
-checks, example versions, executable examples) are closed. `@siftlite/*@0.1.0`
-is on npm.
 
 ## Tests executed
 
@@ -63,6 +57,11 @@ not be treated as current evidence.
 - Companion SQL is a deterministic subsequent migration fragment. Previously
   applied Prisma migrations are never rewritten.
 - Supported client family is Prisma 6. No FTS model is required.
+- Fuzzy fallback applies bound scope and request filters to candidate SQL,
+  enforces `minGramOverlap` and `min(policy.maxCandidates, limits.maxFuzzyCandidates)`,
+  batch-loads candidate text, and recomputes `hasMore`/`totalHits`/facets from
+  fuzzy survivors. Highlighting is omitted with `highlight-unavailable-fuzzy`.
+- CLI loads a host `siftlite.config.mjs` exporting `createAdapter` + `indexes`.
 
 ## Known upstream limitations
 
@@ -72,18 +71,12 @@ not be treated as current evidence.
 
 ## Blockers
 
-- Do not enable typo fallback on tenant-scoped or authorization-filtered
-  searches until candidate retrieval preserves request scope and filters.
-- Do not use generated companion SQL for fallback-enabled definitions in
-  `0.1.0`; it omits the trigram table and integrity checks do not detect that.
-- Phase 13 operational CLI commands are placeholders, not database operations.
+- D1 fuzzy remains off by default until P12-08–10 cost evidence exists.
+- Phase 14 RC and the next npm publish are owner-gated.
 
 ## Latest verification result
 
-On 2026-08-19, npm returned `0.1.0` for
-`@siftlite/{core,fts5,bun,node,testing,d1,libsql,drizzle,prisma,cli}` and
-`siftlite version` reported `0.1.0`. The main suite passed 261 tests, the D1
-worker suite passed 7 tests, all ten export checks passed, and the documentation
-site built 34 pages with zero Nimbus diagnostics. Full details, including the
-sandbox-only D1 listener failure in the initial combined run, are recorded in
-`docs/15-CODE-DOCS-AUDIT.md`.
+On 2026-08-19 (branch `cursor/grok-4-6-subagents-workflows-e3a2`):
+`bun run typecheck` and `bun run build` passed; `bun run check-exports` passed
+for all ten packages; `bun test` passed 288 tests; `bun run test:d1` passed
+7 Workers tests. Format check passed after biome format on new fuzzy tests.

@@ -33,6 +33,9 @@
     "@siftlite/core": "^0.1.0",
     "@siftlite/fts5": "^0.1.0"
   },
+  "devDependencies": {
+    "@siftlite/bun": "^0.1.0"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/aashahin/siftlite.git",

@@ -1,6 +1,12 @@
 # Code and Documentation Audit
 
-Audit date: **2026-08-19**
+Audit date: **2026-08-19** (original docs pass)
+
+Follow-up: **2026-08-19** branch `cursor/grok-4-6-subagents-workflows-e3a2`
+closed must-fix gaps 1–5 and the operational CLI (Phase 13). Remote cost
+benches (P12-08–10), P12-06 always-merge ranking, and Phase 14 remain open.
+Treat the sections below as the historical `0.1.0` publish audit; see
+`IMPLEMENTATION_STATUS.md` for current branch status.
 
 Shipped version reviewed: **0.1.0**
 
@@ -14,12 +20,10 @@ The TypeScript source and tests are authoritative for shipped behavior. The
 files in `docs/` remain architecture and decision records: they describe both
 implemented behavior and contracts the implementation still owes.
 
-The public docs are buildable after this pass, but `0.1.0` should not be
-documented as satisfying the full Phase 12 or Phase 13 contracts. In
-particular, typo fallback is not safe to combine with tenant or authorization
-scope in the current implementation.
-
-No package/runtime production code was changed in this documentation pass.
+The public docs are buildable after this pass. On the follow-up branch, typo
+fallback applies bound scope/filters, companion SQL emits trigram DDL for
+fallback definitions, facet request typing accepts sortable keys, and the
+CLI loads a host config for check/doctor/lifecycle commands.
 
 ## Must-fix implementation gaps
 

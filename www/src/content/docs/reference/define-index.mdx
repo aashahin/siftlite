@@ -30,12 +30,8 @@ import { defineIndex, table } from "@siftlite/core";
 
 `searchable[field].weight` must be a positive finite number.
 
-Facet names must already be filterable or sortable.
-
-`0.1.0` has a type-level gap: runtime facet execution accepts a configured
-sortable-only facet, but `TypedSearchRequest` narrows `facets` to filterable
-keys. Declare a facet field as filterable as well when you need the typed
-engine-handle API; do not rely on a cast to hide the mismatch.
+Facet names must already be filterable or sortable. Typed search requests
+accept either filterable or sortable facet keys.
 
 Searchable source columns occupy internal `{field}_source` names; a
 filterable/sortable field with that name is rejected

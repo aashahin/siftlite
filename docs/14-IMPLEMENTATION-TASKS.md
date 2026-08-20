@@ -182,10 +182,10 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 - [x] **P12-01** Implement Unicode code-point length/trigram generator.
 - [x] **P12-02** Define `FuzzyCandidatePolicy` defaults/validation.
-- [ ] **P12-03** Complete bounded trigram overlap retrieval. (Current code emits a bounded OR query but no overlap threshold.)
-- [ ] **P12-04** Enforce minimum gram overlap, request scope/filter, configurable candidate cap, and bounded payload reads.
+- [x] **P12-03** Complete bounded trigram overlap retrieval.
+- [x] **P12-04** Enforce minimum gram overlap, request scope/filter, configurable candidate cap, and bounded payload reads.
 - [x] **P12-05** Implement/test Damerau-Levenshtein scorer.
-- [ ] **P12-06** Merge fuzzy results behind exact/prefix groups. (Current code only falls back after zero exact hits.)
+- [ ] **P12-06** Merge fuzzy results behind exact/prefix groups. (Deferred: `fallback` mode remains empty-exact-then-fuzzy.)
 - [x] **P12-07** Test <3-code-point exclusion and Unicode edge cases.
 - [ ] **P12-08** Add 100k corpus recall/latency benchmark.
 - [ ] **P12-09** Add local 1m characterization.
@@ -196,18 +196,18 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 13 — CLI
 
-- [ ] **P13-01** Implement portable CLI bootstrap and config/adapter loading. (Bootstrap exists; loading does not.)
-- [ ] **P13-02** `init`.
+- [x] **P13-01** Implement portable CLI bootstrap and config/adapter loading.
+- [x] **P13-02** `init`.
 - [x] **P13-03** `generate`.
-- [ ] **P13-04** Implement operational `check`. (Current command always returns the adapter-required error.)
-- [ ] **P13-05** Implement operational `doctor`. (Current command always returns the adapter-required error.)
-- [ ] **P13-06** `backfill`.
-- [ ] **P13-07** `rebuild`.
-- [ ] **P13-08** `merge`/incremental `optimize`.
-- [ ] **P13-09** safe `drop`.
-- [ ] **P13-10** dry-run and machine-readable JSON output.
-- [ ] **P13-11** explicit destructive acknowledgement/operation status.
-- [ ] **P13-12** smoke tests under supported Node and Bun runtimes.
+- [x] **P13-04** Implement operational `check`.
+- [x] **P13-05** Implement operational `doctor`.
+- [x] **P13-06** `backfill`.
+- [x] **P13-07** `rebuild`.
+- [x] **P13-08** `merge`/incremental `optimize`.
+- [x] **P13-09** safe `drop`.
+- [x] **P13-10** dry-run and machine-readable JSON output.
+- [x] **P13-11** explicit destructive acknowledgement/operation status.
+- [x] **P13-12** smoke tests under supported Node and Bun runtimes.
 
 **Gate:** noninteractive CI and safe operations work without making Bun a consumer runtime requirement.
 

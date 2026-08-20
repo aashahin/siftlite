@@ -19,6 +19,16 @@ export async function collectIntegrityFindings(
   const names = physicalNames(definition, physicalIndexId, generation);
   const docs = await readMaster(adapter, names.docs);
   const fts = await readMaster(adapter, names.fts);
+  if (definition.typoTolerance.mode === "fallback") {
+    const trigram = await readMaster(adapter, names.ftsTrigram);
+    if (!isFtsTable(trigram)) {
+      findings.push({
+        severity: "error",
+        code: "missing-trigram",
+        message: "required trigram companion object is missing",
+      });
+    }
+  }
   if (!isDocsTable(docs) || !isFtsTable(fts)) {
     findings.push({
       severity: "error",

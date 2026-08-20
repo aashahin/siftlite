@@ -33,6 +33,13 @@ export function compileFts5PhysicalManifest(
     },
     { kind: "virtual-table", name: names.fts, columns: [...ctx.definition.searchableOrder] },
   ];
+  if (ctx.definition.typoTolerance.mode === "fallback") {
+    objects.push({
+      kind: "virtual-table",
+      name: names.ftsTrigram,
+      columns: [...ctx.definition.searchableOrder],
+    });
+  }
   if (ctx.definition.mode === "linked" && ctx.definition.source) {
     const triggers = triggerNames(names.docs);
     objects.push(

@@ -48,9 +48,9 @@ definition to verify the objects and mark the row `healthy`, then call
 may be rematerialized during recovery. A later call against a healthy row
 throws `SEARCH_CONFIG_INVALID` / `already-exists`.
 
-In `0.1.0`, companion SQL does not emit the trigram table required by
-`typoTolerance.mode: "fallback"`. Use runtime `createIndex` without applying
-the fragment for those definitions.
+When `typoTolerance.mode: "fallback"`, companion SQL also emits the trigram
+FTS table; integrity checks require it. Runtime `createIndex` remains the
+recommended path for materializing and finalizing the registry.
 
 Canonical escape hatch: `articlesSearch.definition`.
 

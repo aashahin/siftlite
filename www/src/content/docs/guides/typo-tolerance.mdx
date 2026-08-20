@@ -47,14 +47,14 @@ createFts5Engine({
 That combination is a deliberate policy decision. `D1_DEFAULT_SEARCH_POLICY`
 rejects fallback-enabled definitions by default.
 
-<Aside type="danger" title="0.1.0 correctness limitation">
-The fallback candidate query currently does not apply the request `filter`,
-bound `scope`, or field sort. Fuzzy hits also do not feed `totalHits`, facets,
-highlighting, or the exact-query `page.hasMore` value. Do not enable fallback
-for tenant isolation, authorization filters, or any query where those response
-fields must describe the fuzzy result set. Keep `mode: "off"` until the
-fallback pipeline preserves the same request semantics.
-</Aside>
+Bound scope and request `filter` are applied to fuzzy candidate retrieval.
+When fallback produces hits, `page.hasMore`, opt-in `totalHits`, and facets
+describe the fuzzy survivor set. Field sort is not applied to fuzzy hits
+(they are ordered by edit distance). Highlighting is omitted; if you
+requested highlight fields, the response includes warning
+`highlight-unavailable-fuzzy`.
+
+D1 still disables fallback by default until remote cost evidence exists.
 
 ## Bounds
 
@@ -72,8 +72,6 @@ Declared `DEFAULT_FUZZY_POLICY` values:
 `maxEditsForToken` further caps edits by token length. When fallback runs
 and you pass `diagnostics: true`, `response.meta.fuzzyUsed` is `true`.
 
-The current search path enforces the token, trigram, candidate, and edit
-distance caps, but it does **not** use `minGramOverlap`; candidate retrieval is
-an OR across generated grams. `ApplicationLimits.maxFuzzyCandidates` is also
-not wired into this path in `0.1.0`; the effective candidate cap is the fixed
-`DEFAULT_FUZZY_POLICY.maxCandidates` value.
+Candidate retrieval ORs generated grams, then enforces `minGramOverlap`
+before edit-distance scoring. The effective candidate cap is
+`min(DEFAULT_FUZZY_POLICY.maxCandidates, ApplicationLimits.maxFuzzyCandidates)`.

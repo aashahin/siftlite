@@ -61,32 +61,32 @@
     },
     "packages/bun": {
       "name": "@siftlite/bun",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
-        "@siftlite/core": "^0.1.0",
+        "@siftlite/core": "^0.2.0",
       },
     },
     "packages/cli": {
       "name": "@siftlite/cli",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "bin": {
         "siftlite": "./dist/cli.js",
       },
       "dependencies": {
-        "@siftlite/core": "^0.1.0",
-        "@siftlite/fts5": "^0.1.0",
+        "@siftlite/core": "^0.2.0",
+        "@siftlite/fts5": "^0.2.0",
       },
       "devDependencies": {
-        "@siftlite/bun": "^0.1.0",
+        "@siftlite/bun": "^0.2.0",
       },
     },
     "packages/core": {
       "name": "@siftlite/core",
-      "version": "0.1.0",
+      "version": "0.2.0",
     },
     "packages/d1": {
       "name": "@siftlite/d1",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@siftlite/core": "workspace:*",
       },
@@ -102,7 +102,7 @@
     },
     "packages/drizzle": {
       "name": "@siftlite/drizzle",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@siftlite/core": "workspace:*",
         "@siftlite/fts5": "workspace:*",
@@ -119,17 +119,17 @@
     },
     "packages/fts5": {
       "name": "@siftlite/fts5",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
-        "@siftlite/core": "^0.1.0",
+        "@siftlite/core": "^0.2.0",
       },
       "devDependencies": {
-        "@siftlite/bun": "^0.1.0",
+        "@siftlite/bun": "^0.2.0",
       },
     },
     "packages/libsql": {
       "name": "@siftlite/libsql",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@siftlite/core": "workspace:*",
       },
@@ -146,7 +146,7 @@
     },
     "packages/node": {
       "name": "@siftlite/node",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@siftlite/core": "workspace:*",
       },
@@ -159,7 +159,7 @@
     },
     "packages/prisma": {
       "name": "@siftlite/prisma",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@siftlite/core": "workspace:*",
         "@siftlite/fts5": "workspace:*",
@@ -178,7 +178,7 @@
     },
     "packages/testing": {
       "name": "@siftlite/testing",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "dependencies": {
         "@siftlite/core": "workspace:*",
         "@siftlite/fts5": "workspace:*",

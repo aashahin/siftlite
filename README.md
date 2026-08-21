@@ -30,7 +30,7 @@ markdown `**` markers.
 
 ## Status
 
-`0.1.0` is published on npm under `@siftlite/*`. This is a pre-v1 release from
+`0.2.0` is published on npm under `@siftlite/*`. This is a pre-v1 release from
 the [v1.2 implementation pack](docs/README.md), not a production-ready 1.0.
 Typo fallback is experimental. A definition that requests it fails with
 `SEARCH_CAPABILITY_UNSUPPORTED` when runtime probes or policy disable it;

@@ -29,7 +29,7 @@ If an existing test contradicts an accepted contract, do not simply follow the t
 6. Run the smallest relevant tests after each coherent change and the full phase gate before reporting PASS.
 7. Never skip a failing test because code “looks correct.”
 8. Never silently weaken acceptance criteria. Upstream limitations become documented capability differences.
-9. Branding and scope are finalized as `@siftlite/*`; `0.1.0` is published. Further publishes stay owner-gated. Do not publish examples or experimental packages.
+9. Branding and scope are finalized as `@siftlite/*`; `0.2.0` is published. Further publishes stay owner-gated. Do not publish examples or experimental packages.
 10. Keep commits small and phase-oriented when Git is available.
 11. Do not mix unfinished work from a later phase into an earlier phase's PASS report.
 

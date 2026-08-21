@@ -47,6 +47,5 @@ Every facet name must already be declared `filterable` or `sortable`.
 Otherwise `defineIndex` throws `SEARCH_CONFIG_INVALID` /
 `undeclared-facet`.
 
-For the typed engine-handle API in `0.1.0`, also declare requested facet fields
-filterable. Runtime execution supports a configured sortable-only facet, but
-`TypedSearchRequest.facets` currently narrows to filterable keys.
+Requested facet fields may be filterable or sortable-only.
+`SearchRequest.facets` and `TypedSearchRequest.facets` accept both.

@@ -20,7 +20,7 @@ tests, package build, and export checks. Do not hide failures with `|| true`.
 
 ## Workspace
 
-The Phase 0–11 publish set is:
+The published package set is:
 
 - `@siftlite/core`
 - `@siftlite/fts5`
@@ -68,7 +68,7 @@ Versioning uses [Changesets](https://github.com/changesets/changesets):
 bun run changeset
 ```
 
-Public packages live under `@siftlite/*`. `0.1.0` is on npm. Publishing stays
+Public packages live under `@siftlite/*`. `0.2.0` is on npm. Publishing stays
 owner-gated (`changeset version`, then `changeset publish` or the Release
 workflow). Do not publish `examples/` or `experimental/`.
 

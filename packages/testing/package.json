@@ -1,6 +1,6 @@
 {
   "name": "@siftlite/testing",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "SiftLite conformance and testkit utilities.",
   "type": "module",
   "license": "MIT",
@@ -28,11 +28,11 @@
     "typecheck": "tsc -p tsconfig.json --pretty false"
   },
   "dependencies": {
-    "@siftlite/core": "^0.1.0",
-    "@siftlite/fts5": "^0.1.0"
+    "@siftlite/core": "^0.2.0",
+    "@siftlite/fts5": "^0.2.0"
   },
   "devDependencies": {
-    "@siftlite/bun": "^0.1.0"
+    "@siftlite/bun": "^0.2.0"
   },
   "repository": {
     "type": "git",

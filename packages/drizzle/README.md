@@ -53,9 +53,9 @@ pending generation is reused; incomplete objects may be rematerialized during
 recovery. A later call against an already-healthy row fails with
 `SEARCH_CONFIG_INVALID` / `already-exists`.
 
-The `0.1.0` companion-SQL generator does not emit the trigram table required by
-`typoTolerance.mode: "fallback"`. Use runtime `createIndex` instead of the
-companion-SQL path for those definitions.
+When `typoTolerance.mode: "fallback"`, companion SQL also emits the trigram
+FTS table; integrity checks require it. Runtime `createIndex` remains the
+recommended path for materializing and finalizing the registry.
 
 Canonical escape hatch:
 

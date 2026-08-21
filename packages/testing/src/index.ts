@@ -6,7 +6,7 @@ import { SIFTLITE_CORE_PACKAGE } from "@siftlite/core";
 /** Published package identity. */
 export const SIFTLITE_TESTING_PACKAGE = {
   name: "@siftlite/testing",
-  version: "0.1.0",
+  version: "0.2.0",
   dependsOn: SIFTLITE_CORE_PACKAGE.name,
 } as const;
 

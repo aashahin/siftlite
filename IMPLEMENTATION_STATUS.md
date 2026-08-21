@@ -5,18 +5,17 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-The ten public packages are published as `@siftlite/*@0.1.0`. Phases 0–11 are
+The ten public packages are published as `@siftlite/*@0.2.0`. Phases 0–11 are
 implemented. Phase 12 request-equivalent fuzzy semantics (P12-03/P12-04),
 companion trigram SQL/integrity, facet typing, and Phase 13 operational CLI
-are implemented on this branch. Remote cost characterization (P12-08–10),
+shipped in `0.2.0`. Remote cost characterization (P12-08–10),
 P12-06 always-merge ranking, and Phase 14 RC work remain open. This is not a
 production-ready 1.0.
 
 ## Status
 
-PASS for the Phase 12/13 completion work on this branch (targeted suites and
-typecheck). Treat published npm `0.1.0` as the previous baseline until the
-next owner-gated release.
+PASS for the Phase 12/13 completion work. npm `0.2.0` is the current
+published baseline. Treat `0.1.0` as the previous release.
 
 ## Completed tasks
 
@@ -72,7 +71,7 @@ not be treated as current evidence.
 ## Blockers
 
 - D1 fuzzy remains off by default until P12-08–10 cost evidence exists.
-- Phase 14 RC and the next npm publish are owner-gated.
+- Phase 14 RC and further npm publishes stay owner-gated.
 
 ## Latest verification result
 

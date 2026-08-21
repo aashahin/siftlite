@@ -1,6 +1,6 @@
 # SiftLite — Implementation Pack
 
-Status: **Historical v1.2 architecture pack; implementation has shipped at 0.1.0**
+Status: **Historical v1.2 architecture pack; implementation has shipped at 0.2.0**
 
 Revision: **v1.2**
 
@@ -10,7 +10,7 @@ Project name: **SiftLite** (`siftlite`)
 
 > The documents in this directory record intended contracts and implementation
 > history. They are not an API reference. The TypeScript source and tests are
-> authoritative for shipped `0.1.0` behavior. Use the
+> authoritative for shipped `0.2.0` behavior. Use the
 > [public documentation](../www/) for product guidance and the
 > [code/docs audit](15-CODE-DOCS-AUDIT.md) for known implementation gaps.
 
@@ -20,7 +20,7 @@ SiftLite is a TypeScript-first application-search layer for SQLite, Cloudflare D
 
 ## Target package ecosystem
 
-The package names below are the intended public shape. `@siftlite/{core,fts5,bun,d1,libsql,testing,drizzle,prisma,node,cli}` shipped as `0.1.0`. Do not publish empty packages merely to reserve names; create each package when its phase begins.
+The package names below are the intended public shape. `@siftlite/{core,fts5,bun,d1,libsql,testing,drizzle,prisma,node,cli}` shipped as `0.2.0`. Do not publish empty packages merely to reserve names; create each package when its phase begins.
 
 ```text
 siftlite                 convenience entrypoint after the core API stabilizes

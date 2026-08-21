@@ -1,6 +1,6 @@
 {
   "name": "@siftlite/cli",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "SiftLite CLI for check, doctor, generate, and safe lifecycle operations.",
   "type": "module",
   "license": "MIT",
@@ -30,11 +30,11 @@
     "typecheck": "tsc -p tsconfig.json --pretty false"
   },
   "dependencies": {
-    "@siftlite/core": "^0.1.0",
-    "@siftlite/fts5": "^0.1.0"
+    "@siftlite/core": "^0.2.0",
+    "@siftlite/fts5": "^0.2.0"
   },
   "devDependencies": {
-    "@siftlite/bun": "^0.1.0"
+    "@siftlite/bun": "^0.2.0"
   },
   "repository": {
     "type": "git",

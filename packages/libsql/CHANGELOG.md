@@ -1,5 +1,16 @@
 # @siftlite/libsql
 
+## 0.2.0
+
+### Minor Changes
+
+- Complete Phase 12/13: request-equivalent fuzzy fallback, trigram companion SQL, sortable facet typing, and operational CLI.
+
+### Patch Changes
+
+- Updated dependencies
+  - @siftlite/core@0.2.0
+
 ## 0.1.0
 
 ### Minor Changes

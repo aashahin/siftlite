@@ -52,7 +52,7 @@ afterEach(() => {
 describe("@siftlite/cli", () => {
   test("help and version are noninteractive", async () => {
     expect((await runCli(["node", "siftlite", "help"])).status).toBe("ok");
-    expect((await runCli(["node", "siftlite", "version"])).message).toBe("0.1.0");
+    expect((await runCli(["node", "siftlite", "version"])).message).toBe("0.2.0");
   });
 
   test("generate emits registry SQL", async () => {

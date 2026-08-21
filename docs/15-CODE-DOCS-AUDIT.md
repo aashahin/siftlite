@@ -3,12 +3,13 @@
 Audit date: **2026-08-19** (original docs pass)
 
 Follow-up: **2026-08-19** branch `cursor/grok-4-6-subagents-workflows-e3a2`
-closed must-fix gaps 1–5 and the operational CLI (Phase 13). Remote cost
-benches (P12-08–10), P12-06 always-merge ranking, and Phase 14 remain open.
-Treat the sections below as the historical `0.1.0` publish audit; see
-`IMPLEMENTATION_STATUS.md` for current branch status.
+closed must-fix gaps 1–5 and the operational CLI (Phase 13). Those closures
+shipped as `@siftlite/*@0.2.0`. Remote cost benches (P12-08–10), P12-06
+always-merge ranking, and Phase 14 remain open. Treat the sections below as
+the historical `0.1.0` publish audit; see `IMPLEMENTATION_STATUS.md` for
+current status.
 
-Shipped version reviewed: **0.1.0**
+Shipped version reviewed: **0.1.0** (superseded by **0.2.0**)
 
 Scope: root/package/example READMEs, the `www/` documentation site, the v1.2
 implementation pack, public exports, runtime validation, lifecycle code, CLI,

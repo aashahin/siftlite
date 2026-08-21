@@ -9,7 +9,7 @@ const nimbusConfig = defineNimbusConfig({
   description: "Typed application search for SQLite-family databases.",
   locale: "en",
   github: "https://github.com/aashahin/siftlite",
-  editPattern: "https://github.com/aashahin/siftlite/edit/master/www/src/content/docs/{path}",
+  editPattern: "https://github.com/aashahin/siftlite/edit/master/www/{path}",
   socialImageAlt: "SiftLite documentation",
 });
 

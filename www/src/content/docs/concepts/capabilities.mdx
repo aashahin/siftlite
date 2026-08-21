@@ -47,7 +47,8 @@ database.
 ## Consistency
 
 Read-your-writes is an adapter fact, not a search-API promise. A plain D1
-binding is **not** session-aware. Cloudflare currently documents read
-replication through Sessions; SiftLite does not infer cross-request continuity
-from a plain binding. Use `d1SessionAdapter` when you need sequential session
-consistency. See [Cloudflare D1](/adapters/d1).
+binding is **not** session-aware and is not replica-eligible
+(`readReplicaEligible: false`). Cloudflare documents read replication through
+Sessions; `d1SessionAdapter` sets `readReplicaEligible: true` and sequential
+session consistency. SiftLite does not infer cross-request continuity from a
+plain binding. See [Cloudflare D1](/adapters/d1).

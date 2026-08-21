@@ -207,7 +207,7 @@ describe("Phase 12 fuzzy request-equivalent search", () => {
       { value: "acme", count: 2 },
       { value: "beta", count: 1 },
     ]);
-    expect(queries.some((statement) => /COUNT\(\*\) AS total/.test(statement))).toBe(false);
+    expect(queries.some((statement) => /COUNT\(\*\) AS total/.test(statement))).toBe(true);
     expect(
       queries
         .filter((statement) => statement.includes("GROUP BY"))
@@ -230,5 +230,60 @@ describe("Phase 12 fuzzy request-equivalent search", () => {
     expect(result.warnings?.some((warning) => warning.code === "highlight-unavailable-fuzzy")).toBe(
       true,
     );
+  });
+
+  test("fuzzy hits append after exact hits and never displace them", async () => {
+    const ctx = await seedFuzzy([
+      { id: "exact", title: "iphone", brand: "acme" },
+      { id: "typo", title: "iphoen", brand: "beta" },
+    ]);
+    const result = await searchFts5Index(ctx, "iphone", {
+      includeTotal: true,
+      facets: ["brand"],
+      diagnostics: true,
+    });
+    expect(result.hits.map((hit) => hit.id)).toEqual(["exact", "typo"]);
+    expect(result.hits[0]?.score).not.toBeNull();
+    expect(result.hits[1]?.score).toBeNull();
+    expect(result.meta?.fuzzyUsed).toBe(true);
+    expect(result.totalHits).toBe(2);
+    expect(result.facets?.["brand"]).toEqual([
+      { value: "acme", count: 1 },
+      { value: "beta", count: 1 },
+    ]);
+  });
+
+  test("merged paging walks exact then fuzzy", async () => {
+    const ctx = await seedFuzzy([
+      { id: "exact", title: "iphone" },
+      { id: "typo", title: "iphoen" },
+    ]);
+    const first = await searchFts5Index(ctx, "iphone", { limit: 1, offset: 0, diagnostics: true });
+    expect(first.hits.map((hit) => hit.id)).toEqual(["exact"]);
+    expect(first.page.hasMore).toBe(true);
+    expect(first.hits[0]?.score).not.toBeNull();
+
+    const second = await searchFts5Index(ctx, "iphone", { limit: 1, offset: 1, diagnostics: true });
+    expect(second.hits.map((hit) => hit.id)).toEqual(["typo"]);
+    expect(second.hits[0]?.score).toBeNull();
+    expect(second.page.hasMore).toBe(false);
+    expect(second.meta?.fuzzyUsed).toBe(true);
+  });
+
+  test("exact-only pages do not flag highlight-unavailable-fuzzy", async () => {
+    const ctx = await seedFuzzy([
+      { id: "exact", title: "iphone" },
+      { id: "typo", title: "iphoen" },
+    ]);
+    const result = await searchFts5Index(ctx, "iphone", {
+      limit: 1,
+      highlight: ["title"],
+      diagnostics: true,
+    });
+    expect(result.hits.map((hit) => hit.id)).toEqual(["exact"]);
+    expect(result.hits[0]?.formatted?.["title"]).toEqual(expect.any(String));
+    expect(
+      (result.warnings ?? []).some((warning) => warning.code === "highlight-unavailable-fuzzy"),
+    ).toBe(false);
   });
 });

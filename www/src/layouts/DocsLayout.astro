@@ -175,9 +175,9 @@ const hasPagination = Astro.slots.has("pagination");
                 />
               )}
               <Banner
-                content="<strong>0.1.0</strong> is published on npm and is a pre-v1 release, not a production-ready 1.0."
+                content="<strong>0.2.0</strong> is published on npm and is a pre-v1 release, not a production-ready 1.0."
                 variant="caution"
-                dismissible={{ id: "siftlite-pre-v1-0.1.0", days: 30 }}
+                dismissible={{ id: "siftlite-pre-v1-0.2.0", days: 30 }}
               />
               {banner && <Banner content={banner.content} variant={banner.type} dismissible={banner.dismissible} />}
               <Breadcrumbs items={breadcrumbs} class="pb-2" />

@@ -1,15 +1,14 @@
 # Code and Documentation Audit
 
-Audit date: **2026-08-19** (original docs pass)
+Original audit: **2026-08-19** against `@siftlite/*@0.1.0`.
 
-Follow-up: **2026-08-19** branch `cursor/grok-4-6-subagents-workflows-e3a2`
-closed must-fix gaps 1–5 and the operational CLI (Phase 13). Those closures
-shipped as `@siftlite/*@0.2.0`. Remote cost benches (P12-08–10), P12-06
-always-merge ranking, and Phase 14 remain open. Treat the sections below as
-the historical `0.1.0` publish audit; see `IMPLEMENTATION_STATUS.md` for
-current status.
+Follow-up: **2026-08-21** against `@siftlite/*@0.2.0`. Must-fix gaps 1–5 and
+the operational CLI (Phase 13) closed in `0.2.0`. P12-06 always-merge ranking,
+P12-08/09 local benches, D1 replica modeling (gap 8), and Phase 14 evidence
+(except owner-gated publish) are closed on this branch. P12-10 is a skip
+report until D1 credentials exist. See `IMPLEMENTATION_STATUS.md`.
 
-Shipped version reviewed: **0.1.0** (superseded by **0.2.0**)
+Shipped version reviewed in this follow-up: **0.2.0**
 
 Scope: root/package/example READMEs, the `www/` documentation site, the v1.2
 implementation pack, public exports, runtime validation, lifecycle code, CLI,
@@ -21,135 +20,123 @@ The TypeScript source and tests are authoritative for shipped behavior. The
 files in `docs/` remain architecture and decision records: they describe both
 implemented behavior and contracts the implementation still owes.
 
-The public docs are buildable after this pass. On the follow-up branch, typo
-fallback applies bound scope/filters, companion SQL emits trigram DDL for
-fallback definitions, facet request typing accepts sortable keys, and the
-CLI loads a host config for check/doctor/lifecycle commands.
+Public product pages in `www/` should describe `0.2.0`. On the 0.2.0 branch,
+typo fallback applies bound scope/filters, companion SQL emits trigram DDL
+for fallback definitions, facet request typing accepts sortable keys, and
+the CLI loads a host config for check/doctor/lifecycle commands.
 
-## Must-fix implementation gaps
+## Closed in 0.2.0
 
-### 1. Fuzzy fallback does not preserve filters or bound scope
+These were must-fix (or CLI-blocking) findings in the 0.1.0 audit. They are
+historical; do not treat the 0.1.0 line numbers below as current code.
 
-- **Intended contract:** bound scope applies to hits, facets, totals, fuzzy
-  candidates, and hydration (`docs/12-ADRS.md:297` and
-  `docs/04-SEARCH-API-AND-QUERY-ENGINE.md:212`).
-- **Shipped behavior:** exact search passes `request.filter` and
-  `request.scope` into compilation (`packages/fts5/src/search/execute.ts:163`),
-  but the fallback candidate SQL contains only trigram `MATCH` and `LIMIT`
-  (`packages/fts5/src/search/execute.ts:323`). Its per-candidate document read
-  is also keyed only by source ID (`packages/fts5/src/search/execute.ts:354`).
-- **Impact:** after exact search returns no hits, fallback can return an ID or
-  hydrated document outside a mandatory tenant/authorization scope.
-- **Docs resolution:** the public scope, search, and typo pages now tell users
-  to keep fallback off for scoped or authorization-filtered indexes.
-- **Code resolution still required:** compile the same scope/filter into
-  candidate retrieval and candidate document reads, then add bypass tests.
+### 1. Fuzzy fallback preserves filters and bound scope
 
-### 2. Fuzzy response metadata describes the exact query, not fuzzy hits
+- **0.1.0:** candidate SQL was trigram `MATCH` + `LIMIT` only; per-candidate
+  document reads were keyed only by source ID.
+- **0.2.0:** candidate retrieval compiles `request.scope` and `request.filter`
+  into the same candidate `WHERE` (`packages/fts5/src/search/execute.ts`).
+  Searchable text is batch-loaded. Tests live in
+  `packages/fts5/tests/fuzzy.test.ts`.
+- Keep fallback off on D1 until P12-08–10 cost evidence exists. That is a
+  cost/policy choice, not a scope-bypass workaround.
 
-- **Claim corrected:** totals, facets, highlighting, and `page.hasMore` were
-  previously described without a fallback exception.
-- **Shipped behavior:** fallback replaces hits only after the exact result is
-  empty (`packages/fts5/src/search/execute.ts:218`). Exact-query `hasMore` is
-  computed before fallback (`packages/fts5/src/search/execute.ts:183`), while
-  totals and facets reuse the exact compiled query afterward
-  (`packages/fts5/src/search/execute.ts:228`). Fuzzy hits never receive
-  formatted highlights (`packages/fts5/src/search/execute.ts:404`).
-- **Docs resolution:** the limitation is explicit on the search and typo pages.
-- **Code resolution still required:** either compute response fields from the
-  fuzzy result set or make them unavailable with typed warnings/errors.
+### 2. Fuzzy response metadata describes fuzzy survivors
 
-### 3. The declared fuzzy bounds are not all wired into search
+- **0.1.0:** fallback replaced hits after an empty exact result but reused
+  exact-query `hasMore`, totals, and facets; highlighting was omitted.
+- **0.2.0:** when fallback produces hits, `page.hasMore`, opt-in `totalHits`,
+  and facets are computed from the fuzzy survivor set. Highlighting remains
+  omitted with warning `highlight-unavailable-fuzzy`. Field sort is not
+  applied (hits are ordered by edit distance). Those two exceptions are
+  shipped behavior, not open bugs.
 
-- **Intended contract:** use a minimum gram-overlap threshold and application
-  candidate budget (`docs/07-ARABIC-AND-TYPO-TOLERANCE.md`).
-- **Shipped behavior:** `DEFAULT_FUZZY_POLICY` declares `minGramOverlap` and
-  `maxCandidates` (`packages/core/src/fuzzy/policy.ts:3`), but search emits a
-  simple OR expression and never reads `minGramOverlap`
-  (`packages/fts5/src/search/execute.ts:329`).
-  `ApplicationLimits.maxFuzzyCandidates` exists
-  (`packages/core/src/limits/application-limits.ts:3`) but fallback uses the
-  fixed policy value instead.
-- **Additional cost gap:** candidate searchable text is loaded with one query
-  per candidate (`packages/fts5/src/search/execute.ts:354`), contrary to the
-  bounded payload/batched-read design.
-- **Docs resolution:** the defaults table distinguishes declared from enforced
-  limits, and implementation task status was corrected.
+### 3. Declared fuzzy bounds are wired
 
-### 4. Companion SQL omits the fallback trigram table
+- **0.1.0:** `minGramOverlap` was unused; `ApplicationLimits.maxFuzzyCandidates`
+  was unused; candidate text was one query per ID.
+- **0.2.0:** candidate retrieval ORs generated grams, then enforces
+  `minGramOverlap` before edit-distance scoring. The effective cap is
+  `min(policy.maxCandidates, limits.maxFuzzyCandidates)`. Candidate text is
+  loaded in batched `IN` chunks. Defaults remain
+  `DEFAULT_FUZZY_POLICY` (`packages/core/src/fuzzy/policy.ts`) and
+  `DEFAULT_APPLICATION_LIMITS.maxFuzzyCandidates` (`200`).
 
-- **Claim corrected:** ORM docs previously gave contradictory advice about
-  applying companion SQL and then calling `createIndex`.
-- **Shipped behavior:** `compileIndexLifecycleSql` emits registry, docs, FTS,
-  indexes, triggers, and backfill, but not `compileFtsTrigramDdl`
-  (`packages/fts5/src/lifecycle/companion-sql.ts:19`). Runtime materialization
-  does emit the trigram table (`packages/fts5/src/lifecycle/operations.ts:115`).
-- **Detection gap:** the physical manifest lists docs/FTS/triggers but not the
-  trigram table (`packages/fts5/src/manifest.ts:12`), and integrity checks only
-  require docs/FTS (`packages/fts5/src/lifecycle/verify.ts:12`). A migrated
-  fallback definition can therefore be marked healthy without its trigram
-  table.
-- **Docs resolution:** lifecycle, Drizzle, and Prisma docs require the runtime
-  path for fallback-enabled definitions in `0.1.0`.
-- **Code resolution still required:** emit, hash, and verify the trigram object.
+### 4. Companion SQL emits and verifies the fallback trigram table
 
-## Other code/API gaps
+- **0.1.0:** `compileIndexLifecycleSql` omitted `compileFtsTrigramDdl`;
+  manifest/integrity did not require the trigram object.
+- **0.2.0:** companion SQL emits trigram DDL when
+  `typoTolerance.mode === "fallback"`
+  (`packages/fts5/src/lifecycle/companion-sql.ts`). The physical manifest
+  lists `ftsTrigram`; integrity reports `missing-trigram` when it is absent
+  (`packages/fts5/src/lifecycle/verify.ts`). Runtime `createIndex` remains
+  the path that verifies objects and marks a `pending` registry row healthy.
 
-### 5. Facet definition and typed request disagree
+### 5. Facet request typing accepts sortable keys
 
-- `defineIndex` accepts facet fields declared filterable **or sortable**
-  (`packages/core/src/definition/define-index.ts:110`).
-- Runtime facet execution resolves either storage map
-  (`packages/fts5/src/search/facets.ts:41`).
-- `SearchRequest<TFilterable, ...>.facets` is typed only as
-  `TFilterable[]` (`packages/core/src/search/types.ts:26`), and the engine
-  preserves that narrowing (`packages/fts5/src/engine.ts:44`).
+- **0.1.0:** `defineIndex` allowed filterable **or** sortable facet fields,
+  but `SearchRequest.facets` was typed as `TFilterable[]`.
+- **0.2.0:** `SearchRequest.facets` is
+  `readonly (TFilterable | TSortable)[]`
+  (`packages/core/src/search/types.ts`). Typed engine handles follow that.
+  Requested facets still have to be declared on the definition.
 
-The public docs now recommend declaring requested facets filterable until the
-type contract is widened or the definition contract is narrowed.
+### 7. Operational CLI is implemented
+
+- **0.1.0:** `help` / `version` / `generate` worked; `check` / `doctor` and
+  lifecycle commands returned adapter-required errors.
+- **0.2.0:** `init` writes `siftlite.config.mjs`. `check`, `doctor`,
+  `backfill`, `rebuild`, `merge`, and `drop` load that config
+  (`createAdapter()` + `indexes`). Mutating commands require `--acknowledge`
+  unless `--dry-run`. `merge` accepts `--page-budget` (default `8`).
+  `siftlite check --help` still runs `check`; there is no subcommand-help
+  parser.
+
+## Documented behavior (not a 0.2.0 gap)
 
 ### 6. Generic engine hydration is projection hydration
 
-The previous search guide said linked-mode hydration reads the source table.
 The generic search path defaults to `createProjectionHydrator`
-(`packages/fts5/src/search/execute.ts:188`), which selects only the source ID
-and declared searchable/filterable/sortable fields from the internal docs
-table (`packages/fts5/src/search/hydrate.ts:20`). A separate
-`createSourceTableHydrator` exists (`packages/fts5/src/search/hydrate.ts:63`)
+(`packages/fts5/src/search/execute.ts`), which selects the source ID plus
+declared searchable/filterable/sortable fields from the internal docs table
+(`packages/fts5/src/search/hydrate.ts`). `createSourceTableHydrator` exists
 but is not the engine default. Drizzle and Prisma supply ORM hydrators.
+Public search and API pages describe those three behaviors separately.
 
-The guide and API reference now describe those three behaviors separately.
+## Closed in this follow-up
 
-### 7. The operational CLI is not implemented yet
+### 8. D1 `readReplicaEligible` matches Sessions routing
 
-The old phase/status prose implied Phase 13 was complete. The CLI currently:
+`readReplicaEligible` means this execution target may be routed to a replica.
+Plain `d1Adapter` sets it `false` (Cloudflare documents non-session queries as
+primary-only). `d1SessionAdapter` sets it `true`. Post-commit read-your-writes
+remain session-only.
 
-- implements `help`, `version`, and `generate`
-  (`packages/cli/src/cli.ts:20`);
-- always returns an adapter-required error for `check` and `doctor`
-  (`packages/cli/src/cli.ts:49`);
-- requires acknowledgement and then returns an adapter-required error for
-  `backfill`, `rebuild`, `merge`, and `drop`
-  (`packages/cli/src/cli.ts:56`).
+### P12-06 always-merge ranking
 
-The CLI docs and task/status files now call these placeholders. The stale
-`siftlite check --help` example was removed because flags after a subcommand do
-not invoke a subcommand help parser.
+`fallback` appends fuzzy-only survivors behind the exact/prefix group. Exact
+hits keep backend order and scores; fuzzy hits have `score: null`. Totals and
+facets are the disjoint union.
 
-### 8. D1's code model is more conservative than current provider guidance
+### P12-08 / P12-09 / P12-10 benches
 
-`D1_DATABASE_CONSISTENCY` marks plain bindings as replica-eligible and without
-post-commit read-your-writes (`packages/d1/src/limits.ts:23`). Cloudflare's
-current D1 API documentation says read replication requires Sessions and that
-queries without Sessions continue on the primary:
-<https://developers.cloudflare.com/d1/worker-api/d1-database/#withsession>.
+Local 100k and 1m reports plus the D1 skip/harness live in `docs/benchmarks/`.
+D1 typo fallback stays off by default without remote cost evidence.
 
-The public docs now distinguish Cloudflare's current behavior from SiftLite's
-conservative capability promise. A future code change should decide whether
-`readReplicaEligible` describes possible platform routing or actual routing of
-this execution target, then test and name that meaning precisely.
+### Phase 14
 
-## Documentation conflicts resolved
+See `docs/16-V1-RC.md`. P14-10 npm publish remains owner-gated.
+
+## Remaining
+
+- P14-10 owner-gated RC publish.
+- Phase 15 Turso-native graduation (upstream experimental).
+- Architecture-pack `FuzzyCandidatePolicy` still mentions function-valued
+  `minGramOverlap` and `maxCandidateTextBytes`; shipped policy is numeric
+  overlap only (`packages/core/src/fuzzy/policy.ts`).
+
+## Documentation conflicts resolved (0.1.0 pass, still true)
 
 - Corrected standalone examples to call `.search(...)` on a defined index
   handle instead of an undefined `products` object.
@@ -161,34 +148,29 @@ this execution target, then test and name that meaning precisely.
 - Corrected companion migration finalization: generated SQL seeds `pending`;
   one matching `createIndex` call verifies/finalizes an intact generation.
 - Corrected `SqlAdapter` documentation: `batch` and `transaction` are optional
-  (`packages/core/src/sql/adapter.ts:7`).
-- Corrected highlighting errors, hydration behavior, CLI status, fuzzy bounds,
-  and the stale Bun example statement that typo fallback was not implemented.
-- Verified all ten documented public packages return `0.1.0` from npm.
+  (`packages/core/src/sql/adapter.ts`).
 - Rechecked D1
   [SQL limits](https://developers.cloudflare.com/d1/platform/limits/),
   [Sessions behavior and batch atomicity](https://developers.cloudflare.com/d1/worker-api/d1-database/),
   and [FTS5 export limitations](https://developers.cloudflare.com/d1/best-practices/import-export-data/)
-  against current Cloudflare primary documentation. FTS5 secure-delete wording
+  against Cloudflare primary documentation. FTS5 secure-delete wording
   was checked against the
   [SQLite reference](https://www.sqlite.org/fts5.html#the_secure_delete_configuration_option).
 
 ## Verification
 
-Completed on 2026-08-19:
+### 0.1.0 publish (2026-08-19, historical)
 
-- Nimbus docs preflight and final checks passed with zero errors, warnings, or
-  notes. Astro type checking passed with zero errors, warnings, or hints.
-- The Astro site built 34 pages; Pagefind indexed 32 content pages. Generated
-  `llms.txt`, `llms-full.txt`, `robots.txt`, `og.png`, and Pagefind assets were
-  present in the build output.
-- Repository formatting, type checking, package builds, and export checks
-  passed. Biome completed with 20 warnings and 44 informational diagnostics in
-  existing production code, but no error exit.
-- The main test suite passed 261 tests in 57 files. The D1 worker suite passed
-  7 tests in 2 files when rerun outside the filesystem sandbox; the first
-  combined run could not open its local loopback listener (`EPERM`).
-- The Bun, libSQL, and Drizzle examples executed successfully.
+- Nimbus docs preflight and final checks passed. The Astro site built 34
+  pages; Pagefind indexed 32 content pages.
+- Main test suite passed 261 tests in 57 files. D1 worker suite passed 7
+  tests in 2 files. All ten packages returned `0.1.0` from npm at that time.
 
-The Astro build also reports an upstream Vite deprecation warning for
-`optimizeDeps.esbuildOptions`; it does not fail the build.
+### 0.2.0 (2026-08-19 branch `cursor/grok-4-6-subagents-workflows-e3a2`)
+
+Recorded in `IMPLEMENTATION_STATUS.md`: `bun run typecheck` and
+`bun run build` passed; `bun run check-exports` passed for all ten packages;
+`bun test` passed 288 tests; `bun run test:d1` passed 7 Workers tests.
+
+The public Worker site lagged this follow-up until the `www/` rebuild/deploy
+after the 0.2.0 content and version-banner edits.

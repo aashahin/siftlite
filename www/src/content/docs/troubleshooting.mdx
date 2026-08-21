@@ -73,8 +73,12 @@ Sessions.
 **Cause:** `formatted` strings assigned to `innerHTML`.
 **Fix:** <Render file="highlight-xss" />
 
-## CLI `check` / `doctor` / `drop` fails immediately
+## CLI `check` / `doctor` / lifecycle command fails immediately
 
-**Cause:** The CLI does not invent a database connection. Destructive
-commands also require `--acknowledge`.
-**Fix:** Call the engine methods from the host application.
+**Cause:** Operational commands load `siftlite.config.mjs` (or `--config`)
+and call `createAdapter()`. A missing file, missing export, or adapter
+that is not a `SqlAdapter` fails closed. Destructive commands also require
+`--acknowledge` unless `--dry-run`.
+**Fix:** Run `siftlite init`, implement `createAdapter()` with
+`@siftlite/node` or `@siftlite/bun`, export `indexes`, and pass `--name`
+when more than one index is configured. See [CLI](/guides/cli).

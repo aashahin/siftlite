@@ -11,8 +11,10 @@ Project name: **SiftLite** (`siftlite`)
 > The documents in this directory record intended contracts and implementation
 > history. They are not an API reference. The TypeScript source and tests are
 > authoritative for shipped `0.2.0` behavior. Use the
-> [public documentation](../www/) for product guidance and the
-> [code/docs audit](15-CODE-DOCS-AUDIT.md) for known implementation gaps.
+> [public documentation](../www/) for product guidance and
+> [implementation status](../IMPLEMENTATION_STATUS.md) for remaining work.
+> The [code/docs audit](15-CODE-DOCS-AUDIT.md) is the 0.1.0 publish review;
+> must-fix items 1–5 and the Phase 13 CLI closed in `0.2.0`.
 
 > **SiftLite — typed application search for SQLite-family databases.**
 
@@ -88,11 +90,13 @@ v1.2 closes the final architecture gaps identified before implementation:
 14. `13-RESEARCH-SOURCES.md` — primary upstream references and version-sensitive facts.
 15. `14-IMPLEMENTATION-TASKS.md` — executable task backlog with IDs and phase gates.
 16. `15-CODE-DOCS-AUDIT.md` — shipped behavior versus intended contracts.
-17. `AGENT-START-PROMPT.md` — historical handoff prompt for the implementing agent.
+17. `16-V1-RC.md` — Phase 14 RC evidence pack (publish still owner-gated).
+18. `AGENT-START-PROMPT.md` — historical handoff prompt for the implementing agent.
 
 ## Current recommendation
 
 Use [implementation status](../IMPLEMENTATION_STATUS.md) for phase status and
-the [code/docs audit](15-CODE-DOCS-AUDIT.md) for unresolved contract gaps. Do
-not infer shipped behavior from a checked task or accepted ADR without
-verifying the source and tests.
+open work. The [code/docs audit](15-CODE-DOCS-AUDIT.md) records the 0.1.0
+publish review and 0.2.0 closures; it is not a live gap list. Do not infer
+shipped behavior from a checked task or accepted ADR without verifying the
+source and tests.

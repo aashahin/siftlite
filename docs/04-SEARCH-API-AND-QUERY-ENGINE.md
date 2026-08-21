@@ -123,7 +123,9 @@ Turso native uses a Tantivy query parser. Its grammar is not identical to FTS5. 
 
 - higher-ranked hits appear first unless field-only sorting is requested;
 - configured weights influence relevance where effective capabilities support them;
-- exact/prefix normal results outrank fuzzy-fallback groups by default;
+- exact/prefix normal results outrank fuzzy-fallback groups by default
+  (shipped `fallback` mode always-merges: exact/prefix hits first, then
+  fuzzy-only survivors by edit distance);
 - score values are opaque and backend-local;
 - `score` is `null` when relevance is not computed.
 

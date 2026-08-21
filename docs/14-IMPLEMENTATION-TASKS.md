@@ -185,11 +185,11 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 - [x] **P12-03** Complete bounded trigram overlap retrieval.
 - [x] **P12-04** Enforce minimum gram overlap, request scope/filter, configurable candidate cap, and bounded payload reads.
 - [x] **P12-05** Implement/test Damerau-Levenshtein scorer.
-- [ ] **P12-06** Merge fuzzy results behind exact/prefix groups. (Deferred: `fallback` mode remains empty-exact-then-fuzzy.)
+- [x] **P12-06** Merge fuzzy results behind exact/prefix groups.
 - [x] **P12-07** Test <3-code-point exclusion and Unicode edge cases.
-- [ ] **P12-08** Add 100k corpus recall/latency benchmark.
-- [ ] **P12-09** Add local 1m characterization.
-- [ ] **P12-10** Measure D1 remote cost/rows/read/time when credentials allow.
+- [x] **P12-08** Add 100k corpus recall/latency benchmark.
+- [x] **P12-09** Add local 1m characterization.
+- [x] **P12-10** Measure D1 remote cost/rows/read/time when credentials allow. (Harness + skip report when credentials are absent.)
 - [x] **P12-11** Keep D1 fuzzy off by default unless an explicit policy/benchmark decision changes it.
 
 **Gate:** bounded recall improvement with no accidental broad scans or exact-hit displacement.
@@ -213,16 +213,16 @@ This file is the executable backlog for `10-IMPLEMENTATION-ROADMAP.md`. Task IDs
 
 ## Phase 14 — v1.0 RC
 
-- [ ] **P14-01** Freeze/review public API and package exports.
-- [ ] **P14-02** Complete compatibility matrix.
-- [ ] **P14-03** Run full conformance matrix and fuzz suites.
-- [ ] **P14-04** Run security/dependency/license review.
-- [ ] **P14-05** Produce 1m benchmark report and methodology.
-- [ ] **P14-06** Produce D1 remote operational report where available.
-- [ ] **P14-07** Dogfood on a non-trivial application schema including shared-tenant scope or document why per-tenant DB was chosen.
-- [ ] **P14-08** Validate migration upgrade/recovery docs on a copy of a realistic DB.
-- [ ] **P14-09** Review secure-delete wording and provider-backup caveats.
-- [ ] **P14-10** Publish RC and run clean-consumer install examples.
+- [x] **P14-01** Freeze/review public API and package exports.
+- [x] **P14-02** Complete compatibility matrix.
+- [x] **P14-03** Run full conformance matrix and fuzz suites.
+- [x] **P14-04** Run security/dependency/license review.
+- [x] **P14-05** Produce 1m benchmark report and methodology.
+- [x] **P14-06** Produce D1 remote operational report where available.
+- [x] **P14-07** Dogfood on a non-trivial application schema including shared-tenant scope or document why per-tenant DB was chosen.
+- [x] **P14-08** Validate migration upgrade/recovery docs on a copy of a realistic DB.
+- [x] **P14-09** Review secure-delete wording and provider-backup caveats.
+- [ ] **P14-10** Publish RC and run clean-consumer install examples. (Owner-gated; evidence pack is `docs/16-V1-RC.md`.)
 
 **Gate:** all stable claims have evidence; no unresolved P0/P1 architecture gap remains.
 

@@ -26,7 +26,8 @@ the path passed as `--config`. The file is imported dynamically
 Export:
 
 - `createAdapter()` — returns `SqlAdapter | Promise<SqlAdapter>` from
-  `@siftlite/node` (better-sqlite3) or `@siftlite/bun` (`bun:sqlite`)
+  `@siftlite/node` (better-sqlite3), `@siftlite/bun` (`bun:sqlite`), or
+  `@siftlite/libsql`
 - `indexes` — one `defineIndex()` result, an array of definitions, or a
   name-to-definition record
 
@@ -43,5 +44,8 @@ definition.
 
 `backfill`, `rebuild`, `merge`, and `drop` load the same config, require
 `--acknowledge` (or `--dry-run`), and call the mutating command handlers.
-`--dry-run` prints a plan without writing. Flags after a subcommand are not
-subcommand help, so `siftlite check --help` still runs `check`.
+`--dry-run` prints a plan without writing. `backfill` creates or heals a
+pending/missing index via `create()` and refuses a healthy index (use
+`rebuild`). `merge` accepts `--page-budget` (positive safe integer; default
+`8`). Flags after a subcommand are not subcommand help, so
+`siftlite check --help` still runs `check`.

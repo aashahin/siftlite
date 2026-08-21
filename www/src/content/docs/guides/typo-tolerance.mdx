@@ -16,12 +16,15 @@ Default is `{ mode: "off" }`. The only other accepted mode is `"fallback"`.
 
 ## What "fallback" means
 
-1. The exact FTS5 query runs first.
-2. If it returns no hits, SiftLite may retrieve trigram candidates and
-   score them with Damerau-Levenshtein, within a bounded policy.
+1. The exact/prefix FTS5 query runs first.
+2. SiftLite also retrieves bounded trigram candidates and scores them with
+   Damerau-Levenshtein.
+3. Fuzzy survivors that are not already exact matches are appended **behind**
+   the exact/prefix group (1-edit before 2-edit). Exact hits are never
+   displaced.
 
-It is not always-on fuzzy matching and it does not rewrite the user's
-query into FTS5 `OR` fuzz.
+It is not always-on query rewriting into FTS5 `OR` fuzz. Empty-query
+browsing does not enter this path.
 
 ## Requirements that all have to hold
 
@@ -48,13 +51,16 @@ That combination is a deliberate policy decision. `D1_DEFAULT_SEARCH_POLICY`
 rejects fallback-enabled definitions by default.
 
 Bound scope and request `filter` are applied to fuzzy candidate retrieval.
-When fallback produces hits, `page.hasMore`, opt-in `totalHits`, and facets
-describe the fuzzy survivor set. Field sort is not applied to fuzzy hits
-(they are ordered by edit distance). Highlighting is omitted; if you
-requested highlight fields, the response includes warning
+`page.hasMore`, opt-in `totalHits`, and facets describe the merged
+exact-plus-fuzzy set (exact matches and fuzzy-only survivors are disjoint).
+Field sort applies to the exact group only. Fuzzy hits are ordered by edit
+distance and `hit.score` is `null` — the public score is not the edit
+distance. Highlighting is omitted on fuzzy hits; if a returned hit is fuzzy
+and you requested highlight fields, the response includes warning
 `highlight-unavailable-fuzzy`.
 
-D1 still disables fallback by default until remote cost evidence exists.
+D1 still disables fallback by default until D1 remote cost evidence exists.
+Local 100k/1m characterizations live in `docs/benchmarks/`.
 
 ## Bounds
 

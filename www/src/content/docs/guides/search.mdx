@@ -80,12 +80,12 @@ must not include SQL, bound values, or raw user content.
 
 ## Typo fallback
 
-When `typoTolerance.mode === "fallback"` and exact search returns no hits,
-SiftLite may retrieve trigram candidates under the same bound scope and
-request filter. Fuzzy hits contribute to `page.hasMore`, opt-in totals, and
-facets; they are ordered by edit distance (not field sort). Highlighting is
-omitted with warning `highlight-unavailable-fuzzy`. See
-[typo tolerance](/guides/typo-tolerance).
+When `typoTolerance.mode === "fallback"`, SiftLite retrieves trigram
+candidates under the same bound scope and request filter and appends
+fuzzy-only survivors behind the exact/prefix group. Exact hits are never
+displaced. Fuzzy hits are ordered by edit distance (not field sort) and
+`hit.score` is `null`. Highlighting is omitted on fuzzy hits with warning
+`highlight-unavailable-fuzzy`. See [typo tolerance](/guides/typo-tolerance).
 
 ## Raw FTS5
 

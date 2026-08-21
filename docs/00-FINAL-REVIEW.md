@@ -1,8 +1,9 @@
 # Final Review and Go/No-Go Decision
 
-> Historical decision record (2026-08-16). Implementation has since shipped at
-> `0.1.0`. This file preserves intended contracts; it is not evidence that every
-> contract is implemented. See `15-CODE-DOCS-AUDIT.md`.
+> Historical decision record (2026-08-16). Implementation later shipped
+> `0.1.0`, then `0.2.0`. This file preserves intended contracts; it is not
+> evidence that every contract is implemented. See `IMPLEMENTATION_STATUS.md`
+> for remaining work and `15-CODE-DOCS-AUDIT.md` for the 0.1.0 publish review.
 
 ## Decision
 

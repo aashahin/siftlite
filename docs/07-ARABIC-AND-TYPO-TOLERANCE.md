@@ -262,7 +262,10 @@ Compile the grams as a bounded OR-style trigram retrieval expression supported b
 
 Each candidate obtains a gram-overlap count/ratio. Require a configurable minimum overlap before application-side edit distance. The exact SQL strategy may vary by backend, but semantic conformance requires the same candidate-cap and overlap policy.
 
-Suggested policy surface:
+Suggested policy surface (architecture target). Shipped `FuzzyCandidatePolicy`
+in `@siftlite/core` uses numeric fields only: `minGramOverlap` is a number
+(default `1`), and there is no `maxCandidateTextBytes` field. Candidate
+payload bounding is the candidate cap plus batched `IN` reads.
 
 ```ts
 interface FuzzyCandidatePolicy {
@@ -278,7 +281,7 @@ interface FuzzyCandidatePolicy {
 
 ### 4. Rerank
 
-Fetch only the bounded data required for scoring. Apply Damerau-Levenshtein to eligible token/text forms, reject candidates over the configured distance, then merge them **after** exact/prefix results unless the ranking ADR is explicitly changed.
+Fetch only the bounded data required for scoring. Apply Damerau-Levenshtein to eligible token/text forms, reject candidates over the configured distance, then merge them **after** exact/prefix results. Shipped `fallback` mode always-merges: exact/prefix hits keep their backend order; fuzzy-only survivors append by edit distance and never displace an exact match.
 
 ### 5. Short queries
 

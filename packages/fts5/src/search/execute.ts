@@ -23,6 +23,7 @@ import {
   type ApplicationLimits,
   type CompiledSearch,
   type DocumentHydrator,
+  type FacetDistribution,
   type EffectiveCapabilities,
   type IndexDefinition,
   type SearchHit,
@@ -220,19 +221,35 @@ async function runFts5Search(
     };
   });
 
-  if (
-    hits.length === 0 &&
+  const fuzzyEligible =
     prepared.mode === "parsed" &&
     ctx.definition.typoTolerance.mode === "fallback" &&
-    capabilities.features.typoFallback
-  ) {
-    const fuzzy = await searchFuzzyFallback(ctx, prepared.textQuery, page, request);
-    hits = fuzzy.hits;
-    fuzzySurvivorIds = fuzzy.survivorIds;
-    fuzzyUsed = fuzzy.survivorIds.length > 0;
+    capabilities.features.typoFallback &&
+    !emptyQuery;
+  let exactCount: number | undefined;
+  if (fuzzyEligible) {
+    const scored = await scoreFuzzyCandidates(ctx, prepared.textQuery, request);
+    const exactAmongFuzzy = await sourceIdsMatchingCompiled(
+      ctx,
+      compiled,
+      scored.map((row) => row.id),
+    );
+    const fuzzySurvivors = scored.filter((row) => !exactAmongFuzzy.has(row.id));
+    fuzzySurvivorIds = fuzzySurvivors.map((row) => row.id);
+    fuzzyUsed = fuzzySurvivors.length > 0;
     if (fuzzyUsed) {
-      hasMore = fuzzy.hasMore;
-      if (highlightRequested) {
+      throwIfAborted(request.signal);
+      exactCount = await countCompiled(ctx, compiled);
+      const merged = mergeExactAndFuzzyPage({
+        exactHits: hits,
+        exactCount,
+        page,
+        fuzzySurvivors,
+      });
+      const fuzzyHits = await materializeFuzzyHits(ctx, request, merged.fuzzySlice);
+      hits = [...merged.exactHits, ...fuzzyHits];
+      hasMore = merged.hasMore;
+      if (merged.fuzzySlice.length > 0 && highlightRequested) {
         warnings.push({
           code: "highlight-unavailable-fuzzy",
           message: "highlight is not available for fuzzy fallback hits",
@@ -245,15 +262,9 @@ async function runFts5Search(
   if (request.includeTotal === true) {
     throwIfAborted(request.signal);
     if (fuzzyUsed) {
-      totalHits = fuzzySurvivorIds.length;
+      totalHits = (exactCount ?? 0) + fuzzySurvivorIds.length;
     } else {
-      const countRows = await ctx.adapter.query<{ total: number }>(
-        sql(
-          `SELECT COUNT(*) AS total ${compiled.fromSql} WHERE ${compiled.whereSql}`,
-          compiled.whereParams,
-        ),
-      );
-      totalHits = Number(countRows[0]?.total ?? 0);
+      totalHits = await countCompiled(ctx, compiled);
     }
   }
 
@@ -261,21 +272,16 @@ async function runFts5Search(
   if (facetFields.length > 0) {
     throwIfAborted(request.signal);
   }
-  const facetCompiled =
-    fuzzyUsed && facetFields.length > 0
-      ? compiledSearchForSourceIds(
-          physicalNames(ctx.definition, ctx.physicalIndexId, ctx.generation).docs,
-          fuzzySurvivorIds,
-        )
-      : compiled;
   const facetResult =
     facetFields.length > 0
-      ? await executeFacets({
-          adapter: ctx.adapter,
-          definition: ctx.definition,
-          compiled: facetCompiled,
+      ? await resolveMergedFacets({
+          ctx,
+          compiled,
           fields: facetFields,
           limits,
+          fuzzyUsed,
+          exactCount: exactCount ?? 0,
+          fuzzySurvivorIds,
         })
       : undefined;
 
@@ -347,19 +353,16 @@ async function resolveSearchCapabilities(ctx: Fts5SearchContext): Promise<Effect
   });
 }
 
-interface FuzzyFallbackResult {
-  readonly hits: SearchHit<Record<string, unknown>>[];
-  readonly hasMore: boolean;
-  readonly survivorIds: readonly SourceId[];
+interface FuzzySurvivor {
+  readonly id: SourceId;
+  readonly distance: number;
 }
 
-async function searchFuzzyFallback(
+async function scoreFuzzyCandidates(
   ctx: Fts5SearchContext,
   textQuery: TextQuery,
-  page: { readonly limit: number; readonly offset: number },
   request: SearchRequest,
-): Promise<FuzzyFallbackResult> {
-  const empty: FuzzyFallbackResult = { hits: [], hasMore: false, survivorIds: [] };
+): Promise<FuzzySurvivor[]> {
   const policy = DEFAULT_FUZZY_POLICY;
   const limits = ctx.limits ?? DEFAULT_APPLICATION_LIMITS;
   const candidateLimit = Math.min(policy.maxCandidates, limits.maxFuzzyCandidates);
@@ -372,7 +375,7 @@ async function searchFuzzyFallback(
     policy.maxTrigramsPerToken * Math.max(terms.length, 1),
   );
   if (grams.length === 0) {
-    return empty;
+    return [];
   }
   const queryGramSet = new Set(grams);
   const names = physicalNames(ctx.definition, ctx.physicalIndexId, ctx.generation);
@@ -393,7 +396,7 @@ LIMIT ?`,
   );
   const candidateIds = rows.map((row) => restoreSourceId(ctx.definition, row.source_id));
   const storedById = await loadSearchableSources(ctx, names.docs, candidateIds);
-  const scored: Array<{ id: SourceId; distance: number }> = [];
+  const scored: FuzzySurvivor[] = [];
   for (const id of candidateIds) {
     const stored = storedById.get(id);
     const haystack = ctx.definition.searchableOrder
@@ -419,16 +422,53 @@ LIMIT ?`,
     }
   }
   scored.sort((left, right) => left.distance - right.distance);
-  const survivorIds = scored.map((hit) => hit.id);
-  const pageHits = scored.slice(page.offset, page.offset + page.limit);
-  const hasMore = scored.length > page.offset + page.limit;
-  if (request.hydrate !== true) {
+  return scored;
+}
+
+function mergeExactAndFuzzyPage(args: {
+  readonly exactHits: SearchHit<Record<string, unknown>>[];
+  readonly exactCount: number;
+  readonly page: { readonly limit: number; readonly offset: number };
+  readonly fuzzySurvivors: readonly FuzzySurvivor[];
+}): {
+  readonly exactHits: SearchHit<Record<string, unknown>>[];
+  readonly fuzzySlice: readonly FuzzySurvivor[];
+  readonly hasMore: boolean;
+} {
+  const total = args.exactCount + args.fuzzySurvivors.length;
+  const end = args.page.offset + args.page.limit;
+  const hasMore = total > end;
+  if (args.page.offset >= args.exactCount) {
+    const fuzzyOffset = args.page.offset - args.exactCount;
     return {
-      hits: pageHits.map((hit) => ({ id: hit.id, score: null })),
+      exactHits: [],
+      fuzzySlice: args.fuzzySurvivors.slice(fuzzyOffset, fuzzyOffset + args.page.limit),
       hasMore,
-      survivorIds,
     };
   }
+  const exactRemaining = args.exactCount - args.page.offset;
+  const exactTake = Math.min(args.page.limit, exactRemaining, args.exactHits.length);
+  const exactHits = args.exactHits.slice(0, exactTake);
+  const remaining = args.page.limit - exactHits.length;
+  return {
+    exactHits,
+    fuzzySlice: remaining > 0 ? args.fuzzySurvivors.slice(0, remaining) : [],
+    hasMore,
+  };
+}
+
+async function materializeFuzzyHits(
+  ctx: Fts5SearchContext,
+  request: SearchRequest,
+  slice: readonly FuzzySurvivor[],
+): Promise<SearchHit<Record<string, unknown>>[]> {
+  if (slice.length === 0) {
+    return [];
+  }
+  if (request.hydrate !== true) {
+    return slice.map((hit) => ({ id: hit.id, score: null }));
+  }
+  const limits = ctx.limits ?? DEFAULT_APPLICATION_LIMITS;
   const hydrator =
     ctx.hydrator ??
     createProjectionHydrator({
@@ -439,20 +479,135 @@ LIMIT ?`,
       limits,
       runtimeLimits: ctx.adapter.runtimeCapabilities.limits,
     });
-  const documents = await hydrator.hydrate(pageHits.map((hit) => hit.id));
-  const hydrated = attachHydratedDocuments(
-    pageHits.map((hit) => hit.id),
-    documents,
+  const ids = slice.map((hit) => hit.id);
+  const documents = await hydrator.hydrate(ids);
+  const hydrated = attachHydratedDocuments(ids, documents);
+  return slice.map((hit, index) => ({
+    id: hit.id,
+    score: null,
+    ...(hydrated[index] !== undefined ? { document: hydrated[index] } : {}),
+  }));
+}
+
+async function countCompiled(ctx: Fts5SearchContext, compiled: CompiledSearch): Promise<number> {
+  const countRows = await ctx.adapter.query<{ total: number }>(
+    sql(
+      `SELECT COUNT(*) AS total ${compiled.fromSql} WHERE ${compiled.whereSql}`,
+      compiled.whereParams,
+    ),
   );
-  return {
-    hits: pageHits.map((hit, index) => ({
-      id: hit.id,
-      score: null,
-      ...(hydrated[index] !== undefined ? { document: hydrated[index] } : {}),
-    })),
-    hasMore,
-    survivorIds,
-  };
+  return Number(countRows[0]?.total ?? 0);
+}
+
+async function sourceIdsMatchingCompiled(
+  ctx: Fts5SearchContext,
+  compiled: CompiledSearch,
+  ids: readonly SourceId[],
+): Promise<Set<SourceId>> {
+  const matched = new Set<SourceId>();
+  if (compiled.emptyQuery || ids.length === 0) {
+    return matched;
+  }
+  const budget = createStatementBudget(
+    ctx.adapter.runtimeCapabilities.limits,
+    ctx.limits ?? DEFAULT_APPLICATION_LIMITS,
+  );
+  for (const chunk of chunkIdsForHydration(ids, budget)) {
+    const placeholders = chunk.map(() => "?").join(", ");
+    const rows = await ctx.adapter.query<{ source_id: unknown }>(
+      sql(
+        `SELECT d.${quoteIdent("source_id")} AS source_id ${compiled.fromSql}
+WHERE ${compiled.whereSql} AND d.${quoteIdent("source_id")} IN (${placeholders})`,
+        [...compiled.whereParams, ...chunk],
+      ),
+    );
+    for (const row of rows) {
+      matched.add(restoreSourceId(ctx.definition, row.source_id));
+    }
+  }
+  return matched;
+}
+
+async function resolveMergedFacets(args: {
+  readonly ctx: Fts5SearchContext;
+  readonly compiled: CompiledSearch;
+  readonly fields: readonly string[];
+  readonly limits: ApplicationLimits;
+  readonly fuzzyUsed: boolean;
+  readonly exactCount: number;
+  readonly fuzzySurvivorIds: readonly SourceId[];
+}): Promise<Awaited<ReturnType<typeof executeFacets>> | undefined> {
+  if (args.fields.length === 0) {
+    return undefined;
+  }
+  const docs = physicalNames(
+    args.ctx.definition,
+    args.ctx.physicalIndexId,
+    args.ctx.generation,
+  ).docs;
+  if (!args.fuzzyUsed) {
+    return executeFacets({
+      adapter: args.ctx.adapter,
+      definition: args.ctx.definition,
+      compiled: args.compiled,
+      fields: args.fields,
+      limits: args.limits,
+    });
+  }
+  const fuzzyFacets = await executeFacets({
+    adapter: args.ctx.adapter,
+    definition: args.ctx.definition,
+    compiled: compiledSearchForSourceIds(docs, args.fuzzySurvivorIds),
+    fields: args.fields,
+    limits: args.limits,
+  });
+  if (args.exactCount === 0) {
+    return fuzzyFacets;
+  }
+  const exactFacets = await executeFacets({
+    adapter: args.ctx.adapter,
+    definition: args.ctx.definition,
+    compiled: args.compiled,
+    fields: args.fields,
+    limits: args.limits,
+  });
+  return mergeFacetResults(exactFacets, fuzzyFacets);
+}
+
+function mergeFacetResults(
+  exact: Awaited<ReturnType<typeof executeFacets>>,
+  fuzzy: Awaited<ReturnType<typeof executeFacets>>,
+): Awaited<ReturnType<typeof executeFacets>> {
+  const facets: Record<string, FacetDistribution> = { ...exact.facets };
+  for (const [field, buckets] of Object.entries(fuzzy.facets)) {
+    const merged = new Map<string, FacetDistribution[number]>();
+    for (const bucket of facets[field] ?? []) {
+      merged.set(String(bucket.value), { value: bucket.value, count: bucket.count });
+    }
+    for (const bucket of buckets) {
+      const key = String(bucket.value);
+      const existing = merged.get(key);
+      if (existing) {
+        merged.set(key, { value: existing.value, count: existing.count + bucket.count });
+      } else {
+        merged.set(key, { value: bucket.value, count: bucket.count });
+      }
+    }
+    facets[field] = [...merged.values()].sort((left, right) => {
+      if (right.count !== left.count) {
+        return right.count - left.count;
+      }
+      return String(left.value).localeCompare(String(right.value));
+    });
+  }
+  const facetStats = { ...exact.facetStats };
+  for (const [field, stats] of Object.entries(fuzzy.facetStats)) {
+    const current = facetStats[field];
+    facetStats[field] = current
+      ? { min: Math.min(current.min, stats.min), max: Math.max(current.max, stats.max) }
+      : stats;
+  }
+  return { facets, facetStats };
 }
 
 function sharedTrigramCount(haystack: string, queryGrams: ReadonlySet<string>): number {

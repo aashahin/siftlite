@@ -23,7 +23,8 @@ describe("@siftlite/d1", () => {
     const runtime = d1RuntimeCapabilities("database");
     expect(runtime.costSensitive).toBe(true);
     expect(runtime.consistency.sessionAware).toBe(false);
-    expect(runtime.consistency.readReplicaEligible).toBe(true);
+    expect(runtime.consistency.readReplicaEligible).toBe(false);
+    expect(d1RuntimeCapabilities("session").consistency.readReplicaEligible).toBe(true);
     expect(d1RuntimeCapabilities("session").consistency.sequentialSessionConsistency).toBe(true);
     expect(D1_DEFAULT_SEARCH_POLICY.typoFallback).toBe("disabled-on-cost-sensitive-runtimes");
   });

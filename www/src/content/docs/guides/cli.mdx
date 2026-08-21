@@ -21,8 +21,8 @@ binary.
 
 ## Config
 
-Operational commands load `siftlite.config.mjs` (or `--config <path>`). The
-module must export:
+Operational commands load `siftlite.config.mjs` or `siftlite.config.js`
+(or `--config <path>`). The module must export:
 
 - `createAdapter()` — returns a `SqlAdapter` (import `@siftlite/node`,
   `@siftlite/bun`, or `@siftlite/libsql` from host code)
@@ -41,8 +41,10 @@ Use `--name <index>` when more than one index is configured.
 | `backfill`, `rebuild`, `merge`, `drop` | Mutating lifecycle ops; require `--acknowledge` |
 
 Global flags: `--config`, `--name`, `--json`, `--dry-run`, `--acknowledge`,
-`--force`. There is no subcommand-help parser: `siftlite check --help` runs
-`check` (and fails if no config is present).
+`--force`. `generate` also accepts `--table` and `--search`. `merge` accepts
+`--page-budget` (positive safe integer; default `8`). There is no
+subcommand-help parser: `siftlite check --help` runs `check` (and fails if
+no config is present).
 
 ## `generate`
 
@@ -65,4 +67,7 @@ exit non-zero when error findings are present. `--json` prints the structured
 
 `drop`, `rebuild`, `backfill`, and `merge` require `--acknowledge` (unless
 `--dry-run`, which prints the plan without executing). `drop` removes search
-objects only and never drops the source table.
+objects only and never drops the source table. `backfill` creates a missing
+index or heals a `pending` row via `create()`; it errors if the index is
+already healthy (use `rebuild`). `merge` calls `mergeFtsIndex` with
+`--page-budget` (default `8`).

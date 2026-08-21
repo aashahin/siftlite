@@ -22,8 +22,9 @@ const engine = createFts5Engine({
 
 A plain `D1Database` binding is **not** session-aware. Cloudflare currently
 documents non-session queries as primary-only and requires Sessions for read
-replication. SiftLite still models the plain binding conservatively: it does
-not promise post-commit read-your-writes or cross-request continuity.
+replication. SiftLite models that directly: `readReplicaEligible` is `false`
+on `d1Adapter` and `true` on `d1SessionAdapter`. A plain binding does not
+promise post-commit read-your-writes or cross-request continuity.
 
 Use `d1SessionAdapter(db, bookmark)` to wrap D1 `withSession()`:
 
@@ -76,7 +77,8 @@ including FTS5
 
 Workaround:
 
-1. Drop derived FTS virtual tables (`__sift_*_fts`).
+1. Drop derived FTS virtual tables (`__sift_*_fts`, and `__sift_*_tri` if
+   typo fallback is enabled).
 2. Export the authoritative database (source tables and/or manual document tables).
 3. Recreate/rebuild search structures after import.
 

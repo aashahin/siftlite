@@ -20,12 +20,18 @@ export const D1_SQL_LIMITS: RuntimeSqlLimits = {
   maxQueryDurationMs: 30_000,
 };
 
+/**
+ * `readReplicaEligible` means this execution target may be routed to a
+ * replica. Cloudflare documents non-session queries as primary-only and
+ * requires Sessions for read replication, so a plain binding is not replica
+ * eligible.
+ */
 export const D1_DATABASE_CONSISTENCY: ReadConsistencyCapabilities = {
   transactionReadYourWrites: false,
   postCommitReadYourWrites: false,
   sessionAware: false,
   sequentialSessionConsistency: false,
-  readReplicaEligible: true,
+  readReplicaEligible: false,
 };
 
 export const D1_SESSION_CONSISTENCY: ReadConsistencyCapabilities = {

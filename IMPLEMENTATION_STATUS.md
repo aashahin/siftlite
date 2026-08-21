@@ -5,17 +5,16 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-The ten public packages are published as `@siftlite/*@0.2.0`. Phases 0–11 are
-implemented. Phase 12 request-equivalent fuzzy semantics (P12-03/P12-04),
-companion trigram SQL/integrity, facet typing, and Phase 13 operational CLI
-shipped in `0.2.0`. Remote cost characterization (P12-08–10),
-P12-06 always-merge ranking, and Phase 14 RC work remain open. This is not a
-production-ready 1.0.
+The ten public packages are published as `@siftlite/*@0.2.0`. Phases 0–13 are
+implemented, including P12-06 always-merge ranking and local 100k/1m
+characterization. Phase 14 evidence is in `docs/16-V1-RC.md`; npm RC publish
+(P14-10) is owner-gated. D1 typo fallback stays off by default until remote
+cost evidence exists. This is not a production-ready 1.0.
 
 ## Status
 
-PASS for the Phase 12/13 completion work. npm `0.2.0` is the current
-published baseline. Treat `0.1.0` as the previous release.
+PASS for Phase 12/13/14 evidence work on this branch. npm `0.2.0` is the
+current published baseline.
 
 ## Completed tasks
 
@@ -31,16 +30,14 @@ published baseline. Treat `0.1.0` as the previous release.
 - P9-01 through P9-08
 - P10-01 through P10-07
 - P11-01 through P11-06
-- P12-01 through P12-05, P12-07, P12-11 (P12-03/P12-04 closed on this branch)
+- P12-01 through P12-11 (P12-10 is the credentialed D1 harness + skip report)
 - P13-01 through P13-12
+- P14-01 through P14-09
 
 ## Remaining
 
-- Phase 12 remote 100k/1m/D1 cost characterization (P12-08–10)
-- P12-06 merge fuzzy behind exact/prefix groups (mode remains empty-exact
-  fallback; deferred by design)
-- Phase 14 — v1.0 RC hardening
-- Conditional Phase 15
+- P14-10 — publish RC (owner-gated)
+- Conditional Phase 15 — Turso-native graduation
 
 ## Tests executed
 
@@ -56,11 +53,13 @@ not be treated as current evidence.
 - Companion SQL is a deterministic subsequent migration fragment. Previously
   applied Prisma migrations are never rewritten.
 - Supported client family is Prisma 6. No FTS model is required.
-- Fuzzy fallback applies bound scope and request filters to candidate SQL,
-  enforces `minGramOverlap` and `min(policy.maxCandidates, limits.maxFuzzyCandidates)`,
-  batch-loads candidate text, and recomputes `hasMore`/`totalHits`/facets from
-  fuzzy survivors. Highlighting is omitted with `highlight-unavailable-fuzzy`.
+- Fuzzy fallback always-merges behind exact/prefix hits, applies bound scope
+  and request filters to candidate SQL, enforces `minGramOverlap` and
+  `min(policy.maxCandidates, limits.maxFuzzyCandidates)`, batch-loads
+  candidate text, and computes `hasMore`/`totalHits`/facets from the merged
+  set. Highlighting is omitted on fuzzy hits with `highlight-unavailable-fuzzy`.
 - CLI loads a host `siftlite.config.mjs` exporting `createAdapter` + `indexes`.
+- Plain D1 `readReplicaEligible` is `false`; Sessions adapters set it `true`.
 
 ## Known upstream limitations
 
@@ -70,12 +69,12 @@ not be treated as current evidence.
 
 ## Blockers
 
-- D1 fuzzy remains off by default until P12-08–10 cost evidence exists.
-- Phase 14 RC and further npm publishes stay owner-gated.
+- D1 fuzzy remains off by default until remote P12-10 cost evidence exists.
+- Phase 14 RC npm publish stays owner-gated.
 
 ## Latest verification result
 
-On 2026-08-19 (branch `cursor/grok-4-6-subagents-workflows-e3a2`):
-`bun run typecheck` and `bun run build` passed; `bun run check-exports` passed
-for all ten packages; `bun test` passed 288 tests; `bun run test:d1` passed
-7 Workers tests. Format check passed after biome format on new fuzzy tests.
+On 2026-08-21: `bun run verify` passed. `bun test` passed 292 tests in 60
+files; `bun run test:d1` passed 7 Workers tests; `bun run check-exports`
+passed for all ten packages. `bun audit` reported no vulnerabilities
+(283 packages). Local 100k/1m reports are in `docs/benchmarks/`.

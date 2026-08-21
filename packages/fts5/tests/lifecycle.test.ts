@@ -603,6 +603,34 @@ describe("lifecycle", () => {
     expect(await readRegistry(adapter, "products")).toBeNull();
   });
 
+  test("companion SQL pending generation is finalized by createIndex", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, description TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO products (id, name, description, status) VALUES (?, ?, ?, ?)", [
+        "p1",
+        "sqlite",
+        "search",
+        "active",
+      ]),
+    );
+    const definition = linkedDefinition();
+    const physicalIndexId = physicalIndexIdFor(definition.name);
+    for (const statement of compileIndexLifecycleSql(definition, physicalIndexId, 1)) {
+      await adapter.execute(sql(statement));
+    }
+    const pending = await readRegistry(adapter, definition.name);
+    expect(pending?.health).toBe("pending");
+    await createIndex({ adapter, definition });
+    const healthy = await readRegistry(adapter, definition.name);
+    expect(healthy?.health).toBe("healthy");
+    expect(healthy?.physicalIndexId).toBe(physicalIndexId);
+    const check = await checkIndex(adapter, definition);
+    expect(check.ok).toBe(true);
+  });
+
   test("companion SQL emits trigram DDL only for fallback typo tolerance", () => {
     const fallback = defineIndex({
       name: "notes",

@@ -26,8 +26,9 @@ budget before D1 receives an invalid statement.
 
 A plain `D1Database` binding is **not** session-aware. Cloudflare currently
 documents non-session queries as primary-only and requires Sessions to use read
-replication. SiftLite still models a plain binding conservatively: it does not
-promise post-commit read-your-writes or cross-request session continuity.
+replication. `readReplicaEligible` is `false` on `d1Adapter` and `true` on
+`d1SessionAdapter`. A plain binding does not promise post-commit
+read-your-writes or cross-request session continuity.
 
 Use `d1SessionAdapter(db, bookmark)` to wrap
 [`withSession()`](https://developers.cloudflare.com/d1/worker-api/d1-database/#withsession):
@@ -58,7 +59,8 @@ including FTS5
 
 Supported workaround:
 
-1. Drop derived FTS virtual tables (`__sift_*_fts`).
+1. Drop derived FTS virtual tables (`__sift_*_fts`, and `__sift_*_tri` if
+   typo fallback is enabled).
 2. Export the authoritative database (source tables and/or manual document tables).
 3. Recreate/rebuild search structures after import.
 

@@ -34,4 +34,8 @@ field throws `SEARCH_QUERY_INVALID` with
 throws `SEARCH_QUERY_INVALID`; a marker over the length cap throws
 `SEARCH_QUERY_LIMIT_EXCEEDED`.
 
+Fuzzy fallback hits never receive `formatted` snippets. If you requested
+highlight fields and fallback ran, the response includes warning
+`highlight-unavailable-fuzzy`. See [typo tolerance](/guides/typo-tolerance).
+
 <Render file="highlight-xss" />

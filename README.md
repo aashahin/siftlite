@@ -34,9 +34,11 @@ markdown `**` markers.
 the [v1.2 implementation pack](docs/README.md), not a production-ready 1.0.
 Typo fallback is experimental. A definition that requests it fails with
 `SEARCH_CAPABILITY_UNSUPPORTED` when runtime probes or policy disable it;
-D1's default policy does disable it. See the
-[code/docs audit](docs/15-CODE-DOCS-AUDIT.md) for unresolved implementation
-gaps.
+D1's default policy does disable it. Remaining work (owner-gated RC
+publish, Turso-native graduation) is listed in
+[implementation status](IMPLEMENTATION_STATUS.md). The
+[code/docs audit](docs/15-CODE-DOCS-AUDIT.md) is the 0.1.0 publish review;
+its must-fix items 1–5 and the Phase 13 CLI closed in `0.2.0`.
 
 ## Install
 
@@ -62,7 +64,7 @@ command, use `npx --package=@siftlite/cli siftlite help`.
 | `@siftlite/drizzle` | Optional Drizzle companion |
 | `@siftlite/prisma` | Optional Prisma companion |
 | `@siftlite/node` | `better-sqlite3` Node adapter |
-| `@siftlite/cli` | Noninteractive CLI: generate, check/doctor, and lifecycle ops via host config |
+| `@siftlite/cli` | Noninteractive CLI: init, generate, check/doctor, and lifecycle ops via host config |
 
 Experimental Turso-native FTS lives under `experimental/` and is not a
 stable backend.

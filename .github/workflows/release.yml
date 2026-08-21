@@ -62,8 +62,9 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
-          registry-url: "https://registry.npmjs.org"
+          # npm trusted publishing needs Node >=22.14 and npm >=11.5.1.
+          node-version: "24"
+          package-manager-cache: false
 
       - name: Install
         run: bun install --frozen-lockfile
@@ -74,11 +75,10 @@ jobs:
       - name: Publish
         uses: changesets/action@v1
         with:
-          # Provenance is produced by npm trusted publishing (OIDC) / NPM_CONFIG_PROVENANCE.
-          # `--provenance` is an npm flag, not a changeset publish flag.
+          # Provenance is produced by npm trusted publishing (OIDC).
+          # Do not inject an empty NODE_AUTH_TOKEN; that writes a blank
+          # //registry.npmjs.org/:_authToken and disables OIDC.
           publish: bunx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
           NPM_CONFIG_PROVENANCE: "true"

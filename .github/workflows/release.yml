@@ -74,7 +74,9 @@ jobs:
       - name: Publish
         uses: changesets/action@v1
         with:
-          publish: bunx changeset publish --provenance
+          # Provenance is produced by npm trusted publishing (OIDC) / NPM_CONFIG_PROVENANCE.
+          # `--provenance` is an npm flag, not a changeset publish flag.
+          publish: bunx changeset publish
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,18 +1,24 @@
 import { SearchError } from "../errors/search-error.js";
 import type { IndexMode } from "../definition/types.js";
 import { arabicBasic } from "./arabic-basic.js";
+import { arabicTehMarbuta } from "./arabic-teh-marbuta.js";
 import { numericArabic } from "./numeric-arabic.js";
 import type { PortableNormalizer, PortableNormalizerId } from "./types.js";
 
-export const LINKED_NORMALIZER_IDS = ["arabic-basic", "numeric-arabic"] as const;
+export const LINKED_NORMALIZER_IDS = [
+  "arabic-basic",
+  "numeric-arabic",
+  "arabic-teh-marbuta",
+] as const;
 
 const REGISTRY: Readonly<Record<PortableNormalizerId, PortableNormalizer>> = {
   "arabic-basic": arabicBasic,
   "numeric-arabic": numericArabic,
+  "arabic-teh-marbuta": arabicTehMarbuta,
 };
 
 export function isPortableNormalizerId(value: string): value is PortableNormalizerId {
-  return value === "arabic-basic" || value === "numeric-arabic";
+  return value === "arabic-basic" || value === "numeric-arabic" || value === "arabic-teh-marbuta";
 }
 
 export function getPortableNormalizer(id: string): PortableNormalizer {

@@ -1,5 +1,6 @@
 import {
   assertBoundScope,
+  hashPhysicalManifest,
   bindScope,
   SearchError,
   validateApplicationLimits,
@@ -30,6 +31,7 @@ import {
   upsertManualDocuments,
   type ManualProofDocument,
 } from "./manual-proof.js";
+import { compileFts5PhysicalManifest } from "./manifest.js";
 import { physicalNames, type PhysicalNames } from "./names.js";
 import { searchFts5Index, searchFts5IndexRaw } from "./search/execute.js";
 
@@ -167,7 +169,7 @@ async function runIndexSearch(
   ) => Promise<SearchResponse>,
 ): Promise<SearchResponse> {
   const started = Date.now();
-  const physical = await resolvePhysical(state.adapter, state.definition);
+  const physical = await resolvePhysical(state.adapter, state.definition, state.secureDelete);
   const resolved = withHandleScope(request, state.scope);
   const response = await execute(physical, resolved);
   state.hooks?.onSearch?.({
@@ -196,7 +198,7 @@ async function writeManualDocuments(
   state: IndexHandleState,
   write: (names: PhysicalNames) => Promise<void>,
 ): Promise<void> {
-  const physical = await resolvePhysical(state.adapter, state.definition);
+  const physical = await resolvePhysical(state.adapter, state.definition, state.secureDelete);
   await write(physicalNames(state.definition, physical.physicalIndexId, physical.generation));
 }
 
@@ -282,9 +284,15 @@ function withHandleScope(
 async function resolvePhysical(
   adapter: SqlAdapter,
   definition: IndexDefinition,
+  secureDelete: SecureDeletePolicy,
 ): Promise<{ physicalIndexId: string; generation: number }> {
-  await ensureRegistry(adapter);
-  const row = await readRegistry(adapter, definition.name);
+  // Reading the explicit registry columns validates the installed schema too.
+  // Keep DDL and PRAGMA on the cold/migration path, never on healthy searches.
+  const row = await readRegistry(adapter, definition.name).catch(async (error: unknown) => {
+    if (!isMissingRegistrySchema(error)) throw error;
+    await ensureRegistry(adapter);
+    return readRegistry(adapter, definition.name);
+  });
   if (!row) {
     throw new SearchError({
       code: "SEARCH_INDEX_NOT_FOUND",
@@ -299,5 +307,55 @@ async function resolvePhysical(
       details: { reason: row.health === "pending" ? "registry-pending" : "registry-unhealthy" },
     });
   }
+  if (
+    row.physicalSchemaHash !==
+    expectedPhysicalHash(definition, row.physicalIndexId, row.activeGeneration, secureDelete)
+  ) {
+    // The stored generation was built for another physical definition (for
+    // example a new normalization profile): querying it would normalize the
+    // query differently from the indexed text. Callers rebuild, then retry.
+    throw new SearchError({
+      code: "SEARCH_MAINTENANCE_FAILED",
+      message: "index was built for another physical definition",
+      details: { reason: "registry-stale" },
+    });
+  }
   return { physicalIndexId: row.physicalIndexId, generation: row.activeGeneration };
+}
+
+// Definitions are long-lived module constants; hash each generation once.
+const expectedHashes = new WeakMap<IndexDefinition, Map<string, string>>();
+
+function expectedPhysicalHash(
+  definition: IndexDefinition,
+  physicalIndexId: string,
+  generation: number,
+  secureDelete: SecureDeletePolicy,
+): string {
+  const key = `${physicalIndexId}:${generation}:${secureDelete !== "off"}`;
+  let byGeneration = expectedHashes.get(definition);
+  if (!byGeneration) {
+    byGeneration = new Map();
+    expectedHashes.set(definition, byGeneration);
+  }
+  let hash = byGeneration.get(key);
+  if (hash === undefined) {
+    hash = hashPhysicalManifest(
+      compileFts5PhysicalManifest(
+        { definition, physicalIndexId, generation },
+        { secureDelete: secureDelete !== "off" },
+      ),
+    );
+    byGeneration.set(key, hash);
+  }
+  return hash;
+}
+
+function isMissingRegistrySchema(error: unknown): boolean {
+  // Adapters retain driver errors as causes without exposing SQL in public messages.
+  for (let depth = 0; depth < 4 && error instanceof Error; depth++) {
+    if (/no such (?:table|column):/i.test(error.message)) return true;
+    error = error.cause;
+  }
+  return false;
 }

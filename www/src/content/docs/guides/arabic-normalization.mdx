@@ -32,7 +32,7 @@ Conservative replacements, available in linked and manual mode:
 
 Explicitly **unchanged**:
 
-- teh marbuta → heh (`ة` → `ه`)
+- teh marbuta → heh (`ة` → `ه`); opt in with `arabic-teh-marbuta`
 - waw with hamza → waw
 - yeh with hamza → yeh
 - Arabic-Indic digit folding
@@ -51,4 +51,22 @@ linked mode. Combine with `arabic-basic` when both are needed:
 normalization: ["arabic-basic", "numeric-arabic"],
 ```
 
+## `arabic-teh-marbuta`
+
+Maps teh marbuta to heh (`ة` → `ه`), so `شبة` and `شبه` match each other.
+Everyday typing uses the two letters interchangeably at the end of a word.
+Also available in linked mode:
+
+```ts
+normalization: ["arabic-basic", "numeric-arabic", "arabic-teh-marbuta"],
+```
+
 Order is significant: profiles run in declaration order.
+
+## Changing the profile of an existing index
+
+The profile is part of the physical schema hash. A search through a
+definition whose profile differs from the stored generation fails closed with
+`SEARCH_MAINTENANCE_FAILED` and `details.reason: "registry-stale"`, because
+the query would be folded differently from the indexed text. Call
+`rebuild()` to re-index into a new generation, then search again.

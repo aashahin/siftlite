@@ -91,6 +91,10 @@ Do not automatically normalize Arabic-Indic digits (`٠١٢٣٤٥٦٧٨٩`) to W
 
 Offer a separate optional `numeric-arabic` transform that maps digits when desired.
 
+## Teh marbuta
+
+`arabic-basic` keeps `ة` and `ه` distinct. The separate optional `arabic-teh-marbuta` profile maps `ة` → `ه` for products whose users type them interchangeably.
+
 ## Tokenization
 
 FTS5 baseline uses `unicode61`; custom tokenizer loading is not part of the v1 portability contract.

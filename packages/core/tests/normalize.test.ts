@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
   arabicBasic,
+  arabicTehMarbuta,
   compileIndexNormalizationSql,
   defineIndex,
   definePortableNormalizer,
@@ -30,6 +31,18 @@ describe("portable normalizers", () => {
     expect(numericArabic.normalize("۰۱۲")).toBe("۰۱۲");
   });
 
+  test("arabic-teh-marbuta is opt-in and folds teh marbuta to heh only", () => {
+    expect(arabicTehMarbuta.id).toBe("arabic-teh-marbuta");
+    expect(arabicTehMarbuta.linkedMode).toBe(true);
+    expect(arabicTehMarbuta.normalize("في شبة")).toBe("في شبه");
+    expect(arabicTehMarbuta.normalize("مدرسة")).toBe("مدرسه");
+    expect(arabicTehMarbuta.normalize("أ ى ١")).toBe("أ ى ١");
+    expect(normalizeIndexText("الْمَدْرَسَة", ["arabic-basic", "arabic-teh-marbuta"])).toBe("المدرسه");
+    expect(compileIndexNormalizationSql({ sql: "?" }, ["arabic-teh-marbuta"]).sql).toBe(
+      "replace(?, 'ة', 'ه')",
+    );
+  });
+
   test("index-level profiles compose in declared order", () => {
     expect(normalizeIndexText("آيفون-١٢", ["arabic-basic", "numeric-arabic"])).toBe("ايفون-12");
     expect(compileIndexNormalizationSql({ sql: "?" }, []).sql).toBe("?");
@@ -55,7 +68,7 @@ describe("portable normalizers", () => {
   });
 
   test("unknown registry lookups fail closed", () => {
-    expect(LINKED_NORMALIZER_IDS).toEqual(["arabic-basic", "numeric-arabic"]);
+    expect(LINKED_NORMALIZER_IDS).toEqual(["arabic-basic", "numeric-arabic", "arabic-teh-marbuta"]);
     expect(() => getPortableNormalizer("nfkc")).toThrow(SearchError);
   });
 

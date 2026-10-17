@@ -38,7 +38,14 @@ interrupted maintenance).
 **Cause:** Index has no `normalization`, or query and indexed text used
 different profiles.
 **Fix:** Set `normalization: ["arabic-basic"]` (and `numeric-arabic` if
-you index Arabic-Indic digits). Normalization is index-level.
+you index Arabic-Indic digits, `arabic-teh-marbuta` so `ة` and `ه` match).
+Normalization is index-level.
+
+## Search fails with `registry-stale`
+
+**Cause:** The index definition's physical shape (for example its
+`normalization`) changed since the stored generation was built.
+**Fix:** `rebuild()` the index, then retry the search.
 
 ## Typo fallback search is rejected on D1
 

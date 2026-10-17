@@ -107,6 +107,81 @@ describe("createFts5Engine", () => {
     });
   });
 
+  test("search fails closed when the generation was built for another physical definition", async () => {
+    const { adapter, handle } = await seededHandle();
+    const refolded = defineIndex({
+      name: "products",
+      mode: "linked",
+      source: { table: "products", primaryKey: { field: "id", type: "string" } },
+      normalization: ["arabic-teh-marbuta"],
+      searchable: { name: { weight: 5 } },
+      filterable: { status: "text" },
+    });
+    const next = createFts5Engine({ adapter }).index(refolded);
+    await expect(next.search("sqlite")).rejects.toMatchObject({
+      code: "SEARCH_MAINTENANCE_FAILED",
+      details: { reason: "registry-stale" },
+    });
+    // The original definition still searches its own generation.
+    expect((await handle.search("sqlite")).hits.length).toBeGreaterThan(0);
+    await next.rebuild();
+    expect((await next.search("sqlite")).hits.length).toBeGreaterThan(0);
+  });
+
+  test("teh marbuta and heh match each other through a rebuilt linked index", async () => {
+    const adapter = bunSqliteAdapter(new Database(":memory:"));
+    await adapter.execute(
+      sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, status TEXT)"),
+    );
+    await adapter.execute(
+      sql("INSERT INTO products (id, name, status) VALUES (?, ?, ?)", [
+        "p1",
+        "مقدمة في شبه الجزيرة",
+        "active",
+      ]),
+    );
+    const handle = createFts5Engine({ adapter }).index(
+      defineIndex({
+        name: "products",
+        mode: "linked",
+        source: { table: "products", primaryKey: { field: "id", type: "string" } },
+        normalization: ["arabic-basic", "arabic-teh-marbuta"],
+        searchable: { name: { weight: 5 } },
+        filterable: { status: "text" },
+        prefix: [2, 3],
+        matchingStrategy: "last-prefix",
+      }),
+    );
+    await handle.create();
+    for (const query of ["في شبة", "في شبه", "مقدمه", "الجزيره"]) {
+      expect((await handle.search(query)).hits.map((hit) => hit.id)).toEqual(["p1"]);
+    }
+  });
+
+  test("a cold registry is created on first search; healthy searches issue no DDL", async () => {
+    const database = new Database(":memory:");
+    const statements: string[] = [];
+    const base = bunSqliteAdapter(database);
+    const traced = {
+      ...base,
+      query: (statement: Parameters<typeof base.query>[0]) => {
+        statements.push(statement.sql);
+        return base.query(statement);
+      },
+      execute: (statement: Parameters<typeof base.execute>[0]) => {
+        statements.push(statement.sql);
+        return base.execute(statement);
+      },
+    } as typeof base;
+    const handle = createFts5Engine({ adapter: traced }).index(catalogDefinition());
+    await expect(handle.search("sqlite")).rejects.toMatchObject({ code: "SEARCH_INDEX_NOT_FOUND" });
+    await base.execute(sql("CREATE TABLE products (id TEXT PRIMARY KEY, name TEXT, status TEXT)"));
+    await handle.create();
+    statements.length = 0;
+    await handle.search("sqlite");
+    expect(statements.some((statement) => /^\s*(?:CREATE|PRAGMA)/i.test(statement))).toBe(false);
+  });
+
   test("search throws SEARCH_INDEX_NOT_FOUND before create", async () => {
     const adapter = bunSqliteAdapter(new Database(":memory:"));
     const engine = createFts5Engine({ adapter });

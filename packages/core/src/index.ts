@@ -208,6 +208,10 @@ export { definePortableNormalizer } from "./normalize/define.js";
 export { arabicBasic, ARABIC_BASIC_REPLACEMENTS } from "./normalize/arabic-basic.js";
 export { numericArabic, NUMERIC_ARABIC_REPLACEMENTS } from "./normalize/numeric-arabic.js";
 export {
+  arabicTehMarbuta,
+  ARABIC_TEH_MARBUTA_REPLACEMENTS,
+} from "./normalize/arabic-teh-marbuta.js";
+export {
   getPortableNormalizer,
   isPortableNormalizerId,
   LINKED_NORMALIZER_IDS,

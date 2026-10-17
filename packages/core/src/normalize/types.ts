@@ -15,7 +15,7 @@ export interface PortableNormalizer {
   compileSql(inputExpression: SqlExpression): SqlExpression;
 }
 
-export type LinkedNormalizerId = "arabic-basic" | "numeric-arabic";
+export type LinkedNormalizerId = "arabic-basic" | "numeric-arabic" | "arabic-teh-marbuta";
 
 export type PortableNormalizerId = LinkedNormalizerId;
 

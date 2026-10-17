@@ -68,7 +68,7 @@ Versioning uses [Changesets](https://github.com/changesets/changesets):
 bun run changeset
 ```
 
-Public packages live under `@siftlite/*`. `0.2.0` is on npm. Publishing stays
+Public packages live under `@siftlite/*`. `0.3.0` is on npm. Publishing stays
 owner-gated (`changeset version`, then `changeset publish` or the Release
 workflow). Do not publish `examples/` or `experimental/`.
 

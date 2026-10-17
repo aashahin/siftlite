@@ -7,7 +7,7 @@
 
 export const SIFTLITE_CORE_PACKAGE = {
   name: "@siftlite/core",
-  version: "0.2.0",
+  version: "0.3.0",
 } as const;
 
 export type SiftLiteCorePackage = typeof SIFTLITE_CORE_PACKAGE;

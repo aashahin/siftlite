@@ -1,5 +1,12 @@
 # @siftlite/d1
 
+## 0.3.0
+
+### Patch Changes
+
+- Updated dependencies [69d7d40]
+  - @siftlite/core@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes

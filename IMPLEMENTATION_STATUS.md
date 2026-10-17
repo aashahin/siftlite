@@ -5,7 +5,7 @@ implementation pack and accepted ADRs.
 
 ## Current phase
 
-The ten public packages are published as `@siftlite/*@0.2.0`. Phases 0–13 are
+The ten public packages are published as `@siftlite/*@0.3.0`. Phases 0–13 are
 implemented, including P12-06 always-merge ranking and local 100k/1m
 characterization. Phase 14 evidence is in `docs/16-V1-RC.md`; npm RC publish
 (P14-10) is owner-gated. D1 typo fallback stays off by default until remote
@@ -13,7 +13,7 @@ cost evidence exists. This is not a production-ready 1.0.
 
 ## Status
 
-PASS for Phase 12/13/14 evidence work on this branch. npm `0.2.0` is the
+PASS for Phase 12/13/14 evidence work on this branch. npm `0.3.0` is the
 current published baseline.
 
 ## Completed tasks
